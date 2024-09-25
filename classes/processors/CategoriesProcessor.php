@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the categories data into the database.
+ * @brief Processes the categories data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -22,7 +22,7 @@ use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 class CategoriesProcessor
 {
     /**
-	 * Process data for Submission categories. If there's no category with the name provided, a new one will be created.
+	 * Processes data for Submission categories. If there's no category with the name provided, a new one will be created.
 	 */
 	public static function process(string $categories, string $locale, int $journalId, int $publicationId): void
     {

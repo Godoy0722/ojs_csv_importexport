@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the submission data into the database.
+ * @brief Processes the submission data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -22,7 +22,7 @@ use APP\submission\Submission;
 class SubmissionProcessor
 {
     /**
-     * Process initial data for the Submission
+     * Processes initial data for the Submission
      */
     public static function process(int $journalId, object $data): Submission
     {
@@ -42,6 +42,9 @@ class SubmissionProcessor
 		return $submission;
     }
 
+    /**
+     * Updates the current publication ID for the submission
+     */
     public static function updateCurrentPublicationId(Submission $submission, int $publicationId): void
     {
         $submission->setData('currentPublicationId', $publicationId);

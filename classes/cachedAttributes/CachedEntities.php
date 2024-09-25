@@ -11,7 +11,8 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief retrieve cached Entities
+ * @brief This class is responsible for retrieving cached entities such as
+ * journals, user groups, genres, categories, sections, and issues.
  */
 
 namespace APP\plugins\importexport\csv\classes\cachedAttributes;
@@ -44,7 +45,7 @@ class CachedEntities
     static array $issues = [];
 
     /**
-     * Get a cached Journal by journalPath. Return null if an error occurred.
+     * Retrieves a cached Journal by its path. Returns null if an error occurs.
      */
     static function getCachedJournal(string $journalPath): ?Journal
     {
@@ -54,7 +55,7 @@ class CachedEntities
     }
 
     /**
-     * Get a cached userGroup ID by journalId. Return null if an error occurred.
+     * Retrieves a cached userGroup ID by journalId. Returns null if an error occurs.
      */
     static function getCachedUserGroupId(string $journalPath, int $journalId): ?int
     {
@@ -64,7 +65,7 @@ class CachedEntities
     }
 
     /**
-     * Get a cached genre ID by journalId. Return null if an error occurred.
+     * Retrieves a cached genre ID by genreName and journalId. Returns null if an error occurs.
      */
     static function getCachedGenreId(string $genreName, int $journalId): ?int
     {
@@ -73,6 +74,9 @@ class CachedEntities
             ?->getId();
     }
 
+    /**
+     * Retrieves a cached Category by categoryName and journalId. Returns null if an error occurs.
+     */
     static function getCachedCategory(string $categoryName, int $journalId): ?Category
     {
         $result = Repo::category()->getCollector()
@@ -85,6 +89,9 @@ class CachedEntities
         return self::$categories[$categoryName] ??= (array_values($result)[0] ?? null);
     }
 
+    /**
+     * Retrieves a cached Issue by issue data and journalId. Returns null if an error occurs.
+     */
     static function getCachedIssue(object $data, int $journalId): ?Issue
     {
         $customIssueDescription = "{$data->issueVolume}_{$data->issueNumber}_{$data->issueYear}";
@@ -100,6 +107,9 @@ class CachedEntities
         return self::$issues[$customIssueDescription] ??= (array_values($result)[0] ?? null);
     }
 
+    /**
+     * Retrieves a cached Section by sectionTitle, sectionAbbrev, and journalId. Returns null if an error occurs.
+     */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, int $journalId): ?Section
     {
         $result = Repo::section()->getCollector()

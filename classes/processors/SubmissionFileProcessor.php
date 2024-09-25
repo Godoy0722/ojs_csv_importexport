@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the submission files data into the database.
+ * @brief Processes the submission files data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -25,7 +25,7 @@ use PKP\submissionFile\SubmissionFile;
 class SubmissionFileProcessor
 {
     /**
-	 * Process data for the SubmissionFile
+	 * Processes data for the SubmissionFile
 	 */
 	public static function process(
         string $locale,
@@ -59,6 +59,9 @@ class SubmissionFileProcessor
         return $submissionFile;
 	}
 
+    /**
+     * Updates the association information for the submission file
+     */
     public static function updateAssocInfo(SubmissionFile $submissionFile, int $galleyId): void
     {
         $submissionFile->setData('assocType', Application::ASSOC_TYPE_REPRESENTATION);

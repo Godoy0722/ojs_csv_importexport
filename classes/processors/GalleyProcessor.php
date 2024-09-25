@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the authors data into the database.
+ * @brief Processes the article galley data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -22,7 +22,7 @@ class GalleyProcessor
 {
 
     /**
-     * Process initial data for the article galley
+     * Processes initial data for the article galley
      */
     public static function process(
         int $submissionFileId,
@@ -35,7 +35,7 @@ class GalleyProcessor
         $galleyDao = Repo::galley()->dao;
 
         $galley = $galleyDao->newDataObject();
-        $galley->setData('submissionFileId',$submissionFileId);
+        $galley->setData('submissionFileId', $submissionFileId);
         $galley->setData('publicationId', $publicationId);
         $galley->setLabel($label);
         $galley->setLocale($data->locale);

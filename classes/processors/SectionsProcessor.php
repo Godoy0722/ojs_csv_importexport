@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the section data into the database.
+ * @brief Processes the section data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -23,13 +23,13 @@ use APP\section\Section;
 class SectionsProcessor
 {
     /**
-	 * Process data for Sections
+	 * Processes data for Sections
 	 */
 	public static function process(object $data, int $journalId): Section
     {
         $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $journalId);
 
-        if(is_null($section)) {
+        if (is_null($section)) {
             $sectionDao = Repo::section()->dao;
 
             $section = $sectionDao->newDataObject();

@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief class to validate all necessary requirements for a CSV row to be valid
+ * @brief Class to validate all necessary requirements for a CSV row to be valid
  */
 
 namespace APP\plugins\importexport\csv\classes\validations;
@@ -25,8 +25,8 @@ class InvalidRowValidations
     static array $coverImageAllowedTypes = ['gif', 'jpg', 'png', 'webp'];
 
     /**
-     * Validate if the CSV row contain all fields. Return the reason if an error occurred
-     * or null if everything is alright.
+     * Validates whether the CSV row contains all fields. Returns the reason if an error occurred,
+     * or null if everything is correct.
      */
     public static function validateRowContainAllFields(array $fields, int $expectedSize): ?string
     {
@@ -36,8 +36,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if the CSV row contain all required fields. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates whether the CSV row contains all required fields. Returns the reason if an error occurred,
+     * or null if everything is correct.
      */
     public static function validateRowHasAllRequiredFields(object $data): ?string
     {
@@ -47,8 +47,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if the article file exists and is readable. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates whether the article file exists and is readable. Returns the reason if an error occurred,
+     * or null if everything is correct.
      */
     public static function validateArticleFileIsValid(string $coverImageFilename, string $sourceDir): ?string
     {
@@ -60,8 +60,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if the article cover image is valid. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates the article cover image. Returns the reason if an error occurred,
+     * or null if everything is correct.
      */
     public static function validateCoverImageIsValid(string $coverImageFilename, string $sourceDir): ?string
     {
@@ -81,8 +81,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Make all necessary validations for article galleys. Return the reason if an error occurred
-     * or null if everything is alright
+     * Perform all necessary validations for article galleys. Returns the reason if an error occurred,
+     * or null if everything is correct.
      */
     public static function validateArticleGalleys(string $galleyFilenames, string $galleyLabels, string $sourceDir): ?string
     {
@@ -104,8 +104,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if the journal is valid for the CSV row. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates whether the journal is valid for the CSV row. Returns the reason if an error occurred,
+     * or null if everything is correct.
      */
     public static function validateJournalIsValid(?Journal $journal, string $journalPath): ?string
     {
@@ -113,8 +113,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if the journal supports the locale passed as param on the CSV row. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates if the journal supports the locale provided in the CSV row. Returns the reason if an error occurred
+     * or null if everything is correct.
      */
     public static function validateJournalLocale(Journal $journal, string $locale): ?string
     {
@@ -129,8 +129,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if exists a genre for the name provided by the CSV row. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates if a genre exists for the name provided in the CSV row. Returns the reason if an error occurred
+     * or null if everything is correct.
      */
     public static function validateGenreIdValid(?int $genreId, string $genreName): ?string
     {
@@ -138,8 +138,8 @@ class InvalidRowValidations
     }
 
     /**
-     * Validate if the userGroup id is valid. Return the reason if an error occurred
-     * or null if everything is alright
+     * Validates if the user group ID is valid. Returns the reason if an error occurred
+     * or null if everything is correct.
      */
     public static function validateUserGroupId(?int $userGroupId, string $journalPath): ?string
     {

@@ -45,7 +45,7 @@ msgid "plugins.importexport.csv.unknownJournal"
 msgstr "Unknown journal with path \"{$journalPath}\"."
 
 msgid "plugins.importexport.csv.unknownLocale"
-msgstr "Unknown locale or localed doesn't supported by this journal: \"{$locale}\""
+msgstr "Unknown locale or locale not supported by this journal: \"{$locale}\""
 
 msgid "plugins.importexport.csv.invalidArticleFile"
 msgstr "Invalid article file for this submission."
@@ -63,7 +63,7 @@ msgid "plugins.importexport.csv.noAuthorGroup"
 msgstr "There is no default author group in the journal {$journal}."
 
 msgid "plugins.importexpot.csv.fileProcessFinished"
-msgstr "Proccess for file \"{$filename}\" finished. {$processedRows} rows processed. {$failedRows} rows with error."
+msgstr "Process for file \"{$filename}\" finished. {$processedRows} rows processed. {$failedRows} rows with error."
 
 msgid "plugins.importexport.csv.invalidBookCoverImage"
 msgstr "The cover image has an invalid format for this row."
@@ -75,7 +75,7 @@ msgid "plugins.importexport.csv.noGenre"
 msgstr "There is no {$genreName} genre."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionFile"
-msgstr "An error ocurred while saving the Submission file."
+msgstr "An error occurred while saving the Submission file."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
-msgstr "An error ocurred while saving the galley {$galley}."
+msgstr "An error occurred while saving the galley {$galley}."

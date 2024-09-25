@@ -35,17 +35,17 @@ class AuthorsProcessor
 		$authorDao = Repo::author()->dao;
 		$authorsString = explode(';', $data->authors);
 
-		foreach ($authorsString as $index => $authorString) {
+        foreach ($authorsString as $index => $authorString) {
             /**
              * Examine the author string. The pattern is: "GivenName,FamilyName,email@email.com,affiliation".
              *
-             * If the article has more than one email, it must separate the authors by a semicolon ;. Example:
+             * If the article has more than one author, it must separate the authors by a semicolon (;). Example:
              * "<AUTHOR_1_INFORMATION>;<AUTHOR_2_INFORMATION>".
              *
-             * Fields familyName, email and affiliation are optional and can be leaved as an empty field. E.g.:
+             * Fields familyName, email, and affiliation are optional and can be left as empty fields. E.g.:
              * "GivenName,,,".
              *
-             * By default, if an author doesn't have an email, the primary contact email will be putted in place.
+             * By default, if an author doesn't have an email, the primary contact email will be used in its place.
              */
 			$givenName = $familyName = $emailAddress = null;
 			$authorString = trim($authorString);

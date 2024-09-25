@@ -133,7 +133,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
 	}
 
     /**
-	 * Retrives a user by username
+	 * Retrives an user by username
 	 */
 	private function getUser(): ?User
     {

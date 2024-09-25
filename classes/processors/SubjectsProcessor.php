@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the subjects data into the database.
+ * @brief Processes the subjects data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -21,7 +21,7 @@ use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 class SubjectsProcessor
 {
     /**
-	 * Process data for Keywords
+	 * Processes data for Keywords
 	 */
 	public static function process(object $data, int $publicationId): void
     {

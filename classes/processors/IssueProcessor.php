@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the issue data into the database.
+ * @brief Processes the issue data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -25,7 +25,7 @@ use PKP\core\PKPString;
 class IssueProcessor
 {
     /**
-	 * Process data for the Issue. If there's no issue registered, a new one will be created and attached to the submission.
+	 * Processes data for the Issue. If there's no issue registered, a new one will be created and attached to the submission.
 	 */
 	public static function process(int $journalId, object $data): Issue
     {

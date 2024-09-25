@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Handles the issue import in case the user uses the issue command
+ * @brief Handles the issue import when the user uses the issue command
  */
 
 namespace APP\plugins\importexport\csv\classes\commands;
@@ -49,10 +49,10 @@ class IssueCommand
     // The folder containing all CSV files that the command must go through
     private string $sourceDir;
 
-    // Processed rows from an unique CSV file
+    // Processed rows from a single CSV file
     private int $processedRows;
 
-    // Failed rows from an unique CSV file
+    // Failed rows from a single CSV file
     private int $failedRows;
 
     private PublicFileManager $publicFileManager;

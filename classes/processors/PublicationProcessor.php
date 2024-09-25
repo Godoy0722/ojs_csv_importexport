@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Process the publication data into the database.
+ * @brief Processes the publication data into the database.
  */
 
 namespace APP\plugins\importexport\csv\classes\processors;
@@ -25,9 +25,9 @@ use PKP\core\PKPString;
 class PublicationProcessor
 {
     /**
-	 * Process initial data for Publication
-	 */
-	public static function process(Submission $submission, object $data, Journal $journal): Publication
+     * Processes initial data for Publication
+     */
+    public static function process(Submission $submission, object $data, Journal $journal): Publication
     {
 		$publicationDao = Repo::publication()->dao;
 		$sanitizedAbstract = PKPString::stripUnsafeHtml($data->articleAbstract);
@@ -51,27 +51,36 @@ class PublicationProcessor
             $publication->setData('prefix', $data->articlePrefix, $locale);
         }
 
-        if($data->startPage && $data->endPage) {
+        if ($data->startPage && $data->endPage) {
             $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
         }
 
-		$publicationDao->insert($publication);
+        $publicationDao->insert($publication);
 
         SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
 
-		return $publication;
-	}
+        return $publication;
+    }
 
+    /**
+     * Updates the primary contact ID for the publication
+     */
     public static function updatePrimaryContactId(Publication $publication, int $authorId): void
     {
         self::updatePublicationAttribute($publication, 'primaryContactId', $authorId);
     }
 
+    /**
+     * Updates the coverage for the publication
+     */
     public static function updateCoverage(Publication $publication, string $coverage): void
     {
         self::updatePublicationAttribute($publication, 'coverage', $coverage);
     }
 
+    /**
+     * Updates the cover image for the publication
+     */
     public static function updateCoverImage(Publication $publication, object $data, string $uploadName): void
     {
         $coverImage = [];
@@ -82,16 +91,25 @@ class PublicationProcessor
         self::updatePublicationAttribute($publication, 'coverImage', [$data->locale => $coverImage]);
     }
 
+    /**
+     * Updates the issue ID for the publication
+     */
     public static function updateIssueId(Publication $publication, int $issueId): void
     {
         self::updatePublicationAttribute($publication, 'issueId', $issueId);
     }
 
+    /**
+     * Updates the section ID for the publication
+     */
     public static function updateSectionId(Publication $publication, int $sectionId): void
     {
         self::updatePublicationAttribute($publication, 'sectionId', $sectionId);
     }
 
+    /**
+     * Updates a specific attribute of the publication
+     */
     static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data): void
     {
         $publication->setData($attribute, $data);

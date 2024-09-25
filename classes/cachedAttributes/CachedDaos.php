@@ -11,7 +11,7 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief retrieve cached DAOs
+ * @brief This class is responsible for retrieving cached DAOs.
  */
 
 namespace APP\plugins\importexport\csv\classes\cachedAttributes;
@@ -30,26 +30,41 @@ class CachedDaos
     /** @var DAO[] */
     static array $cachedDaos = [];
 
+    /**
+     * Retrieves the cached JournalDAO instance.
+     */
     public static function getJournalDao(): JournalDAO
     {
         return self::$cachedDaos['JournalDAO'] ??= DAORegistry::getDAO('JournalDAO');
     }
 
+    /**
+     * Retrieves the cached GenreDAO instance.
+     */
     public static function getGenreDao(): GenreDAO
     {
         return self::$cachedDaos['GenreDAO'] ??= DAORegistry::getDAO('GenreDAO');
     }
 
+    /**
+     * Retrieves the cached SubmissionKeywordDAO instance.
+     */
     public static function getSubmissionKeywordDao(): SubmissionKeywordDAO
     {
         return self::$cachedDaos['SubmissionKeywordDAO'] ??= DAORegistry::getDAO('SubmissionKeywordDAO');
     }
 
+    /**
+     * Retrieves the cached SubmissionSubjectDAO instance.
+     */
     public static function getSubmissionSubjectDao(): SubmissionSubjectDAO
     {
         return self::$cachedDaos['SubmissionSubjectDAO'] ??= DAORegistry::getDAO('SubmissionSubjectDAO');
     }
 
+    /**
+     * Retrieves the cached GalleyDAO instance, which is used for representations.
+     */
     public static function getRepresentationDao(): GalleyDAO
     {
         return self::$cachedDaos['RepresentationDAO'] ??= Application::getRepresentationDAO();
