@@ -17,13 +17,15 @@
 namespace APP\plugins\importexport\csv\classes\commands;
 
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
-use APP\plugins\importexport\csv\classes\fileHandlers\CSVFileHandler;
+use APP\plugins\importexport\csv\classes\handlers\CSVFileHandler;
+use APP\plugins\importexport\csv\classes\handlers\WelcomeEmailHandler;
 use APP\plugins\importexport\csv\classes\processors\UserGroupsProcessor;
 use APP\plugins\importexport\csv\classes\processors\UserInterestsProcessor;
 use APP\plugins\importexport\csv\classes\processors\UsersProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
 use DirectoryIterator;
+use PKP\security\Validation;
 use PKP\user\User;
 
 class UserCommand
@@ -40,10 +42,18 @@ class UserCommand
     // Failed rows from a single CSV file
     private int $failedRows;
 
-    public function __construct(string $sourceDir)
+    // Whether to send welcome email to the user
+    private bool $sendWelcomeEmail;
+
+    // The user that is importing the CSV file
+    private User $senderEmailUser;
+
+    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail)
     {
         $this->expectedRowSize = count(RequiredUserHeaders::$userHeaders);
         $this->sourceDir = $sourceDir;
+        $this->senderEmailUser = $user;
+        $this->sendWelcomeEmail = $sendWelcomeEmail;
     }
 
     public function run(): void
@@ -128,12 +138,21 @@ class UserCommand
                     continue;
                 }
 
-                $userId = UsersProcessor::process($data, $journal->getPrimaryLocale());
+                if (is_null($data->tempPassword)) {
+                    $data->tempPassword = Validation::generatePassword();
+                }
+
+                $user = UsersProcessor::process($data, $journal->getPrimaryLocale());
+                $userId = $user->getId();
 
                 $userInterests = explode(';', $data->reviewInterests);
                 UserInterestsProcessor::process($userInterests, $userId);
 
                 UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+
+                if ($this->sendWelcomeEmail) {
+                    WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
+                }
             }
 
             echo __('plugins.importexpot.csv.fileProcessFinished', [

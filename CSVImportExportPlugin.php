@@ -38,6 +38,9 @@ class CSVImportExportPlugin extends ImportExportPlugin
     // The folder containing all CSV files that the command must go through
     private string $sourceDir;
 
+    // Whether to send welcome email to the user
+    private bool $sendWelcomeEmail = false;
+
     /**
      * @copydoc Plugin::register()
      *
@@ -102,6 +105,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
         $this->command = array_shift($args);
 		$this->username = array_shift($args);
         $this->sourceDir = array_shift($args);
+        $this->sendWelcomeEmail = array_shift($args) ?? false;
 
         if (! in_array($this->command, ['issues', 'users']) || !$this->sourceDir || !$this->username) {
 			$this->usage($scriptName);
@@ -117,7 +121,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
 
         match ($this->command) {
             'issues' => (new IssueCommand($this->sourceDir, $this->user))->run(),
-            'users' => (new UserCommand($this->sourceDir, $this->user))->run(),
+            'users' => (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run(),
             default => throw new \InvalidArgumentException("Comando inválido: {$this->command}"),
         };
     }

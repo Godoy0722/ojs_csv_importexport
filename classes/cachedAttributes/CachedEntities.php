@@ -72,7 +72,7 @@ class CachedEntities
         ->first()?->getId();
     }
 
-    static function getCAchedUserByEmail(string $email): ?User
+    static function getCachedUserByEmail(string $email): ?User
     {
         return self::$users[$email] ??= Repo::user()->getByEmail($email);
     }

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @file plugins/importexport/csv/classes/fileHandlers/CSVFileHandler.php
+ * @file plugins/importexport/csv/classes/handlers/CSVFileHandler.php
  *
  * Copyright (c) 2014-2024 Simon Fraser University
  * Copyright (c) 2003-2024 John Willinsky
@@ -14,7 +14,7 @@
  * @brief Handles the issue import when the user uses the issue command
  */
 
-namespace APP\plugins\importexport\csv\classes\fileHandlers;
+namespace APP\plugins\importexport\csv\classes\handlers;
 
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
 use Exception;

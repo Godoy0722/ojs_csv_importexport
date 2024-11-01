@@ -20,13 +20,14 @@ use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use PKP\core\Core;
 use PKP\security\Validation;
+use PKP\user\User;
 
 class UsersProcessor
 {
     /**
 	 * Process data for Users
 	 */
-	public static function process(object $data, string $locale): int
+	public static function process(object $data, string $locale): User
     {
 		$userDao = Repo::user()->dao;
 
@@ -39,9 +40,11 @@ class UsersProcessor
         $user->setUsername($data->username);
         $user->setMustChangePassword(true);
         $user->setDateRegistered(Core::getCurrentDate());
-        $user->setPassword(Validation::encryptCredentials($data->username, $data->tempPassword ?? $data->username));
+        $user->setPassword(Validation::encryptCredentials($data->username, $data->tempPassword));
 
-        return $userDao->insert($user);
+        $userDao->insert($user);
+
+        return $user;
 	}
 
     public static function getValidUsername(string $firstname, string $lastname): ?string
