@@ -23,6 +23,8 @@ use APP\journal\Journal;
 use APP\section\Section;
 use PKP\category\Category;
 use PKP\security\Role;
+use PKP\user\User;
+use PKP\userGroup\UserGroup;
 
 class CachedEntities
 {
@@ -31,6 +33,9 @@ class CachedEntities
 
     /** @var int[] */
     static array $userGroupIds = [];
+
+    /** @var UserGroup[] */
+    static array $userGroups = [];
 
     /** @var int[] */
     static array $genreIds = [];
@@ -43,6 +48,9 @@ class CachedEntities
 
     /** @var Issue[] */
     static array $issues = [];
+
+    /** @var User[] */
+    static array $users = [];
 
     /**
      * Retrieves a cached Journal by its path. Returns null if an error occurs.
@@ -62,6 +70,37 @@ class CachedEntities
         return self::$userGroupIds[$journalPath] ??= Repo::userGroup()
         ->getByRoleIds([Role::ROLE_ID_AUTHOR], $journalId)
         ->first()?->getId();
+    }
+
+    static function getCAchedUserByEmail(string $email): ?User
+    {
+        return self::$users[$email] ??= Repo::user()->getByEmail($email);
+    }
+
+    static function getCachedUserByUsername(string $username): ?User
+    {
+        return self::$users[$username] ??= Repo::user()->getByUsername($username);
+    }
+
+    static function getCachedUserGroupsByJournalId(int $journalId): array
+    {
+        return self::$userGroups[$journalId] ??= Repo::userGroup()->getCollector()
+            ->filterByContextIds([$journalId])
+            ->getMany()
+            ->toArray();
+    }
+
+    static function getCachedUserGroupByName(string $name, int $journalId, string $locale): ?UserGroup
+    {
+        $userGroups = self::getCachedUserGroupsByJournalId($journalId);
+
+        foreach ($userGroups as $userGroup) {
+            if (mb_strtolower($userGroup->getName($locale)) === mb_strtolower($name)) {
+                return $userGroup;
+            }
+        }
+
+        return null;
     }
 
     /**

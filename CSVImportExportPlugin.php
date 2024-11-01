@@ -19,6 +19,7 @@ namespace APP\plugins\importexport\csv;
 use APP\core\Application;
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\commands\IssueCommand;
+use APP\plugins\importexport\csv\classes\commands\UserCommand;
 use PKP\plugins\ImportExportPlugin;
 use PKP\user\User;
 
@@ -116,7 +117,8 @@ class CSVImportExportPlugin extends ImportExportPlugin
 
         match ($this->command) {
             'issues' => (new IssueCommand($this->sourceDir, $this->user))->run(),
-            default => throw new \InvalidArgumentException("Comando inválido: {$this->command}")
+            'users' => (new UserCommand($this->sourceDir, $this->user))->run(),
+            default => throw new \InvalidArgumentException("Comando inválido: {$this->command}"),
         };
     }
 

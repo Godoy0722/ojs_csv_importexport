@@ -17,6 +17,7 @@
 namespace APP\plugins\importexport\csv\classes\validations;
 
 use APP\journal\Journal;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 
 class InvalidRowValidations
 {
@@ -39,12 +40,13 @@ class InvalidRowValidations
      * Validates whether the CSV row contains all required fields. Returns the reason if an error occurred,
      * or null if everything is correct.
      */
-    public static function validateRowHasAllRequiredFields(object $data): ?string
+    public static function validateRowHasAllRequiredFields(object $data, callable $requiredFieldsValidation): ?string
     {
-        return !RequiredIssueHeaders::validateRowHasAllRequiredFields($data)
+        return !$requiredFieldsValidation($data)
             ? __('plugins.importexport.csv.verifyRequiredFieldsForThisRow')
             : null;
     }
+
 
     /**
      * Validates whether the article file exists and is readable. Returns the reason if an error occurred,
@@ -145,6 +147,23 @@ class InvalidRowValidations
     {
         return !$userGroupId
             ? __('plugins.importexport.csv.noAuthorGroup', ['journal' => $journalPath])
+            : null;
+    }
+
+    public static function validateAllUserGroupsAreValid(array $roles, int $journalId, string $locale): ?string
+    {
+        $userGroups = CachedEntities::getCachedUserGroupsByJournalId($journalId);
+
+        $allDbRoles = 0;
+        foreach ($roles as $role) {
+            $matchingGroups = array_filter($userGroups, function($userGroup) use ($role, $locale) {
+                return mb_strtolower($userGroup->getName($locale)) === mb_strtolower($role);
+            });
+            $allDbRoles += count($matchingGroups);
+        }
+
+        return $allDbRoles !== count($roles)
+            ? __('plugins.importexport.csv.roleDoesntExist', ['role' => $role])
             : null;
     }
 }

@@ -24,6 +24,7 @@ use PKP\galley\DAO as GalleyDAO;
 use PKP\submission\GenreDAO;
 use PKP\submission\SubmissionKeywordDAO;
 use PKP\submission\SubmissionSubjectDAO;
+use PKP\user\InterestDAO;
 
 class CachedDaos
 {
@@ -68,5 +69,13 @@ class CachedDaos
     public static function getRepresentationDao(): GalleyDAO
     {
         return self::$cachedDaos['RepresentationDAO'] ??= Application::getRepresentationDAO();
+    }
+
+    /**
+     * Retrieves the cached InterestDAO instance, which is used for user interests.
+     */
+    public static function getUserInterestDAO(): InterestDAO
+    {
+        return self::$cachedDaos['InterestDAO'] ??= DAORegistry::getDAO('InterestDAO');
     }
 }

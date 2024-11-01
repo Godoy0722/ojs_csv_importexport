@@ -73,9 +73,9 @@ class PublicationProcessor
     /**
      * Updates the coverage for the publication
      */
-    public static function updateCoverage(Publication $publication, string $coverage): void
+    public static function updateCoverage(Publication $publication, string $coverage, string $locale): void
     {
-        self::updatePublicationAttribute($publication, 'coverage', $coverage);
+        self::updatePublicationAttribute($publication, 'coverage', $coverage, $locale);
     }
 
     /**
@@ -110,9 +110,9 @@ class PublicationProcessor
     /**
      * Updates a specific attribute of the publication
      */
-    static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data): void
+    static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data, ?string $locale = null): void
     {
-        $publication->setData($attribute, $data);
+        $publication->setData($attribute, $data, $locale);
 
         $publicationDao = Repo::publication()->dao;
         $publicationDao->update($publication);

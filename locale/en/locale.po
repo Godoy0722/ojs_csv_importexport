@@ -79,3 +79,12 @@ msgstr "An error occurred while saving the Submission file."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
 msgstr "An error occurred while saving the galley {$galley}."
+
+msgid "plugins.importexport.csv.userAlreadyExistsWithEmail"
+msgstr "User already exists with email \"{$email}\"."
+
+msgid "plugins.importexport.csv.userAlreadyExistsWithUsername"
+msgstr "User already exists with username \"{$username}\"."
+
+msgid "plugins.importexport.csv.roleDoesntExist"
+msgstr "Role \"{$role}\" doesn't exist."

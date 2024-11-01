@@ -49,7 +49,7 @@ class SubmissionFileProcessor
 		$submissionFile->setData('updatedAt', Core::getCurrentDate());
 		$submissionFile->setData('mimetype', $mimeType);
 		$submissionFile->setData('fileId', $fileId);
-		$submissionFile->setData('name', pathinfo($filePath, PATHINFO_FILENAME));
+		$submissionFile->setData('name', pathinfo($filePath, PATHINFO_FILENAME), $locale);
 
 		// Assume open access, no price.
 		$submissionFile->setDirectSalesPrice(0);
