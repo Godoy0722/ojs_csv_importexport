@@ -129,7 +129,7 @@ class UserCommand
 
                 $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
 
-                $roles = explode(';', $data->roles);
+                $roles = array_map('trim', explode(';', $data->roles));
 
                 $reason = InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
 
@@ -145,7 +145,7 @@ class UserCommand
                 $user = UsersProcessor::process($data, $journal->getPrimaryLocale());
                 $userId = $user->getId();
 
-                $userInterests = explode(';', $data->reviewInterests);
+                $userInterests = array_map('trim', explode(';', $data->reviewInterests));
                 UserInterestsProcessor::process($userInterests, $userId);
 
                 UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());

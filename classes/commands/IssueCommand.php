@@ -232,7 +232,7 @@ class IssueCommand
 
                 // // Array to store each galley ID to its respective galley file
                 $galleyIds = [];
-                foreach (explode(';', $data->galleyFilenames) as $galleyFile) {
+                foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
                     $galleyFileId = $this->saveSubmissionFile(
                         $galleyFile,
                         $journal->getId(),
@@ -270,7 +270,7 @@ class IssueCommand
                 );
 
                 // Now, process the submission file for all article galleys
-                $galleyLabelsArray = explode(';', $data->galleyLabels);
+                $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
 
                 for($i = 0; $i < count($galleyLabelsArray); $i++) {
                     $galleyItem = $galleyIds[$i];

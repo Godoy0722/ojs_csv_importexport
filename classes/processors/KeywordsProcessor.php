@@ -25,7 +25,7 @@ class KeywordsProcessor
 	 */
 	public static function process(object $data, int $publicationId): void
     {
-		$keywordsList = [$data->locale => explode(';', $data->keywords)];
+		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
 
 		if (count($keywordsList[$data->locale]) > 0) {
 			$submissionKeywordDao = CachedDaos::getSubmissionKeywordDao();

@@ -33,7 +33,7 @@ class AuthorsProcessor
     ): void
     {
 		$authorDao = Repo::author()->dao;
-		$authorsString = explode(';', $data->authors);
+		$authorsString = array_map('trim', explode(';', $data->authors));
 
         foreach ($authorsString as $index => $authorString) {
             /**
@@ -48,18 +48,12 @@ class AuthorsProcessor
              * By default, if an author doesn't have an email, the primary contact email will be used in its place.
              */
 			$givenName = $familyName = $emailAddress = null;
-			$authorString = trim($authorString);
-			[$givenName, $familyName, $emailAddress, $affiliation] = explode(',', $authorString);
-
-			$givenName = trim($givenName);
-			$familyName = trim($familyName);
-            $affiliation = trim($affiliation);
+			[$givenName, $familyName, $emailAddress, $affiliation] = array_map('trim', explode(',', $authorString));
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
 			}
 
-			$emailAddress = trim($emailAddress);
 			$author = $authorDao->newDataObject();
 			$author->setSubmissionId($submissionId);
 			$author->setUserGroupId($userGroupId);

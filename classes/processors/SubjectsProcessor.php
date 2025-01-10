@@ -25,7 +25,7 @@ class SubjectsProcessor
 	 */
 	public static function process(object $data, int $publicationId): void
     {
-		$subjectsList = [$data->locale => explode(';', $data->subjects)];
+		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
 		if (count($subjectsList[$data->locale]) > 0) {
 			$submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
