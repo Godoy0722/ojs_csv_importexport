@@ -96,7 +96,11 @@ class IssueCommand
             }
 
             $basename = $fileInfo->getBasename();
-            $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}", RequiredIssueHeaders::$issueHeaders);
+            $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
+                $this->sourceDir,
+                "invalid_{$basename}",
+                RequiredIssueHeaders::$issueHeaders
+            );
 
             if (is_null($invalidCsvFile)) {
                 continue;
