@@ -102,6 +102,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
      */
     public function executeCLI($scriptName, &$args)
     {
+        $startTime = microtime(true);
         $this->command = array_shift($args);
 		$this->username = array_shift($args);
         $this->sourceDir = array_shift($args);
@@ -124,6 +125,10 @@ class CSVImportExportPlugin extends ImportExportPlugin
             'users' => (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run(),
             default => throw new \InvalidArgumentException("Comando inválido: {$this->command}"),
         };
+
+        $endTime = microtime(true);
+        $executionTime = $endTime - $startTime;
+        echo "Executed in: {$executionTime} seconds\n";
     }
 
     /**
