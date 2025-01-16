@@ -72,7 +72,7 @@ class UserCommand
             }
 
             $basename = $fileInfo->getBasename();
-            $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}");
+            $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}", RequiredUserHeaders::$userHeaders);
 
             if (is_null($invalidCsvFile)) {
                 continue;

@@ -43,11 +43,11 @@ class CSVFileHandler
     /**
      * Create a new writable SplFileObject for invalid rows from a unique CSV file. Return null if an error occurred.
      */
-	public static function createCSVFileInvalidRows(string $sourceDir, string $filename): ?SplFileObject
+	public static function createCSVFileInvalidRows(string $sourceDir, string $filename, array $requiredHeaders): ?SplFileObject
     {
         try {
             $invalidRowsFile = new SplFileObject($sourceDir . '/' . $filename, 'a+');
-            $invalidRowsFile->fputcsv(array_merge(RequiredUserHeaders::$userHeaders, ['error']));
+            $invalidRowsFile->fputcsv(array_merge($requiredHeaders, ['error']));
 
             return $invalidRowsFile;
         } catch (Exception $e) {
