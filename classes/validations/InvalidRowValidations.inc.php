@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/validations/InvalidRowValidations.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2014-2025 Simon Fraser University
+ * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class InvalidRowValidations
@@ -14,10 +14,9 @@
  * @brief Class to validate all necessary requirements for a CSV row to be valid
  */
 
-namespace APP\plugins\importexport\csv\classes\validations;
+namespace PKP\Plugins\ImportExport\CSV\Classes\Validations;
 
-use APP\journal\Journal;
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 
 class InvalidRowValidations
 {
@@ -28,8 +27,13 @@ class InvalidRowValidations
     /**
      * Validates whether the CSV row contains all fields. Returns the reason if an error occurred,
      * or null if everything is correct.
+	 *
+	 * @param array $fields
+	 * @param int $expectedSize
+	 *
+	 * @return string|null
      */
-    public static function validateRowContainAllFields(array $fields, int $expectedSize): ?string
+    public static function validateRowContainAllFields($fields, $expectedSize)
     {
         return count($fields) < $expectedSize
             ? __('plugins.importexport.csv.rowDoesntContainAllFields')
@@ -39,8 +43,13 @@ class InvalidRowValidations
     /**
      * Validates whether the CSV row contains all required fields. Returns the reason if an error occurred,
      * or null if everything is correct.
+	 *
+	 * @param object $data
+	 * @param callable $requiredFieldsValidation
+	 *
+	 * @return string|null
      */
-    public static function validateRowHasAllRequiredFields(object $data, callable $requiredFieldsValidation): ?string
+    public static function validateRowHasAllRequiredFields($data, $requiredFieldsValidation)
     {
         return !$requiredFieldsValidation($data)
             ? __('plugins.importexport.csv.verifyRequiredFieldsForThisRow')
@@ -51,8 +60,13 @@ class InvalidRowValidations
     /**
      * Validates whether the article file exists and is readable. Returns the reason if an error occurred,
      * or null if everything is correct.
+	 *
+	 * @param string $coverImageFilename
+	 * @param string $sourceDir
+	 *
+	 * @return string|null
      */
-    public static function validateArticleFileIsValid(string $coverImageFilename, string $sourceDir): ?string
+    public static function validateArticleFileIsValid($coverImageFilename, $sourceDir)
     {
         $articleCoverImagePath = "{$sourceDir}/{$coverImageFilename}";
 
@@ -64,8 +78,13 @@ class InvalidRowValidations
     /**
      * Validates the article cover image. Returns the reason if an error occurred,
      * or null if everything is correct.
+	 *
+	 * @param string $coverImageFilename
+	 * @param string $sourceDir
+	 *
+	 * @return string|null
      */
-    public static function validateCoverImageIsValid(string $coverImageFilename, string $sourceDir): ?string
+    public static function validateCoverImageIsValid($coverImageFilename, $sourceDir)
     {
         $articleCoverImagePath = "{$sourceDir}/{$coverImageFilename}";
 
@@ -85,8 +104,14 @@ class InvalidRowValidations
     /**
      * Perform all necessary validations for article galleys. Returns the reason if an error occurred,
      * or null if everything is correct.
+	 *
+	 * @param string $galleyFilenames
+	 * @param string $galleyLabels
+	 * @param string $sourceDir
+	 *
+	 * @return string|null
      */
-    public static function validateArticleGalleys(string $galleyFilenames, string $galleyLabels, string $sourceDir): ?string
+    public static function validateArticleGalleys($galleyFilenames, $galleyLabels, $sourceDir)
     {
         $galleyFilenamesArray = explode(';', $galleyFilenames);
         $galleyLabelsArray = explode(';', $galleyLabels);
@@ -108,8 +133,13 @@ class InvalidRowValidations
     /**
      * Validates whether the journal is valid for the CSV row. Returns the reason if an error occurred,
      * or null if everything is correct.
+	 *
+	 * @param \Journal|null $journal
+	 * @param string $journalPath
+	 *
+	 * @return string|null
      */
-    public static function validateJournalIsValid(?Journal $journal, string $journalPath): ?string
+    public static function validateJournalIsValid($journal, $journalPath)
     {
         return !$journal ? __('plugins.importexport.csv.unknownJournal', ['journalPath' => $journalPath]) : null;
     }
@@ -117,8 +147,13 @@ class InvalidRowValidations
     /**
      * Validates if the journal supports the locale provided in the CSV row. Returns the reason if an error occurred
      * or null if everything is correct.
+	 *
+	 * @param \Journal|null $journal
+	 * @param string $locale
+	 *
+	 * @return string|null
      */
-    public static function validateJournalLocale(Journal $journal, string $locale): ?string
+    public static function validateJournalLocale($journal, $locale)
     {
         $supportedLocales = $journal->getSupportedSubmissionLocales();
         if (!is_array($supportedLocales) || count($supportedLocales) < 1) {
@@ -133,8 +168,13 @@ class InvalidRowValidations
     /**
      * Validates if a genre exists for the name provided in the CSV row. Returns the reason if an error occurred
      * or null if everything is correct.
+	 *
+	 * @param int|null $genreId
+	 * @param string $genreName
+	 *
+	 * @return string|null
      */
-    public static function validateGenreIdValid(?int $genreId, string $genreName): ?string
+    public static function validateGenreIdValid($genreId, $genreName)
     {
         return !$genreId ? __('plugins.importexport.csv.noGenre', ['genreName' => $genreName]) : null;
     }
@@ -142,15 +182,30 @@ class InvalidRowValidations
     /**
      * Validates if the user group ID is valid. Returns the reason if an error occurred
      * or null if everything is correct.
+	 *
+	 * @param int|null $userGroupId
+	 * @param string $journalPath
+	 *
+	 * @return string|null
      */
-    public static function validateUserGroupId(?int $userGroupId, string $journalPath): ?string
+    public static function validateUserGroupId($userGroupId, $journalPath)
     {
         return !$userGroupId
             ? __('plugins.importexport.csv.noAuthorGroup', ['journal' => $journalPath])
             : null;
     }
 
-    public static function validateAllUserGroupsAreValid(array $roles, int $journalId, string $locale): ?string
+    /**
+     * Validates if all user groups are valid. Returns the reason if an error occurred
+     * or null if everything is correct.
+	 *
+	 * @param array $roles
+	 * @param int $journalId
+	 * @param string $locale
+	 *
+	 * @return string|null
+     */
+    public static function validateAllUserGroupsAreValid($roles, $journalId, $locale)
     {
         $userGroups = CachedEntities::getCachedUserGroupsByJournalId($journalId);
 

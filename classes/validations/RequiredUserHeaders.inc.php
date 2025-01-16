@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/validations/RequiredUserHeaders.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2014-2025 Simon Fraser University
+ * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class RequiredUserHeaders
@@ -14,7 +14,7 @@
  * @brief Class to validate headers in the user CSV files
  */
 
-namespace APP\plugins\importexport\csv\classes\validations;
+namespace PKP\Plugins\ImportExport\CSV\Classes\Validations;
 
 class RequiredUserHeaders
 {
@@ -41,16 +41,24 @@ class RequiredUserHeaders
 
     /**
      * Validates whether the row contains all headers.
+	 *
+	 * @param array $row
+	 *
+	 * @return bool
      */
-    public static function validateRowHasAllFields(array $row): bool
+    public static function validateRowHasAllFields($row)
     {
         return count($row) === count(self::$userHeaders);
     }
 
     /**
      * Validates whether the row contains all required headers.
+	 *
+	 * @param object $row
+	 *
+	 * @return bool
      */
-    public static function validateRowHasAllRequiredFields(object $row): bool
+    public static function validateRowHasAllRequiredFields($row)
     {
         foreach(self::$userRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {

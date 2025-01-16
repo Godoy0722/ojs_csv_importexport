@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/IssueProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2014-2025 Simon Fraser University
+ * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class IssueProcessor
@@ -14,27 +14,31 @@
  * @brief Processes the issue data into the database.
  */
 
-namespace APP\plugins\importexport\csv\classes\processors;
+namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
-use APP\facades\Repo;
-use APP\issue\Issue;
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
-use PKP\core\Core;
-use PKP\core\PKPString;
+use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
+use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 
 class IssueProcessor
 {
     /**
-	 * Processes data for the Issue. If there's no issue registered, a new one will be created and attached to the submission.
+	 * Processes data for the Issue. If there's no issue registered, a new one will be created and attached
+	 * to the submission.
+	 *
+	 * @param int $journalId
+	 * @param object $data
+	 *
+	 * @return \Issue
 	 */
-	public static function process(int $journalId, object $data): Issue
+	public static function process($journalId, $data)
     {
         $issue = CachedEntities::getCachedIssue($data, $journalId);
 
         if(is_null($issue)) {
-            $issueDao = Repo::issue()->dao;
-            $sanitizedIssueDescription = PKPString::stripUnsafeHtml($data->issueDescription);
+            $issueDao = CachedDaos::getIssueDao();
+            $sanitizedIssueDescription = \PKPString::stripUnsafeHtml($data->issueDescription);
 
+			/** @var \Issue $issue */
             $issue = $issueDao->newDataObject();
             $issue->setJournalId($journalId);
             $issue->setVolume($data->issueVolume);
@@ -45,14 +49,14 @@ class IssueProcessor
             $issue->setShowYear($data->issueYear);
             $issue->setShowTitle(1);
             $issue->setPublished(true);
-            $issue->setDatePublished(Core::getCurrentDate());
+            $issue->setDatePublished(\Core::getCurrentDate());
             $issue->setTitle($data->issueTitle, $data->locale);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->stampModified();
 
             // Assume open access, no price.
-            $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
-            $issueDao->insert($issue);
+            $issue->setAccessStatus(ISSUE_ACCESS_OPEN);
+            $issueDao->insertObject($issue);
         }
 
         return $issue;

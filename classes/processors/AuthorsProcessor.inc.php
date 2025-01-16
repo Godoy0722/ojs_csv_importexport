@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/AuthorsProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2014-2025 Simon Fraser University
+ * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class AuthorsProcessor
@@ -14,25 +14,26 @@
  * @brief Process the authors data into the database.
  */
 
-namespace APP\plugins\importexport\csv\classes\processors;
+namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
-use APP\facades\Repo;
-use APP\publication\Publication;
+use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 
 class AuthorsProcessor
 {
     /**
 	 * Process data for Submission authors
+	 *
+	 * @param object $data
+	 * @param string $contactEmail
+	 * @param int $submissionId
+	 * @param \Publication $publication
+	 * @param int $userGroupId
+	 *
+	 * @return void
 	 */
-	public static function process(
-        object $data,
-        string $contactEmail,
-        int $submissionId,
-        Publication $publication,
-        int $userGroupId
-    ): void
+	public static function process($data, $contactEmail, $submissionId, $publication, $userGroupId)
     {
-		$authorDao = Repo::author()->dao;
+		$authorDao = CachedDaos::getAuthorDao();
 		$authorsString = array_map('trim', explode(';', $data->authors));
 
         foreach ($authorsString as $index => $authorString) {
@@ -54,6 +55,7 @@ class AuthorsProcessor
 				$emailAddress = $contactEmail;
 			}
 
+			/** @var \Author $author */
 			$author = $authorDao->newDataObject();
 			$author->setSubmissionId($submissionId);
 			$author->setUserGroupId($userGroupId);
@@ -62,11 +64,11 @@ class AuthorsProcessor
 			$author->setEmail($emailAddress);
             $author->setAffiliation($affiliation, $data->locale);
 			$author->setData('publicationId', $publication->getId());
-			$authorDao->insert($author);
+			$authorDao->insertObject($author);
 
 			if (!$index) {
 				$author->setPrimaryContact(true);
-				$authorDao->update($author);
+				$authorDao->updateObject($author);
 
                 PublicationProcessor::updatePrimaryContactId($publication, $author->getId());
 			}

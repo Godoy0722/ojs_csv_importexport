@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/PublicationProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2014-2025 Simon Fraser University
+ * Copyright (c) 2003-2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class PublicationProcessor
@@ -14,30 +14,33 @@
  * @brief Processes the publication data into the database.
  */
 
-namespace APP\plugins\importexport\csv\classes\processors;
+namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
-use APP\facades\Repo;
-use APP\journal\Journal;
-use APP\publication\Publication;
-use APP\submission\Submission;
-use PKP\core\PKPString;
+use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 
 class PublicationProcessor
 {
     /**
      * Processes initial data for Publication
-     */
-    public static function process(Submission $submission, object $data, Journal $journal): Publication
+	 *
+	 * @param \Submission $submission
+	 * @param object $data
+	 * @param \Journal $journal
+	 *
+	 * @return \Publication
+	 */
+    public static function process($submission, $data, $journal)
     {
-		$publicationDao = Repo::publication()->dao;
-		$sanitizedAbstract = PKPString::stripUnsafeHtml($data->articleAbstract);
+		$publicationDao = CachedDaos::getPublicationDao();
+		$sanitizedAbstract = \PKPString::stripUnsafeHtml($data->articleAbstract);
 		$locale = $data->locale;
 
+		/** @var \Publication $publication */
 		$publication = $publicationDao->newDataObject();
         $publication->stampModified();
 		$publication->setData('submissionId', $submission->getId());
 		$publication->setData('version', 1);
-		$publication->setData('status', Submission::STATUS_PUBLISHED);
+		$publication->setData('status', STATUS_PUBLISHED);
 		$publication->setData('datePublished', $data->datePublished);
 		$publication->setData('abstract', $sanitizedAbstract, $locale);
 		$publication->setData('title', $data->articleTitle, $locale);
@@ -55,7 +58,7 @@ class PublicationProcessor
             $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
         }
 
-        $publicationDao->insert($publication);
+        $publicationDao->insertObject($publication);
 
         SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
 
@@ -64,57 +67,91 @@ class PublicationProcessor
 
     /**
      * Updates the primary contact ID for the publication
+	 *
+	 * @param \Publication $publication
+	 * @param int $authorId
+	 *
+	 * @return void
      */
-    public static function updatePrimaryContactId(Publication $publication, int $authorId): void
+    public static function updatePrimaryContactId($publication, $authorId)
     {
         self::updatePublicationAttribute($publication, 'primaryContactId', $authorId);
     }
 
     /**
      * Updates the coverage for the publication
+	 *
+	 * @param \Publication $publication
+	 * @param string $coverage
+	 * @param string $locale
+	 *
+	 * @return void
      */
-    public static function updateCoverage(Publication $publication, string $coverage, string $locale): void
+    public static function updateCoverage($publication, $coverage, $locale)
     {
         self::updatePublicationAttribute($publication, 'coverage', $coverage, $locale);
     }
 
     /**
      * Updates the cover image for the publication
+	 *
+	 * @param \Publication $publication
+	 * @param object $data
+	 * @param string $uploadName
+	 *
+	 * @return void
      */
-    public static function updateCoverImage(Publication $publication, object $data, string $uploadName): void
+    public static function updateCoverImage($publication, $data, $uploadName)
     {
-        $coverImage = [];
-
-		$coverImage['uploadName'] = $uploadName;
-		$coverImage['altText'] = $data->coverImageAltText ?? '';
+        $coverImage = [
+			'uploadName' => $uploadName,
+			'altText' => $data->coverImageAltText ?? '',
+		];
 
         self::updatePublicationAttribute($publication, 'coverImage', [$data->locale => $coverImage]);
     }
 
     /**
      * Updates the issue ID for the publication
+	 *
+	 * @param \Publication $publication
+	 * @param int $issueId
+	 *
+	 * @return void
      */
-    public static function updateIssueId(Publication $publication, int $issueId): void
+    public static function updateIssueId($publication, $issueId)
     {
         self::updatePublicationAttribute($publication, 'issueId', $issueId);
     }
 
     /**
      * Updates the section ID for the publication
+	 *
+	 * @param \Publication $publication
+	 * @param int $sectionId
+	 *
+	 * @return void
      */
-    public static function updateSectionId(Publication $publication, int $sectionId): void
+    public static function updateSectionId($publication, $sectionId)
     {
         self::updatePublicationAttribute($publication, 'sectionId', $sectionId);
     }
 
     /**
      * Updates a specific attribute of the publication
+	 *
+	 * @param \Publication $publication
+	 * @param string $attribute
+	 * @param mixed $data
+	 * @param string $locale
+	 *
+	 * @return void
      */
-    static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data, ?string $locale = null): void
+    static function updatePublicationAttribute($publication, $attribute, $data, $locale = null)
     {
         $publication->setData($attribute, $data, $locale);
 
-        $publicationDao = Repo::publication()->dao;
-        $publicationDao->update($publication);
+        $publicationDao = CachedDaos::getPublicationDao();
+        $publicationDao->updateObject($publication);
     }
 }
