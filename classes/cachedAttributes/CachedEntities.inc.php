@@ -208,16 +208,7 @@ class CachedEntities
 		static function getCachedSubscriptionType(string $subscriptionType, int $journalId)
 		{
 			$subscriptionTypeDao = CachedDaos::getSubscriptionTypeDao();
-
-			$result = $subscriptionTypeDao->retrieve(
-					'SELECT COUNT(*) AS row_count
-					FROM subscription_types
-					WHERE type_id = ? AND journal_id = ?',
-					[(int) $subscriptionType, (int) $journalId]
-			);
-
-			$row = $result->current();
-			$subscriptionType = (!$row || $row->row_count < 1) ? null : $subscriptionTypeDao->_fromRow((array) $row);
+			$subscriptionType = $subscriptionTypeDao->getById((int) $subscriptionType, $journalId);
 
 			return self::$subscriptionTypes[$subscriptionType] ?? self::$subscriptionTypes[$subscriptionType] = $subscriptionType;
 		}
