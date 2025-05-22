@@ -20,13 +20,14 @@ msgstr "Import and export issues or users through a CSV file."
 msgid "plugins.importexport.csv.cliUsage"
 msgstr "Command-line tool for importing issues or users through a CSV file.\n"
 "Usage:\n"
-"{$scriptName} [users|issues] username [pathToCsvFile] <sendWelcomeEmail>\n"
+"{$scriptName} [users|issues] username [pathToCsvFile] <sendWelcomeEmail> [--subscription-type <typeId>]\n"
 "Choose one of the following options:\n"
 " - users - import users from CSV file\n"
 " - issues - import issues from CSV file\n\n"
 "username - the username of the user to whom imported issues should be assigned.\n"
 "pathToCsvFile - the path to the CSV file to be imported.\n"
 "sendWelcomeEmail - optional parameter, if set to true, a welcome email will be sent to the imported users.\n"
+"--subscription-type <typeId> - optional parameter for user import, adds subscriptions with the specified type ID."
 
 msgid "plugins.importexport.csv.cliUsage.examples"
 msgstr "Examples:\n"
@@ -34,6 +35,7 @@ msgstr "Examples:\n"
 "{$scriptName} issues admin /home/user/import_files/issues.csv\n"
 "{$scriptName} users admin /home/user/import_files/users.csv true\n"
 "{$scriptName} issues admin /home/user/import_files/issues.csv true\n"
+"{$scriptName} users admin /home/user/import_files/users.csv true --subscription-type 1\n"
 
 msgid "plugins.importexport.csv.unknownUser"
 msgstr "Unknown User: \"{$username}\". Exiting."
@@ -100,3 +102,18 @@ msgstr "User already exists with username \"{$username}\"."
 
 msgid "plugins.importexport.csv.roleDoesntExist"
 msgstr "Role \"{$role}\" doesn't exist."
+
+msgid "plugins.importexport.csv.invalidStartDate"
+msgstr "The subscription start date \"{$date}\" is not valid. Format required: YYYY-MM-DD."
+
+msgid "plugins.importexport.csv.invalidEndDate"
+msgstr "The subscription end date \"{$date}\" is not valid. Format required: YYYY-MM-DD."
+
+msgid "plugins.importexport.csv.endDateBeforeStartDate"
+msgstr "The subscription end date must be later than the start date."
+
+msgid "plugins.importexport.csv.missingSubscriptionFields"
+msgstr "Missing required subscription fields (start_date and end_date) for user \"{$email}\"."
+
+msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
+msgstr "Invalid subscripion type with ID \"{subscriptionTypeId}\""

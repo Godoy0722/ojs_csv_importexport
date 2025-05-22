@@ -29,6 +29,9 @@ class RequiredUserHeaders
         'tempPassword',
         'roles',
         'reviewInterests',
+        'subscriptionType',
+        'startDate',
+        'endDate'
     ];
 
     static $userRequiredHeaders = [
@@ -37,6 +40,12 @@ class RequiredUserHeaders
         'lastname',
         'email',
         'roles',
+    ];
+
+    static $subscriptionHeaders = [
+        'subscriptionType',
+        'startDate',
+        'endDate'
     ];
 
     /**
@@ -67,5 +76,21 @@ class RequiredUserHeaders
         }
 
         return true;
+    }
+
+    /**
+     * Validates if the row has the necessary subscription fields when a subscription_type_id is provided
+     *
+     * @param object $row
+     * @return bool
+     */
+    public static function validateSubscriptionFields($row)
+    {
+        $hasSubscriptionType = !empty($row->subscriptionType);
+        $hasStartDate = !empty($row->start_date);
+        $hasEndDate = !empty($row->end_date);
+
+		return (!$hasSubscriptionType && !$hasStartDate && !$hasEndDate)
+			|| ($hasSubscriptionType && $hasStartDate && $hasEndDate);
     }
 }

@@ -221,4 +221,50 @@ class InvalidRowValidations
             ? __('plugins.importexport.csv.roleDoesntExist', ['role' => $role])
             : null;
     }
+
+    /**
+     * Validates if the subscription dates are valid. Returns the reason if an error occurred
+     * or null if everything is correct.
+	 *
+	 * @param string $startDate
+	 * @param string $endDate
+     * @param string $dateFormat
+	 *
+	 * @return string|null
+     */
+    public static function validateSubscriptionDates($startDate, $endDate, $dateFormat = 'Y-m-d')
+    {
+        $startDateObj = \DateTime::createFromFormat($dateFormat, $startDate);
+        if (!$startDateObj) {
+            return __('plugins.importexport.csv.invalidStartDate', ['date' => $startDate]);
+        }
+
+        $endDateObj = \DateTime::createFromFormat($dateFormat, $endDate);
+        if (!$endDateObj) {
+            return __('plugins.importexport.csv.invalidEndDate', ['date' => $endDate]);
+        }
+
+        if ($endDateObj <= $startDateObj) {
+            return __('plugins.importexport.csv.endDateBeforeStartDate');
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates if the subscription type is valid. Returns the reason if an error occurred
+     * or null if everything is correct.
+	 *
+	 * @param \SubscriptionType|null $subscriptionType
+	 * @param int $subscriptionTypeId
+	 * @param int $journalId
+	 *
+	 * @return string|null
+     */
+    public static function validateSubscriptionType($subscriptionType, $subscriptionTypeId, $journalId)
+    {
+		return !$subscriptionType
+			? __('plugins.importexport.csv.subscriptionTypeDoesntExist', ['subscriptionTypeId' => $subscriptionTypeId])
+			: null;
+    }
 }

@@ -24,6 +24,7 @@ use PKP\Plugins\ImportExport\CSV\Classes\Handlers\WelcomeEmailHandler;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\UserGroupsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\UserInterestsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\UsersProcessor;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\UserSubscriptionProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Validations\InvalidRowValidations;
 use PKP\Plugins\ImportExport\CSV\Classes\Validations\RequiredUserHeaders;
 
@@ -151,6 +152,30 @@ class UserCommand
                     continue;
                 }
 
+				$subscriptionType = null;
+
+                if (!empty($data->subscriptionType) || !empty($data->start_date) || !empty($data->end_date)) {
+					if (!RequiredUserHeaders::validateSubscriptionFields($data)) {
+						$reason = __('plugins.importexport.csv.missingSubscriptionFields', ['email' => $data->email]);
+						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+						continue;
+					}
+
+					$subscriptionType = CachedEntities::getCachedSubscriptionType($data->subscriptionType, $journal->getId());
+
+                    $reason = InvalidRowValidations::validateSubscriptionType($subscriptionType, $data->subscriptionType, $journal->getId());
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+                        continue;
+                    }
+
+					$reason = InvalidRowValidations::validateSubscriptionDates($data->start_date, $data->end_date);
+					if ($reason) {
+						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+						continue;
+					}
+                }
+
                 if (is_null($data->tempPassword)) {
                     $data->tempPassword = \Validation::generatePassword();
                 }
@@ -164,6 +189,12 @@ class UserCommand
 
 				import('plugins.importexport.csv.classes.processors.UserGroupsProcessor');
                 UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+
+				$dateFormat = 'Y-m-d';
+				$startDate = \DateTime::createFromFormat($dateFormat, $data->start_date);
+				$endDate = \DateTime::createFromFormat($dateFormat, $data->end_date);
+
+				UserSubscriptionProcessor::process($data, $user->getId(), $journal->getId(), $startDate, $endDate);
 
                 if ($this->_sendWelcomeEmail) {
 					import('plugins.importexport.csv.classes.handlers.WelcomeEmailHandler');

@@ -43,10 +43,13 @@ class CachedEntities
     /** @var \User[] */
     static array $users = [];
 
+    /** @var \SubscriptionType[] */
+    static array $subscriptionTypes = [];
+
     /**
      * Retrieves a cached Journal by its path. Returns null if an error occurs.
-	 *
-	 * @return \Journal|null
+     *
+     * @return \Journal|null
      */
     static function getCachedJournal(string $journalPath)
     {
@@ -179,19 +182,43 @@ class CachedEntities
      */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, string $locale, int $journalId)
     {
-		$customSectionKey = "{$sectionTitle}_{$sectionAbbrev}";
+			$customSectionKey = "{$sectionTitle}_{$sectionAbbrev}";
 
-		if (isset(self::$sections[$customSectionKey])) {
-			return self::$sections[$customSectionKey];
-		}
+			if (isset(self::$sections[$customSectionKey])) {
+				return self::$sections[$customSectionKey];
+			}
 
-		$sectionDao = CachedDaos::getSectionDao();
-		$sectionByAbbrev = $sectionDao->getByAbbrev($sectionAbbrev, $journalId);
+			$sectionDao = CachedDaos::getSectionDao();
+			$sectionByAbbrev = $sectionDao->getByAbbrev($sectionAbbrev, $journalId);
 
-		if ($sectionByAbbrev && $sectionByAbbrev->getTitle($locale) === $sectionTitle) {
-			return self::$sections[$customSectionKey] = $sectionByAbbrev;
-		}
+			if ($sectionByAbbrev && $sectionByAbbrev->getTitle($locale) === $sectionTitle) {
+				return self::$sections[$customSectionKey] = $sectionByAbbrev;
+			}
 
-		return null;
+			return null;
     }
+
+		/**
+		 * Retrieves a cached SubscriptionType by subscriptionType and journalId. Returns null if an error occurs.
+		 *
+		 * @param string $subscriptionType
+		 * @param int $journalId
+		 * @return \SubscriptionType|null
+		 */
+		static function getCachedSubscriptionType(string $subscriptionType, int $journalId)
+		{
+			$subscriptionTypeDao = CachedDaos::getSubscriptionTypeDao();
+
+			$result = $subscriptionTypeDao->retrieve(
+					'SELECT COUNT(*) AS row_count
+					FROM subscription_types
+					WHERE type_id = ? AND journal_id = ?',
+					[(int) $subscriptionType, (int) $journalId]
+			);
+
+			$row = $result->current();
+			$subscriptionType = (!$row || $row->row_count < 1) ? null : $subscriptionTypeDao->_fromRow((array) $row);
+
+			return self::$subscriptionTypes[$subscriptionType] ?? self::$subscriptionTypes[$subscriptionType] = $subscriptionType;
+		}
 }
