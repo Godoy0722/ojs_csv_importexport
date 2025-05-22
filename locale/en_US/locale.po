@@ -116,4 +116,4 @@ msgid "plugins.importexport.csv.missingSubscriptionFields"
 msgstr "Missing required subscription fields (start_date and end_date) for user \"{$email}\"."
 
 msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
-msgstr "Invalid subscripion type with ID \"{subscriptionTypeId}\""
+msgstr "Invalid subscripion type with ID \"{$subscriptionTypeId}\""

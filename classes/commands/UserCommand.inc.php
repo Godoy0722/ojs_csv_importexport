@@ -154,7 +154,7 @@ class UserCommand
 
 				$subscriptionType = null;
 
-                if (!empty($data->subscriptionType) || !empty($data->start_date) || !empty($data->end_date)) {
+                if (!empty($data->subscriptionType) || !empty($data->startDate) || !empty($data->endDate)) {
 					if (!RequiredUserHeaders::validateSubscriptionFields($data)) {
 						$reason = __('plugins.importexport.csv.missingSubscriptionFields', ['email' => $data->email]);
 						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);

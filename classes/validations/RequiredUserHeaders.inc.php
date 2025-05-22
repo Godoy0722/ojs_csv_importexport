@@ -87,8 +87,8 @@ class RequiredUserHeaders
     public static function validateSubscriptionFields($row)
     {
         $hasSubscriptionType = !empty($row->subscriptionType);
-        $hasStartDate = !empty($row->start_date);
-        $hasEndDate = !empty($row->end_date);
+        $hasStartDate = !empty($row->startDate);
+        $hasEndDate = !empty($row->endDate);
 
 		return (!$hasSubscriptionType && !$hasStartDate && !$hasEndDate)
 			|| ($hasSubscriptionType && $hasStartDate && $hasEndDate);
