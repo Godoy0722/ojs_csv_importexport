@@ -14,22 +14,20 @@
  * @brief Process the user subscription data into the database.
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
+namespace APP\plugins\importexport\csv\classes\processors;
 
-use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
+use APP\subscription\Subscription;
 
 class UserSubscriptionProcessor
 {
-	/**
-	 * Process the user subscription data into the database.
-	 *
-	 * @param int $subscriptionTypeId The subscription id to process.
-	 * @param int $userId The user id to process.
-	 * @param int $journalId The journal id to process.
-	 * @param \DateTime $startDate The start date to process.
-	 * @param \DateTime $endDate The end date to process.
-	 */
-	public static function process($subscriptionTypeId, $userId, $journalId, $startDate, $endDate)
+	public static function process(
+        int $subscriptionTypeId,
+        int $userId,
+        int $journalId,
+        \DateTime $startDate,
+        \DateTime $endDate
+    )
 	{
 		$individualSubscriptionDao = CachedDaos::getIndividualSubscriptionDao();
 
@@ -42,7 +40,7 @@ class UserSubscriptionProcessor
 			$subscription->setUserId($userId);
 			$subscription->setReferenceNumber(null);
 			$subscription->setNotes(null);
-			$subscription->setStatus(SUBSCRIPTION_STATUS_ACTIVE);
+			$subscription->setStatus(Subscription::SUBSCRIPTION_STATUS_ACTIVE);
 			$subscription->setTypeId($subscriptionTypeId);
 			$subscription->setMembership(null);
 			$subscription->setDateStart($startDate->format('Y-m-d'));
@@ -52,9 +50,9 @@ class UserSubscriptionProcessor
 		} else {
 			$subscription->setDateStart($startDate->format('Y-m-d'));
 			$subscription->setDateEnd($endDate->format('Y-m-d'));
-			$subscription->setStatus(SUBSCRIPTION_STATUS_ACTIVE);
+			$subscription->setStatus(Subscription::SUBSCRIPTION_STATUS_ACTIVE);
 
-			$individualSubscriptionDao->updateObject($subscription);
+			$individualSubscriptionDao->update($subscription);
 		}
 	}
 }

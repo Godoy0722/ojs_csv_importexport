@@ -14,26 +14,15 @@
  * @brief Process the authors data into the database.
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
+namespace APP\plugins\importexport\csv\classes\processors;
 
-use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
+use APP\facades\Repo;
+use APP\publication\Publication;
 
 class AuthorsProcessor
 {
-    /**
-	 * Process data for Submission authors
-	 *
-	 * @param object $data
-	 * @param string $contactEmail
-	 * @param int $submissionId
-	 * @param \Publication $publication
-	 * @param int $userGroupId
-	 *
-	 * @return void
-	 */
-	public static function process($data, $contactEmail, $submissionId, $publication, $userGroupId)
+	public static function process(object $data, string $contactEmail, int $submissionId, Publication $publication, int $userGroupId)
     {
-		$authorDao = CachedDaos::getAuthorDao();
 		$authorsString = array_map('trim', explode(';', $data->authors));
 
         foreach ($authorsString as $index => $authorString) {
@@ -55,22 +44,21 @@ class AuthorsProcessor
 				$emailAddress = $contactEmail;
 			}
 
-			/** @var \Author $author */
-			$author = $authorDao->newDataObject();
-			$author->setSubmissionId($submissionId);
-			$author->setUserGroupId($userGroupId);
-			$author->setGivenName($givenName, $data->locale);
-			$author->setFamilyName($familyName, $data->locale);
-			$author->setEmail($emailAddress);
-            $author->setAffiliation($affiliation, $data->locale);
-			$author->setData('publicationId', $publication->getId());
-			$authorDao->insertObject($author);
+            $author = Repo::author()->newDataObject([
+                'submissionId' => $submissionId,
+                'userGroupId' => $userGroupId,
+                'givenName' => $givenName,
+                'familyName' => $familyName,
+                'email' => $emailAddress,
+                'affiliation' => $affiliation,
+                'publicationId' => $publication->getId(),
+            ]);
 
-			if (!$index) {
-				$author->setPrimaryContact(true);
-				$authorDao->updateObject($author);
+            $authorId = Repo::author()->add($author);
 
-                PublicationProcessor::updatePrimaryContactId($publication, $author->getId());
+			if ($index === 0) {
+                Repo::author()->edit($author, ['primaryContact' => true]);
+                PublicationProcessor::updatePrimaryContactId($publication, $authorId);
 			}
 		}
 	}

@@ -1,3 +1,3 @@
 journalPath,firstname,lastname,email,affiliation,country,username,tempPassword,roles,reviewInterests,subscriptionType,start_date,end_date
-leo,Homer,Simpson,homer@example.com,UBC,CA,hsimpson,temppassword123,"Reader;Author","interest one; interest two",1,2023-01-01,2023-12-31
-leo,Bart,Simpson,bart@example.com,UBC,CA,bsimpson,temppassword123,"Reader","interest two; interest three",2,2023-02-01,2024-01-31
+leo,Homer2,Simpson,homer2@example.com,UBC,CA,hsimpson2,temppassword123,"Reader;Author","interest one; interest two",1,2023-01-01,2023-12-31
+leo,Bart2,Simpson,bart2@example.com,UBC,CA,bsimpson2,temppassword123,"Reader","interest two; interest three",2,2023-02-01,2024-01-31

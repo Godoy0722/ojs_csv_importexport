@@ -14,28 +14,20 @@
  * @brief Process the user groups data into the database.
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
+namespace APP\plugins\importexport\csv\classes\processors;
 
-use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
-use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
+use APP\facades\Repo;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 
 class UserGroupsProcessor
 {
-    /**
-	 * Process data for UserGroups
-	 *
-	 * @param array $roles
-	 * @param int $userId
-	 * @param int $journalId
-	 * @param string $locale
-	 *
-	 * @return void
-	 */
-	public static function process($roles, $userId, $journalId, $locale)
+	public static function process(array $roles, int $userId, int $journalId, string $locale)
     {
         foreach ($roles as $role) {
             $userGroup = CachedEntities::getCachedUserGroupByName($role, $journalId, $locale);
-            CachedDaos::getUserGroupDao()->assignUserToGroup($userId, $userGroup->getId());
+            if ($userGroup) {
+                Repo::userGroup()->assignUserToGroup($userId, $userGroup->getId());
+            }
         }
 	}
 }

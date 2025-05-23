@@ -14,7 +14,7 @@
  * @brief Class to validate headers in the user CSV files
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Validations;
+namespace APP\plugins\importexport\csv\classes\validations;
 
 class RequiredUserHeaders
 {
@@ -48,26 +48,12 @@ class RequiredUserHeaders
         'endDate'
     ];
 
-    /**
-     * Validates whether the row contains all headers.
-	 *
-	 * @param array $row
-	 *
-	 * @return bool
-     */
-    public static function validateRowHasAllFields($row)
+    public static function validateRowHasAllFields(array $row): bool
     {
         return count($row) === count(self::$userHeaders);
     }
 
-    /**
-     * Validates whether the row contains all required headers.
-	 *
-	 * @param object $row
-	 *
-	 * @return bool
-     */
-    public static function validateRowHasAllRequiredFields($row)
+    public static function validateRowHasAllRequiredFields(object $row): bool
     {
         foreach(self::$userRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
@@ -78,13 +64,7 @@ class RequiredUserHeaders
         return true;
     }
 
-    /**
-     * Validates if the row has the necessary subscription fields when a subscription_type_id is provided
-     *
-     * @param object $row
-     * @return bool
-     */
-    public static function validateSubscriptionFields($row)
+    public static function validateSubscriptionFields(object $row): bool
     {
         $hasSubscriptionType = !empty($row->subscriptionType);
         $hasStartDate = !empty($row->startDate);

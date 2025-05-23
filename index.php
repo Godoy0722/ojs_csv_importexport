@@ -13,8 +13,6 @@
  *
  */
 
-namespace PKP\Plugins\ImportExport\CSV;
+namespace APP\plugins\importexport\csv;
 
-require_once 'CSVImportExportPlugin.inc.php';
-
-return new CSVImportExportPlugin();
+return new \APP\plugins\importexport\csv\CSVImportExportPlugin();

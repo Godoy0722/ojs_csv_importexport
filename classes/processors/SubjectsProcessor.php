@@ -14,25 +14,17 @@
  * @brief Processes the subjects data into the database.
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
+namespace APP\plugins\importexport\csv\classes\processors;
 
-use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 
 class SubjectsProcessor
 {
-    /**
-	 * Processes data for Keywords
-	 *
-	 * @param object $data
-	 * @param int $publicationId
-	 *
-	 * @return void
-	 */
-	public static function process($data, $publicationId)
+	public static function process(object $data, int $publicationId)
     {
 		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
-		if (count($subjectsList[$data->locale]) > 0) {
+		if (!empty($subjectsList[$data->locale])) {
 			$submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
 			$submissionSubjectDao->insertSubjects($subjectsList, $publicationId);
 		}

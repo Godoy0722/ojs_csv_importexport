@@ -14,7 +14,7 @@
  * @brief Class to validate headers in the issue CSV files
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Validations;
+namespace APP\plugins\importexport\csv\classes\validations;
 
 class RequiredIssueHeaders
 {
@@ -62,26 +62,12 @@ class RequiredIssueHeaders
         'datePublished',
     ];
 
-    /**
-     * Validates whether the row contains all headers.
-     *
-     * @param array $row
-     *
-     * @return bool
-     */
-    public static function validateRowHasAllFields($row)
+    public static function validateRowHasAllFields(array $row): bool
     {
         return count($row) === count(self::$issueHeaders);
     }
 
-    /**
-     * Validates whether the row contains all required headers.
-	 *
-	 * @param object $row
-	 *
-	 * @return bool
-     */
-    public static function validateRowHasAllRequiredFields($row)
+    public static function validateRowHasAllRequiredFields(object $row): bool
     {
         foreach(self::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {

@@ -14,20 +14,12 @@
  * @brief Handles the issue import when the user uses the issue command
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Handlers;
-
-use PKP\Plugins\ImportExport\CSV\Classes\Validations\RequiredUserHeaders;
+namespace APP\plugins\importexport\csv\classes\handlers;
 
 class CSVFileHandler
 {
-    /**
-     * Create a new readable SplFileObject. Return null if an error occurred.
-	 *
-	 * @param string $filePath
-	 *
-	 * @return \SplFileObject|null
-     */
-    public static function createReadableCSVFile($filePath)
+    /** Create a new readable SplFileObject. Return null if an error occurred. */
+    public static function createReadableCSVFile(string $filePath): ?\SplFileObject
     {
         try {
             $file = new \SplFileObject($filePath, 'r');
@@ -42,16 +34,8 @@ class CSVFileHandler
         }
     }
 
-    /**
-     * Create a new writable SplFileObject for invalid rows from a unique CSV file. Return null if an error occurred.
-	 *
-	 * @param string $sourceDir
-	 * @param string $filename
-	 * @param array $requiredHeaders
-	 *
-	 * @return \SplFileObject|null
-     */
-    public static function createCSVFileInvalidRows($sourceDir, $filename, $requiredHeaders)
+    /** Create a new writable SplFileObject for invalid rows from a unique CSV file. Return null if an error occurred. */
+    public static function createCSVFileInvalidRows(string $sourceDir, string $filename, array $requiredHeaders): ?\SplFileObject
     {
         try {
             $invalidRowsFile = new \SplFileObject($sourceDir . '/' . $filename, 'a+');
@@ -65,19 +49,14 @@ class CSVFileHandler
         }
 	}
 
-    /**
-     * Add a new row on the invalid csv file
-	 *
-	 * @param \SplFileObject &$invalidRowsCsvFile
-	 * @param array $fields
-	 * @param int $rowSize
-	 * @param string $reason
-	 * @param int &$failedRows
-	 *
-	 * @return void
-     */
-    public static function processFailedRow(&$invalidRowsCsvFile, $fields, $rowSize, $reason, &$failedRows)
-    {
+    /** Add a new row on the invalid csv file */
+    public static function processFailedRow(
+        \SplFileObject &$invalidRowsCsvFile,
+        array $fields,
+        int $rowSize,
+        string $reason,
+        int &$failedRows
+    ) {
         $invalidRowsCsvFile->fputcsv(array_merge(array_pad($fields, $rowSize, null), [$reason]));
 		++$failedRows;
 	}

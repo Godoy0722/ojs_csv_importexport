@@ -14,23 +14,17 @@
  * @brief Process the user interests data into the database.
  */
 
-namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
+namespace APP\plugins\importexport\csv\classes\processors;
 
-use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 
 class UserInterestsProcessor
 {
-    /**
-	 * Process data for Users
-	 *
-	 * @param array $reviewInterests
-	 * @param int $userId
-	 *
-	 * @return void
-	 */
-	public static function process($reviewInterests, $userId)
+	public static function process(array $reviewInterests, int $userId)
     {
-        $userInterestDao = CachedDaos::getUserInterestDAO();
-        $userInterestDao->setUserInterests($reviewInterests, $userId);
+        if (!empty($reviewInterests)) {
+            $userInterestDao = CachedDaos::getUserInterestDao();
+            $userInterestDao->setUserInterests($reviewInterests, $userId);
+        }
 	}
 }
