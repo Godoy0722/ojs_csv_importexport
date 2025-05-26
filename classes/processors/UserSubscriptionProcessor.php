@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/UserSubscriptionProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class UserSubscriptionProcessor
@@ -52,7 +52,7 @@ class UserSubscriptionProcessor
 			$subscription->setDateEnd($endDate->format('Y-m-d'));
 			$subscription->setStatus(Subscription::SUBSCRIPTION_STATUS_ACTIVE);
 
-			$individualSubscriptionDao->update($subscription);
+			$individualSubscriptionDao->updateObject($subscription);
 		}
 	}
 }

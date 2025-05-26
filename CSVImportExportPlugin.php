@@ -3,12 +3,11 @@
 /**
  * @file plugins/importexport/csv/CSVImportExportPlugin.inc.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CSVImportExportPlugin
- *
  * @ingroup plugins_importexport_csv
  *
  * @brief CSV import/export plugin
@@ -17,7 +16,6 @@
 namespace APP\plugins\importexport\csv;
 
 use APP\facades\Repo;
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\commands\IssueCommand;
 use APP\plugins\importexport\csv\classes\commands\UserCommand;
 use PKP\config\Config;
@@ -26,23 +24,22 @@ use PKP\user\User;
 
 class CSVImportExportPlugin extends ImportExportPlugin
 {
+    /** @var string Command being used from CLI (supports "issues" or "users") */
+    private string $command = '';
 
-    /** Which command is the tool using from CLI. Currently supports "issues" or "users" */
-    private string $command;
+    /** @var string Username for authentication */
+    private string $username = '';
 
-    private string $username;
+    /** @var User|null Authenticated user instance */
+    private ?User $user = null;
 
-    private User $user;
+    /** @var string Source directory for import/export */
+    private string $sourceDir = '';
 
-    private string $sourceDir;
-
+    /** @var bool Whether to send welcome email */
     private bool $sendWelcomeEmail = false;
 
-    /**
-     * @copydoc Plugin::register()
-     *
-     * @param null|mixed $mainContextId
-     */
+    /** @copydoc Plugin::register() */
     public function register($category, $path, $mainContextId = null)
     {
         $success = parent::register($category, $path, $mainContextId);
@@ -124,11 +121,9 @@ class CSVImportExportPlugin extends ImportExportPlugin
 
         switch ($this->command) {
             case 'issues':
-				import('plugins.importexport.csv.classes.commands.IssueCommand');
 				(new IssueCommand($this->sourceDir, $this->user))->run();
                 break;
             case 'users':
-				import('plugins.importexport.csv.classes.commands.UserCommand');
                 (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run();
                 break;
             default:

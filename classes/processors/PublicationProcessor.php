@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/PublicationProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class PublicationProcessor
@@ -30,47 +30,41 @@ class PublicationProcessor
      */
     public static function createInitialPublication(object $data): Publication
     {
-        $publicationData = [
-            'version' => 1,
-            'status' => Submission::STATUS_PUBLISHED,
-            'datePublished' => $data->datePublished,
-            $data->locale => [
-                'title' => $data->articleTitle
-            ]
-        ];
+        $publication = Repo::publication()->newDataObject();
 
-        $publication = Repo::publication()->newDataObject($publicationData);
+        $publication->setData('version', 1);
+        $publication->setData('status', Submission::STATUS_PUBLISHED);
+        $publication->setData('datePublished', $data->datePublished);
+        $publication->setData('title', $data->articleTitle, $data->locale);
+
         return $publication;
     }
 
     /** Update the Publication with all necessary data after the Submission is created. */
     public static function process(Submission $submission, object $data, Journal $journal): Publication
     {
-        $publicationData = [
-            'submissionId' => $submission->getId(),
-            'version' => 1,
-            'status' => Submission::STATUS_PUBLISHED,
-            'datePublished' => $data->datePublished,
-            $data->locale => [
-                'abstract' => PKPString::stripUnsafeHtml($data->articleAbstract),
-                'title' => $data->articleTitle,
-                'copyrightNotice' => $journal->getLocalizedData('copyrightNotice', $data->locale)
-            ]
-        ];
+        $publication = Repo::publication()->newDataObject();
+
+        $publication->setData('submissionId', $submission->getId());
+        $publication->setData('version', 1);
+        $publication->setData('status', Submission::STATUS_PUBLISHED);
+        $publication->setData('datePublished', $data->datePublished);
+        $publication->setData('abstract', PKPString::stripUnsafeHtml($data->articleAbstract), $data->locale);
+        $publication->setData('title', $data->articleTitle, $data->locale);
+        $publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $data->locale));
 
         if (!empty($data->articleSubtitle)) {
-            $publicationData[$data->locale]['subtitle'] = $data->articleSubtitle;
+            $publication->setData('subtitle', $data->articleSubtitle, $data->locale);
         }
 
         if (!empty($data->articlePrefix)) {
-            $publicationData[$data->locale]['prefix'] = $data->articlePrefix;
+            $publication->setData('prefix', $data->articlePrefix, $data->locale);
         }
 
         if (!empty($data->startPage) && !empty($data->endPage)) {
-            $publicationData['pages'] = "{$data->startPage}-{$data->endPage}";
+            $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
         }
 
-        $publication = Repo::publication()->newDataObject($publicationData);
         $publication->stampModified();
 
         $publicationId = Repo::publication()->add($publication);

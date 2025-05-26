@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/CategoriesProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CategoriesProcessor
@@ -17,7 +17,6 @@
 namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 
 class CategoriesProcessor
@@ -29,6 +28,7 @@ class CategoriesProcessor
         }
 
         $categoriesArray = explode(';', $categories);
+        $publicationCategories = [];
 
         foreach ($categoriesArray as $categoryPath) {
             $categoryPath = trim($categoryPath);
@@ -40,20 +40,27 @@ class CategoriesProcessor
             $lowerCategoryPath = mb_strtolower($categoryPath);
             $category = CachedEntities::getCachedCategory($lowerCategoryPath, $journalId);
 
-            if (is_null($category)) {
-                $category = Repo::category()->newDataObject([
-                    'contextId' => $journalId,
-                    'title' => $categoryPath,
-                    'locale' => $locale,
-                    'parentId' => null,
-                    'sequence' => REALLY_BIG_NUMBER,
-                    'path' => $lowerCategoryPath,
-                ]);
-
-                Repo::category()->add($category);
+            if (!is_null($category)) {
+                $categoryId = $category->getId();
+                $publicationCategories[] = $categoryId;
+                continue;
             }
 
-            CachedDaos::getCategoryDao()->insertPublicationAssignment($category->getId(), $publicationId);
+            $category = Repo::category()->newDataObject();
+
+            $category->setContextId($journalId);
+            $category->setTitle($categoryPath, $locale);
+            $category->setParentId(null);
+            $category->setSequence(REALLY_BIG_NUMBER);
+            $category->setPath($lowerCategoryPath);
+
+            $categoryId = Repo::category()->add($category);
+            $publicationCategories[] = $categoryId;
         }
+
+        if (!empty($publicationCategories)) {
+            Repo::publication()->assignCategoriesToPublication($publicationId, $publicationCategories);
+        }
+
 	}
 }

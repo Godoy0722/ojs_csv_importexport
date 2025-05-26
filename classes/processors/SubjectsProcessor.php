@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/SubjectsProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class SubjectsProcessor
@@ -16,7 +16,7 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
+use APP\facades\Repo;
 
 class SubjectsProcessor
 {
@@ -24,9 +24,16 @@ class SubjectsProcessor
     {
 		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
-		if (!empty($subjectsList[$data->locale])) {
-			$submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
-			$submissionSubjectDao->insertSubjects($subjectsList, $publicationId);
-		}
+		if (empty($subjectsList[$data->locale])) {
+            return;
+        }
+
+        $publication = Repo::publication()->get($publicationId);
+
+        if (!$publication) {
+            return;
+        }
+
+        Repo::publication()->edit($publication, ['subjects' => $subjectsList]);
 	}
 }

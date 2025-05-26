@@ -3,12 +3,11 @@
 /**
  * @file plugins/importexport/csv/classes/processors/UsersProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class UsersProcessor
- *
  * @ingroup plugins_importexport_csv
  *
  * @brief Process the users data into the database.
@@ -26,21 +25,18 @@ class UsersProcessor
 {
 	public static function process(object $data, string $locale): User
     {
-        $userData = [
-            $locale => [
-                'givenName' => $data->firstname,
-                'familyName' => $data->lastname,
-                'affiliation' => $data->affiliation
-            ],
-            'email' => $data->email,
-            'country' => $data->country,
-            'username' => $data->username,
-            'password' => Validation::encryptCredentials($data->username, $data->tempPassword),
-            'mustChangePassword' => true,
-            'dateRegistered' => Core::getCurrentDate()
-        ];
+        $user = Repo::user()->newDataObject();
 
-        $user = Repo::user()->newDataObject($userData);
+        $user->setGivenName($data->firstname, $locale);
+        $user->setFamilyName($data->lastname, $locale);
+        $user->setAffiliation($data->affiliation, $locale);
+        $user->setEmail($data->email);
+        $user->setCountry($data->country);
+        $user->setUsername($data->username ?? self::getValidUsername($data->firstname, $data->lastname));
+        $user->setPassword(Validation::encryptCredentials($data->username, $data->tempPassword));
+        $user->setMustChangePassword(true);
+        $user->setDateRegistered(Core::getCurrentDate());
+
         $userId = Repo::user()->add($user);
 
         return Repo::user()->get($userId);

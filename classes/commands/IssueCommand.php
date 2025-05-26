@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/commands/IssueCommand.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class IssueCommand
@@ -17,7 +17,6 @@
 namespace APP\plugins\importexport\csv\classes\commands;
 
 use APP\core\Application;
-use APP\core\Services;
 use APP\facades\Repo;
 use APP\file\PublicFileManager;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
@@ -35,7 +34,6 @@ use APP\plugins\importexport\csv\classes\processors\SubmissionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredIssueHeaders;
 use APP\submission\Submission;
-use PKP\core\PKPString;
 use PKP\file\FileManager;
 use PKP\services\PKPFileService;
 use PKP\user\User;
@@ -187,7 +185,7 @@ class IssueCommand
                     }
 
                     $sanitizedCoverImageName = str_replace([' ', '_', ':'], '-', mb_strtolower($data->coverImageFilename));
-                    $sanitizedCoverImageName = PKPString::regexp_replace('/[^a-z0-9\.\-]+/', '', $sanitizedCoverImageName);
+                    $sanitizedCoverImageName = preg_replace('/[^a-z0-9\.\-]+/', '', $sanitizedCoverImageName);
                     $coverImageUploadName = uniqid() . '-' . basename($sanitizedCoverImageName);
 
                     $destFilePath = $this->publicFileManager->getContextFilesPath($journal->getId()) . '/' . $coverImageUploadName;
@@ -320,7 +318,7 @@ class IssueCommand
 		$this->format ??= trim($this->dirNames['context'], '/') . '/%d/' . trim($this->dirNames['submission'], '/') . '/%d';
 		$this->fileManager ??= new FileManager();
 		$this->publicFileManager ??= new PublicFileManager();
-		$this->fileService ??= Services::get('file');
+		$this->fileService ??= app()->get('file');
 	}
 
     /**

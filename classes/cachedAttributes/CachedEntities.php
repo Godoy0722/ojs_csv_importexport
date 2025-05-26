@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/cachedAttributes/CachedEntities.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CachedEntities
@@ -104,13 +104,10 @@ class CachedEntities
             return self::$userGroups[$journalId];
         }
 
-        $collector = Repo::userGroup()->getCollector()
-            ->filterByContextIds([$journalId]);
-
-        $userGroupsIterator = $collector->getMany();
         $userGroups = [];
+        $userGroupsCollection = UserGroup::withContextIds([$journalId])->get();
 
-        foreach ($userGroupsIterator as $userGroup) {
+        foreach ($userGroupsCollection as $userGroup) {
             $userGroups[$userGroup->getId()] = $userGroup;
         }
 
@@ -134,10 +131,7 @@ class CachedEntities
     /** Retrieves a cached genre ID by genreName and journalId. Returns null if an error occurs. */
     static function getCachedGenreId(string $genreName, int $journalId): ?int
     {
-		$genreDao = CachedDaos::getGenreDao();
-		$genre = $genreDao->getByKey($genreName, $journalId);
-
-		return self::$genreIds[$genreName] ?? self::$genreIds[$genreName] = $genre->getId();
+		return self::$genreIds[$genreName] ??= CachedDaos::getGenreDao()->getByKey($genreName, $journalId)->getId();
     }
 
     /** Retrieves a cached Category by categoryName and journalId. Returns null if an error occurs. */
@@ -210,9 +204,6 @@ class CachedEntities
             return self::$subscriptionTypes[$subscriptionType];
         }
 
-        $subscriptionTypeDao = CachedDaos::getSubscriptionTypeDao();
-        $retrievedType = $subscriptionTypeDao->getById((int) $subscriptionType, $journalId);
-
-        return self::$subscriptionTypes[$subscriptionType] = $retrievedType;
+        return self::$subscriptionTypes[$subscriptionType] ??= CachedDaos::getSubscriptionTypeDao()->getById((int) $subscriptionType, $journalId);
     }
 }

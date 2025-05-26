@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/SubmissionFileProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class SubmissionFileProcessor
@@ -33,24 +33,21 @@ class SubmissionFileProcessor
         int $fileId
     ): SubmissionFile
     {
-        $submissionFileData = [
-            'submissionId' => $submissionId,
-            'uploaderUserId' => $userId,
-            'fileId' => $fileId,
-            'genreId' => $genreId,
-            'fileStage' => SubmissionFile::SUBMISSION_FILE_PROOF,
-            'createdAt' => Core::getCurrentDate(),
-            'updatedAt' => Core::getCurrentDate(),
-            'mimetype' => PKPString::mime_content_type($filePath),
-            'locale' => $locale,
-            $locale => [
-                'name' => pathinfo($filePath, PATHINFO_FILENAME)
-            ],
-            'directSalesPrice' => 0,
-            'salesType' => 'openAccess'
-        ];
+        $submissionFile = Repo::submissionFile()->newDataObject();
 
-        $submissionFile = Repo::submissionFile()->newDataObject($submissionFileData);
+        $submissionFile->setData('submissionId', $submissionId);
+        $submissionFile->setData('uploaderUserId', $userId);
+        $submissionFile->setData('fileId', $fileId);
+        $submissionFile->setData('genreId', $genreId);
+        $submissionFile->setData('fileStage', SubmissionFile::SUBMISSION_FILE_PROOF);
+        $submissionFile->setData('createdAt', Core::getCurrentDate());
+        $submissionFile->setData('updatedAt', Core::getCurrentDate());
+        $submissionFile->setData('mimetype', PKPString::mime_content_type($filePath));
+        $submissionFile->setData('locale', $locale);
+        $submissionFile->setData('name', pathinfo($filePath, PATHINFO_FILENAME), $locale);
+        $submissionFile->setData('directSalesPrice', 0);
+        $submissionFile->setData('salesType', 'openAccess');
+
         $submissionFileId = Repo::submissionFile()->add($submissionFile);
 
         return Repo::submissionFile()->get($submissionFileId);

@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/SectionsProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class SectionsProcessor
@@ -30,25 +30,22 @@ class SectionsProcessor
 			return $section;
 		}
 
-        $sectionData = [
-            'contextId' => $journalId,
-            'sequence' => REALLY_BIG_NUMBER,
-            'editorRestricted' => false,
-            'metaIndexed' => true,
-            'metaReviewed' => true,
-            'abstractsNotRequired' => false,
-            'hideTitle' => false,
-            'hideAuthor' => false,
-            'isInactive' => false,
-            $data->locale => [
-                'title' => $data->sectionTitle,
-                'abbrev' => mb_strtoupper(trim($data->sectionAbbrev)),
-                'identifyType' => '',
-                'policy' => '',
-            ]
-        ];
+        $section = Repo::section()->newDataObject();
 
-        $section = Repo::section()->newDataObject($sectionData);
+        $section->setContextId($journalId);
+        $section->setSequence(REALLY_BIG_NUMBER);
+        $section->setEditorRestricted(false);
+        $section->setMetaIndexed(true);
+        $section->setMetaReviewed(true);
+        $section->setAbstractsNotRequired(false);
+        $section->setHideTitle(false);
+        $section->setHideAuthor(false);
+        $section->setIsInactive(false);
+        $section->setTitle($data->sectionTitle, $data->locale);
+        $section->setAbbrev($data->sectionAbbrev, $data->locale);
+        $section->setIdentifyType('', $data->locale);
+        $section->setPolicy('', $data->locale);
+
         $sectionId = Repo::section()->add($section);
 
         return Repo::section()->get($sectionId, $journalId);

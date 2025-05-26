@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/AuthorsProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class AuthorsProcessor
@@ -44,15 +44,15 @@ class AuthorsProcessor
 				$emailAddress = $contactEmail;
 			}
 
-            $author = Repo::author()->newDataObject([
-                'submissionId' => $submissionId,
-                'userGroupId' => $userGroupId,
-                'givenName' => $givenName,
-                'familyName' => $familyName,
-                'email' => $emailAddress,
-                'affiliation' => $affiliation,
-                'publicationId' => $publication->getId(),
-            ]);
+            $author = Repo::author()->newDataObject();
+
+            $author->setSubmissionId($submissionId);
+            $author->setUserGroupId($userGroupId);
+            $author->setData('givenName', $givenName);
+            $author->setData('familyName', $familyName);
+            $author->setData('email', $emailAddress);
+            $author->setData('affiliation', $affiliation);
+            $author->setData('publicationId', $publication->getId());
 
             $authorId = Repo::author()->add($author);
 

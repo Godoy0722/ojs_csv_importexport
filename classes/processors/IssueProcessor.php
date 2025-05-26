@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/IssueProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class IssueProcessor
@@ -35,25 +35,24 @@ class IssueProcessor
         if (is_null($issue)) {
             $sanitizedIssueDescription = PKPString::stripUnsafeHtml($data->issueDescription ?? '');
 
-            $issueData = [
-                'journalId' => $journalId,
-                'volume' => $data->issueVolume ?? null,
-                'number' => $data->issueNumber ?? null,
-                'year' => $data->issueYear ?? null,
-                'showVolume' => !empty($data->issueVolume),
-                'showNumber' => !empty($data->issueNumber),
-                'showYear' => !empty($data->issueYear),
-                'showTitle' => 1,
-                'published' => true,
-                'datePublished' => Core::getCurrentDate(),
-                'title' => $data->issueTitle ?? '',
-                'description' => $sanitizedIssueDescription,
-                'accessStatus' => Issue::ISSUE_ACCESS_OPEN,
-                'locale' => $data->locale,
-                'lastModified' => Core::getCurrentDate(),
-            ];
+            $issue = Repo::issue()->newDataObject();
 
-            $issue = Repo::issue()->newDataObject($issueData);
+            $issue->setJournalId($journalId);
+            $issue->setVolume($data->issueVolume ?? null);
+            $issue->setNumber($data->issueNumber ?? null);
+            $issue->setYear($data->issueYear ?? null);
+            $issue->setShowVolume(!empty($data->issueVolume));
+            $issue->setShowNumber(!empty($data->issueNumber));
+            $issue->setShowYear(!empty($data->issueYear));
+            $issue->setShowTitle(true);
+            $issue->setPublished(true);
+            $issue->setDatePublished(Core::getCurrentDate());
+            $issue->setTitle($data->issueTitle ?? '', $data->locale);
+            $issue->setDescription($sanitizedIssueDescription, $data->locale);
+            $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
+            $issue->setData('locale', $data->locale);
+            $issue->stampModified();
+
             $issueId = Repo::issue()->add($issue);
             $issue = Repo::issue()->get($issueId);
         }
