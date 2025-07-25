@@ -404,6 +404,7 @@ class IssueCommand
         $galleyCompletePath = "{$this->_sourceDir}/{$galleyItem['file']}";
         $galleyExtension = $this->_fileManager->parseFileExtension($galleyCompletePath);
 
+        import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
         $submissionFile = SubmissionFileProcessor::process(
             $data->locale,
             $this->_user->getId(),
