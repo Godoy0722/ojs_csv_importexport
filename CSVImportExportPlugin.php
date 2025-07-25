@@ -17,7 +17,6 @@
 namespace APP\plugins\importexport\csv;
 
 use APP\facades\Repo;
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\commands\IssueCommand;
 use APP\plugins\importexport\csv\classes\commands\UserCommand;
 use PKP\config\Config;
