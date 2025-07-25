@@ -242,33 +242,53 @@ class IssueCommand
                     continue;
                 }
 
-                // // Array to store each galley ID to its respective galley file
+                import('plugins.importexport.csv.classes.processors.PublicationProcessor');
+                $publication = PublicationProcessor::process($submission, $data, $journal);
+
+                // Array to store each galley ID to its respective galley file
                 $galleyIds = [];
-                foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
-                    $galleyFileId = $this->_saveSubmissionFile(
-                        $galleyFile,
-                        $journal->getId(),
-                        $submission->getId(),
-                        $invalidCsvFile,
-                        __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile]),
-                        $fieldsList
-                    );
 
-                    if (is_null($galleyFileId)) {
-                        $this->_fileService->delete($articleFilePathId);
+                if ($data->galleyFilenames) {
+                    foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
+                        $galleyFileId = $this->_saveSubmissionFile(
+                            $galleyFile,
+                            $journal->getId(),
+                            $submission->getId(),
+                            $invalidCsvFile,
+                            __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile]),
+                            $fieldsList
+                        );
 
-                        foreach($galleyIds as $galleyItem) {
-                            $this->_fileService->delete($galleyItem['id']);
+                        if (is_null($galleyFileId)) {
+                            $this->_fileService->delete($articleFilePathId);
+
+                            foreach($galleyIds as $galleyItem) {
+                                $this->_fileService->delete($galleyItem['id']);
+                            }
+
+                            continue;
                         }
 
-                        continue;
+                        $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
                     }
 
-                    $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
-                }
+                    // Now, process the submission file for all article galleys
+                    $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
 
-				import('plugins.importexport.csv.classes.processors.PublicationProcessor');
-                $publication = PublicationProcessor::process($submission, $data, $journal);
+                    for($i = 0; $i < count($galleyLabelsArray); $i++) {
+                        $galleyItem = $galleyIds[$i];
+                        $galleyLabel = $galleyLabelsArray[$i];
+
+                        $this->_handleArticleGalley(
+                            $galleyItem,
+                            $data,
+                            $submission->getId(),
+                            $genreId,
+                            $galleyLabel,
+                            $publication->getId()
+                        );
+                    }
+                }
 
 				import('plugins.importexport.csv.classes.processors.AuthorsProcessor');
                 AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
@@ -284,23 +304,6 @@ class IssueCommand
                     $genreId,
                     $articleFilePathId
                 );
-
-                // Now, process the submission file for all article galleys
-                $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
-
-                for($i = 0; $i < count($galleyLabelsArray); $i++) {
-                    $galleyItem = $galleyIds[$i];
-                    $galleyLabel = $galleyLabelsArray[$i];
-
-                    $this->_handleArticleGalley(
-                        $galleyItem,
-                        $data,
-                        $submission->getId(),
-                        $genreId,
-                        $galleyLabel,
-                        $publication->getId()
-                    );
-                }
 
 				import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
                 KeywordsProcessor::process($data, $publication->getId());
