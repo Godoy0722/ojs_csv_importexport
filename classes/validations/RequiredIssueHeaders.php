@@ -52,13 +52,8 @@ class RequiredIssueHeaders
         'journalPath',
         'locale',
         'articleTitle',
-        'articleAbstract',
         'articleFilepath',
         'authors',
-        'issueTitle',
-        'issueVolume',
-        'issueNumber',
-        'issueYear',
         'datePublished',
     ];
 

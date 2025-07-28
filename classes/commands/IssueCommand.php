@@ -124,6 +124,17 @@ class IssueCommand
 
                 $fieldsList = array_pad($fields, $this->expectedRowSize, null);
 
+                $hasIssueData = !empty(trim($data->issueTitle))
+                                || !empty(trim($data->issueVolume))
+                                || !empty(trim($data->issueNumber))
+                                || !empty(trim($data->issueYear));
+
+                if (!$hasIssueData) {
+                    $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
+                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                    continue;
+                }
+
                 $reason = InvalidRowValidations::validateArticleFileIsValid($data->articleFilepath, $this->sourceDir);
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
@@ -153,6 +164,15 @@ class IssueCommand
 
                 $reason = InvalidRowValidations::validateJournalLocale($journal, $data->locale);
                 if (!is_null($reason)) {
+                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                    continue;
+                }
+
+                $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journal->getId());
+                $abstractsRequired = $section ? !$section->getData('abstractsNotRequired') : true;
+
+                if ($abstractsRequired && empty(trim($data->articleAbstract))) {
+                    $reason = __('plugins.importexport.csv.abstractRequiredBySection');
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                     continue;
                 }
