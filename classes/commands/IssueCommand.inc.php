@@ -178,19 +178,6 @@ class IssueCommand
                     continue;
                 }
 
-				$section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journal->getId());
-                $abstractsRequired = true;
-
-				if ($section) {
-                    $abstractsRequired = !$section->getData('abstractsNotRequired');
-                }
-
-				if ($abstractsRequired && empty(trim($data->articleAbstract))) {
-                    $reason = __('plugins.importexport.csv.abstractRequiredBySection');
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
-                    continue;
-                }
-
                 // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
 			    $genreName = mb_strtoupper($data->genreName ?? 'SUBMISSION');
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());

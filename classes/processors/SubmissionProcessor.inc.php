@@ -41,7 +41,11 @@ class SubmissionProcessor
 		$submission->setData('locale', $data->locale);
 		$submission->setData('stageId', WORKFLOW_STAGE_ID_PRODUCTION);
 		$submission->setData('submissionProgress', '0');
-		$submission->setData('abstract', $data->articleAbstract, $data->locale);
+
+		if (!empty($data->articleAbstract)) {
+			$submission->setData('abstract', $data->articleAbstract, $data->locale);
+		}
+
 		$submissionDao->insertObject($submission);
 
 		return $submission;
