@@ -163,22 +163,35 @@ class CachedEntities
     /** Retrieves a cached Issue by issue data and journalId. Returns null if an error occurs. */
     static function getCachedIssue(object $data, int $journalId): ?Issue
     {
-        $customIssueDescription = "{$data->issueVolume}_{$data->issueNumber}_{$data->issueYear}";
+        $cacheKeyParts = [];
+        if (!empty($data->issueTitle)) $cacheKeyParts[] = "title:" . $data->issueTitle;
+        if (!empty($data->issueVolume)) $cacheKeyParts[] = "vol:" . $data->issueVolume;
+        if (!empty($data->issueNumber)) $cacheKeyParts[] = "num:" . $data->issueNumber;
+        if (!empty($data->issueYear)) $cacheKeyParts[] = "year:" . $data->issueYear;
 
-        if (isset(self::$issues[$customIssueDescription])) {
-            return self::$issues[$customIssueDescription];
+        $customIssueDescription = implode('_', $cacheKeyParts);
+
+        $collector = Repo::issue()->getCollector()->filterByContextIds([$journalId]);
+
+        if (!empty($data->issueVolume)) {
+            $collector = $collector->filterByVolumes([(int)$data->issueVolume]);
+        }
+        if (!empty($data->issueNumber)) {
+            $collector = $collector->filterByNumbers([$data->issueNumber]);
+        }
+        if (!empty($data->issueYear)) {
+            $collector = $collector->filterByYears([(int)$data->issueYear]);
+        }
+        if (!empty($data->issueTitle)) {
+            $collector = $collector->filterByTitles([$data->issueTitle]);
         }
 
-        $issues = Repo::issue()->getCollector()
-            ->filterByContextIds([$journalId])
-            ->filterByVolumes([$data->issueVolume])
-            ->filterByNumbers([$data->issueNumber])
-            ->filterByYears([$data->issueYear])
-            ->getMany();
+        $issues = $collector->limit(1)->getMany();
+        $issue = $issues->first();
 
-        self::$issues[$customIssueDescription] = $issues->first();
+		self::$issues[$customIssueDescription] = $issue;
 
-        return self::$issues[$customIssueDescription];
+		return self::$issues[$customIssueDescription];
     }
 
     /** Retrieves a cached Section by sectionTitle, sectionAbbrev, and journalId. Returns null if an error occurs. */
