@@ -161,16 +161,25 @@ class CachedEntities
      */
     static function getCachedIssue(object $data, int $journalId)
     {
-        $customIssueDescription = "{$data->issueVolume}_{$data->issueNumber}_{$data->issueYear}";
+		$cacheKeyParts = [];
+		if (!empty($data->issueTitle)) $cacheKeyParts[] = "title:" . $data->issueTitle;
+		if (!empty($data->issueVolume)) $cacheKeyParts[] = "vol:" . $data->issueVolume;
+		if (!empty($data->issueNumber)) $cacheKeyParts[] = "num:" . $data->issueNumber;
+		if (!empty($data->issueYear)) $cacheKeyParts[] = "year:" . $data->issueYear;
+
+		$customIssueDescription = implode('_', $cacheKeyParts);
 
 		if (isset(self::$issues[$customIssueDescription])) {
 			return self::$issues[$customIssueDescription];
 		}
 
-		$issueDao = CachedDaos::getIssueDao();
-
-		self::$issues[$customIssueDescription] = $issueDao->getIssuesByIdentification($journalId, $data->issueVolume, $data->issueNumber, $data->issueYear)
-			->toArray()[0] ?? null;
+		self::$issues[$customIssueDescription] = CachedDaos::getIssueDao()->getIssuesByIdentification(
+			$journalId,
+			$data->issueVolume,
+			$data->issueNumber,
+			$data->issueYear,
+			[$data->issueTitle]
+		)->toArray()[0] ?? null;
 
 		return self::$issues[$customIssueDescription];
     }
