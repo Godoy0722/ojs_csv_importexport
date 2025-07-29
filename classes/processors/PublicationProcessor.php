@@ -49,9 +49,12 @@ class PublicationProcessor
         $publication->setData('version', 1);
         $publication->setData('status', Submission::STATUS_PUBLISHED);
         $publication->setData('datePublished', $data->datePublished);
-        $publication->setData('abstract', PKPString::stripUnsafeHtml($data->articleAbstract), $data->locale);
         $publication->setData('title', $data->articleTitle, $data->locale);
         $publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $data->locale));
+
+        if (!empty($data->articleAbstract)) {
+            $publication->setData('abstract', PKPString::stripUnsafeHtml($data->articleAbstract), $data->locale);
+        }
 
         if (!empty($data->articleSubtitle)) {
             $publication->setData('subtitle', $data->articleSubtitle, $data->locale);
