@@ -52,7 +52,6 @@ class PublicationProcessor
             'status' => Submission::STATUS_PUBLISHED,
             'datePublished' => $data->datePublished,
             $data->locale => [
-                'abstract' => PKPString::stripUnsafeHtml($data->articleAbstract),
                 'title' => $data->articleTitle,
                 'copyrightNotice' => $journal->getLocalizedData('copyrightNotice', $data->locale)
             ]
@@ -60,6 +59,10 @@ class PublicationProcessor
 
         if (!empty($data->articleSubtitle)) {
             $publicationData[$data->locale]['subtitle'] = $data->articleSubtitle;
+        }
+
+        if (!empty($data->articleAbstract)) {
+            $publicationData[$data->locale]['abstract'] = PKPString::stripUnsafeHtml($data->articleAbstract);
         }
 
         if (!empty($data->articlePrefix)) {
