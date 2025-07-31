@@ -79,6 +79,9 @@ class IssueCommand
     /** @var string */
     private $_format;
 
+    /** @var array */
+    private $_processedIssues;
+
     /**
 	 * @param string $sourceDir
 	 * @param \User $user
@@ -89,6 +92,7 @@ class IssueCommand
         $this->_expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->_sourceDir = $sourceDir;
         $this->_user = $user;
+        $this->_processedIssues = [];
     }
 
     public function run()
@@ -327,6 +331,15 @@ class IssueCommand
                 $issue = IssueProcessor::process($journal->getId(), $data);
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
 
+                $issueKey = $journal->getId() . '_' . $issue->getId();
+                if (!isset($this->_processedIssues[$issueKey])) {
+                    $this->_processedIssues[$issueKey] = [
+                        'issue' => $issue,
+                        'journalId' => $journal->getId(),
+                        'data' => $data
+                    ];
+                }
+
 				import('plugins.importexport.csv.classes.processors.SectionsProcessor');
                 $section = SectionsProcessor::process($data, $journal->getId());
                 PublicationProcessor::updateSectionId($publication, $section->getId());
@@ -342,6 +355,9 @@ class IssueCommand
                 unlink($this->_sourceDir . '/' . "invalid_{$basename}");
             }
         }
+
+		import('plugins.importexport.csv.classes.processors.IssueProcessor');
+        IssueProcessor::reorderImportedIssues($this->_processedIssues);
     }
 
     /**
