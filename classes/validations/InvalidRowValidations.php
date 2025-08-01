@@ -107,6 +107,30 @@ class InvalidRowValidations
     }
 
     /**
+     * Perform all necessary validations for supplementary files. Returns the reason if an error occurred,
+     * or null if everything is correct.
+     */
+    public static function validateSupplementaryFiles(string $suppFilenames, string $suppLabels, string $sourceDir): ?string
+    {
+        $suppFilenamesArray = explode(';', $suppFilenames);
+        $suppLabelsArray = explode(';', $suppLabels);
+
+        if (count($suppFilenamesArray) !== count($suppLabelsArray)) {
+            return __('plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles');
+        }
+
+        foreach($suppFilenamesArray as $suppFilename) {
+            $suppPath = "{$sourceDir}/{$suppFilename}";
+            if (!is_readable($suppPath)) {
+                return __('plugins.importexport.csv.invalidSupplementaryFile', ['filename' => $suppFilename]);
+            }
+        }
+
+        return null;
+    }
+
+
+    /**
      * Validates whether the journal is valid for the CSV row. Returns the reason if an error occurred,
      * or null if everything is correct.
      */
@@ -201,8 +225,8 @@ class InvalidRowValidations
      */
     public static function validateSubscriptionType(?SubscriptionType $subscriptionType, int $subscriptionTypeId): ?string
     {
-		return !$subscriptionType
-			? __('plugins.importexport.csv.subscriptionTypeDoesntExist', ['subscriptionTypeId' => $subscriptionTypeId])
-			: null;
+        return !$subscriptionType
+            ? __('plugins.importexport.csv.subscriptionTypeDoesntExist', ['subscriptionTypeId' => $subscriptionTypeId])
+            : null;
     }
 }
