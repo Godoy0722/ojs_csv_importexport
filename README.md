@@ -145,7 +145,6 @@ interest one; interest two; another interest
 | galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
-| genreName | No | Content type | Article Text | Must exist in system |
 | sectionTitle | No | Section name | Articles | Will be created if needed |
 | sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
 | issueTitle | No | Issue title | Vol 1, No 1 (2024) | |

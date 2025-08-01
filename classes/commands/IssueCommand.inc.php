@@ -192,11 +192,6 @@ class IssueCommand
                 // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
 			    $genreName = mb_strtoupper($data->genreName ?? 'SUBMISSION');
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
-
-                // Get supplementary genre for supplementary files
-                $genreDao = CachedDaos::getGenreDao();
-                $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
-                $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
                 $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
 
                 if (!is_null($reason)) {
@@ -316,6 +311,11 @@ class IssueCommand
 
                         $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
                     }
+
+					// Get supplementary genre for supplementary files
+					$genreDao = CachedDaos::getGenreDao();
+					$supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
+					$suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
 
                     $suppLabelsArray = array_map('trim', explode(';', $data->suppLabels));
                     for($i = 0; $i < count($suppLabelsArray); $i++) {
