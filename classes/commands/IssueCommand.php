@@ -343,7 +343,7 @@ class IssueCommand
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
-                if (!isset($this->_processedIssues[$issueKey])) {
+                if (!isset($this->processedIssues[$issueKey])) {
                     $this->processedIssues[$issueKey] = [
                         'issue' => $issue,
                         'journalId' => $journal->getId(),
