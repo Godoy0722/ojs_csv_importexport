@@ -25,7 +25,6 @@ class RequiredIssueHeaders
         'articlePrefix',
         'articleSubtitle',
         'articleAbstract',
-        'articleFilepath',
         'authors',
         'keywords',
         'subjects',
@@ -36,6 +35,8 @@ class RequiredIssueHeaders
         'coverImageAltText',
         'galleyFilenames',
         'galleyLabels',
+        'suppFilenames',
+        'suppLabels',
         'sectionTitle',
         'sectionAbbrev',
         'issueTitle',
@@ -52,7 +53,6 @@ class RequiredIssueHeaders
         'journalPath',
         'locale',
         'articleTitle',
-        'articleFilepath',
         'authors',
         'datePublished',
     ];
@@ -64,7 +64,7 @@ class RequiredIssueHeaders
 
     public static function validateRowHasAllRequiredFields(object $row): bool
     {
-        foreach(self::$issueRequiredHeaders as $requiredHeader) {
+        foreach (self::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
                 return false;
             }
