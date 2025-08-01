@@ -148,16 +148,23 @@ class IssueCommand
 
                 $fieldsList = array_pad($fields, $this->_expectedRowSize, null);
 
-                $reason = InvalidRowValidations::validateArticleFileIsValid($data->articleFilepath, $this->_sourceDir);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
-                    continue;
-                }
-
                 if ($data->galleyFilenames) {
                     $reason = InvalidRowValidations::validateArticleGalleys(
                         $data->galleyFilenames,
                         $data->galleyLabels,
+                        $this->_sourceDir
+                    );
+
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+                        continue;
+                    }
+                }
+
+                if ($data->suppFilenames) {
+                    $reason = InvalidRowValidations::validateSupplementaryFiles(
+                        $data->suppFilenames,
+                        $data->suppLabels,
                         $this->_sourceDir
                     );
 
@@ -185,6 +192,11 @@ class IssueCommand
                 // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
 			    $genreName = mb_strtoupper($data->genreName ?? 'SUBMISSION');
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
+
+                // Get supplementary genre for supplementary files
+                $genreDao = CachedDaos::getGenreDao();
+                $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
+                $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
                 $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
 
                 if (!is_null($reason)) {
@@ -230,21 +242,6 @@ class IssueCommand
 				import('plugins.importexport.csv.classes.processors.SubmissionProcessor');
                 $submission = SubmissionProcessor::process($journal->getId(), $data);
 
-                // Copy Submission file. If an error occured, save this row as invalid,
-                // delete the saved submission and continue the loop.
-                $articleFilePathId = $this->_saveSubmissionFile(
-                    $data->articleFilepath,
-                    $journal->getId(),
-                    $submission->getId(),
-                    $invalidCsvFile,
-                    __('plugins.importexport.csv.errorWhileSavingSubmissionFile'),
-                    $fieldsList
-                );
-
-                if (is_null($articleFilePathId)) {
-                    continue;
-                }
-
                 import('plugins.importexport.csv.classes.processors.PublicationProcessor');
                 $publication = PublicationProcessor::process($submission, $data, $journal);
 
@@ -263,8 +260,6 @@ class IssueCommand
                         );
 
                         if (is_null($galleyFileId)) {
-                            $this->_fileService->delete($articleFilePathId);
-
                             foreach($galleyIds as $galleyItem) {
                                 $this->_fileService->delete($galleyItem['id']);
                             }
@@ -282,7 +277,7 @@ class IssueCommand
                         $galleyItem = $galleyIds[$i];
                         $galleyLabel = $galleyLabelsArray[$i];
 
-                        $this->_handleArticleGalley(
+                        $this->_handleGalley(
                             $galleyItem,
                             $data,
                             $submission->getId(),
@@ -293,21 +288,55 @@ class IssueCommand
                     }
                 }
 
+                // Process supplementary files
+                if ($data->suppFilenames) {
+                    $suppIds = [];
+
+                    foreach (array_map('trim', explode(';', $data->suppFilenames)) as $suppFile) {
+                        $suppFileId = $this->_saveSubmissionFile(
+                            $suppFile,
+                            $journal->getId(),
+                            $submission->getId(),
+                            $invalidCsvFile,
+                            __('plugins.importexport.csv.errorWhileSavingSupplementaryFile', ['file' => $suppFile]),
+                            $fieldsList
+                        );
+
+                        if (is_null($suppFileId)) {
+                            foreach($galleyIds as $galleyItem) {
+                                $this->_fileService->delete($galleyItem['id']);
+                            }
+
+                            foreach($suppIds as $suppItem) {
+                                $this->_fileService->delete($suppItem['id']);
+                            }
+
+                            continue;
+                        }
+
+                        $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
+                    }
+
+                    $suppLabelsArray = array_map('trim', explode(';', $data->suppLabels));
+                    for($i = 0; $i < count($suppLabelsArray); $i++) {
+                        $suppItem = $suppIds[$i];
+                        $suppLabel = $suppLabelsArray[$i];
+
+                        $this->_handleGalley(
+                            $suppItem,
+                            $data,
+                            $submission->getId(),
+                            $suppGenreId,
+                            $suppLabel,
+                            $publication->getId()
+                        );
+                    }
+                }
+
 				import('plugins.importexport.csv.classes.processors.AuthorsProcessor');
                 AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
 
                 // Process submission file data into the database
-				import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
-                $articleFileCompletePath = "{$this->_sourceDir}/{$data->articleFilepath}";
-                SubmissionFileProcessor::process(
-                    $data->locale,
-                    $this->_user->getId(),
-                    $submission->getId(),
-                    $articleFileCompletePath,
-                    $genreId,
-                    $articleFilePathId
-                );
-
 				import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
                 KeywordsProcessor::process($data, $publication->getId());
 
@@ -402,36 +431,36 @@ class IssueCommand
         }
     }
 
-    /**
-     * Process data for the galley submission file and galley into the database.
+	/**
+     * Process data for primary and supplementary galleys.
      *
-     * @param array $galleyItem
+     * @param array $item
      * @param object $data
      * @param int $submissionId
      * @param int $genreId
-     * @param string $galleyLabel
+     * @param string $label
      * @param int $publicationId
 	 *
 	 * @return void
      */
-    private function _handleArticleGalley($galleyItem, $data, $submissionId, $genreId, $galleyLabel, $publicationId)
-    {
-        $galleyCompletePath = "{$this->_sourceDir}/{$galleyItem['file']}";
+	private function _handleGalley($item, $data, $submissionId, $genreId, $label, $publicationId)
+	{
+		$galleyCompletePath = "{$this->_sourceDir}/{$item['file']}";
         $galleyExtension = $this->_fileManager->parseFileExtension($galleyCompletePath);
 
-        import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
-        $submissionFile = SubmissionFileProcessor::process(
+		import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
+        $file = SubmissionFileProcessor::process(
             $data->locale,
             $this->_user->getId(),
             $submissionId,
             $galleyCompletePath,
             $genreId,
-            $galleyItem['id'],
+            $item['id'],
         );
 
-        // Now that we have the submission file ID, it's time to process the galley itself.
+		// Now that we have the submission file ID, it's time to process the galley itself.
 		import('plugins.importexport.csv.classes.processors.GalleyProcessor');
-        $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $galleyLabel, $publicationId, $galleyExtension);
-        SubmissionFileProcessor::updateAssocInfo($submissionFile, $galleyId);
-    }
+        $galleyId = GalleyProcessor::process($file->getId(), $data, $label, $publicationId, $galleyExtension);
+        SubmissionFileProcessor::updateAssocInfo($file, $galleyId);
+	}
 }

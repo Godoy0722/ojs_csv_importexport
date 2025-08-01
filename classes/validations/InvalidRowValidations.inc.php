@@ -131,6 +131,35 @@ class InvalidRowValidations
     }
 
     /**
+     * Perform all necessary validations for supplementary files. Returns the reason if an error occurred,
+     * or null if everything is correct.
+	 *
+	 * @param string $suppFilenames
+	 * @param string $suppLabels
+	 * @param string $sourceDir
+	 *
+	 * @return string|null
+     */
+    public static function validateSupplementaryFiles($suppFilenames, $suppLabels, $sourceDir)
+    {
+        $suppFilenamesArray = explode(';', $suppFilenames);
+        $suppLabelsArray = explode(';', $suppLabels);
+
+        if (count($suppFilenamesArray) !== count($suppLabelsArray)) {
+            return __('plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles');
+        }
+
+        foreach($suppFilenamesArray as $suppFilename) {
+            $suppPath = "{$sourceDir}/{$suppFilename}";
+            if (!is_readable($suppPath)) {
+                return __('plugins.importexport.csv.invalidSupplementaryFile', ['filename' => $suppFilename]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Validates whether the journal is valid for the CSV row. Returns the reason if an error occurred,
      * or null if everything is correct.
 	 *

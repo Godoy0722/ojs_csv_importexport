@@ -73,6 +73,12 @@ msgstr "Invalid galley file \"{$filename}\" for this submission."
 msgid "plugins.importexport.csv.invalidNumberOfLabelsAndGalleys"
 msgstr "Galley files don't have the same amount as the labels. Please verify it for this row."
 
+msgid "plugins.importexport.csv.invalidSupplementaryFile"
+msgstr "Invalid supplementary file \"{$filename}\" for this submission."
+
+msgid "plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles"
+msgstr "Supplementary files don't have the same amount as the labels. Please verify it for this row."
+
 msgid "plugins.importexport.csv.noAuthorGroup"
 msgstr "There is no default author group in the journal {$journal}."
 
@@ -93,6 +99,9 @@ msgstr "An error occurred while saving the Submission file."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
 msgstr "An error occurred while saving the galley {$galley}."
+
+msgid "plugins.importexport.csv.errorWhileSavingSupplementaryFile"
+msgstr "An error occurred while saving the supplementary file {$file}."
 
 msgid "plugins.importexport.csv.abstractRequiredBySection"
 msgstr "Abstract is required for this section but not provided."

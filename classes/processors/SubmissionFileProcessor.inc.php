@@ -63,6 +63,7 @@ class SubmissionFileProcessor
 	 *
 	 * @param \SubmissionFile $submissionFile
 	 * @param int $galleyId
+	 * @param int $assocType
 	 *
 	 * @return void
 	 */

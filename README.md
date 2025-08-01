@@ -133,7 +133,6 @@ interest one; interest two; another interest
 | articlePrefix | No | Article prefix | PREF | Optional |
 | articleSubtitle | No | Article subtitle | A Study of... | Optional |
 | articleAbstract | No | Article abstract | This paper examines... | Optional |
-| articleFilepath | Yes | Path to main article file | article.pdf | Relative to CSV location |
 | authors | Yes | Author information | See [Authors Format](#authors-format) | |
 | keywords | No | Semicolon-separated keywords | science;research | Optional |
 | subjects | No | Semicolon-separated subjects | Biology;Ecology | Optional |
@@ -142,8 +141,10 @@ interest one; interest two; another interest
 | doi | No | Digital Object Identifier | 10.1234/abc123 | Must be valid format |
 | coverImageFilename | No | Cover image filename | cover.jpg | Must be in same directory |
 | coverImageAltText | No | Alt text for cover | Journal Cover | Required if cover image used |
-| galleyFilenames | No | Semicolon-separated files | doc.docx;data.xlsx | Optional |
-| galleyLabels | No | Labels for galleys | DOC;XLS | Must match galleyFilenames count |
+| galleyFilenames | No | Semicolon-separated primary galley files | doc.docx;data.xlsx | Optional |
+| galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
+| suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
+| suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | genreName | No | Content type | Article Text | Must exist in system |
 | sectionTitle | No | Section name | Articles | Will be created if needed |
 | sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
@@ -167,9 +168,9 @@ myjournal,Jane,Smith,jane@example.com,Research Institute,CA,jsmith,temp456,Reade
 ### Complete Example: Issues CSV
 
 ```csv
-journalPath,locale,articleTitle,authors,articleAbstract,keywords,subjects,articleFilepath,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,sectionTitle,issueTitle,issueVolume,issueNumber,issueYear,datePublished,startPage,endPage
-myjournal,en_US,"Climate Change Impacts","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","This study examines...","climate change;environment","Environmental Science;Ecology",article.pdf,cover.jpg,"Journal Cover 2024","supplement.pdf;data.xlsx","PDF;XLS",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-15,1,15
-myjournal,en_US,"Biodiversity Loss","Alice,Johnson,alice@example.com,Conservation Org","This paper discusses...","biodiversity;conservation","Biology;Environmental Science",article2.pdf,,,"presentation.pptx","SLIDES",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-20,16,30
+journalPath,locale,articleTitle,authors,articleAbstract,keywords,subjects,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,suppFilenames,suppLabels,sectionTitle,issueTitle,issueVolume,issueNumber,issueYear,datePublished,startPage,endPage
+myjournal,en_US,"Climate Change Impacts","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","This study examines...","climate change;environment","Environmental Science;Ecology",cover.jpg,"Journal Cover 2024","article.pdf","PDF","supplement.pdf;data.xlsx","Supplement;Dataset",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-15,1,15
+myjournal,en_US,"Biodiversity Loss","Alice,Johnson,alice@example.com,Conservation Org","This paper discusses...","biodiversity;conservation","Biology;Environmental Science",,,"article2.pdf;presentation.pptx","PDF;SLIDES","supplementary_data.csv","Data",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-20,16,30
 ```
 
 ## File Structure for Import
@@ -182,6 +183,10 @@ import_directory/
 ├── issues.csv
 ├── article.pdf
 ├── article2.pdf
+├── presentation.pptx
+├── supplement.pdf
+├── data.xlsx
+├── supplementary_data.csv
 ├── cover.jpg
 ```
 
