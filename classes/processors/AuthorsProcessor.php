@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/AuthorsProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class AuthorsProcessor
@@ -21,18 +21,8 @@ use APP\publication\Publication;
 
 class AuthorsProcessor
 {
-    /**
-	 * Process data for Submission authors
-	 */
-	public static function process(
-        object $data,
-        string $contactEmail,
-        int $submissionId,
-        Publication $publication,
-        int $userGroupId
-    ): void
+	public static function process(object $data, string $contactEmail, int $submissionId, Publication $publication, int $userGroupId)
     {
-		$authorDao = Repo::author()->dao;
 		$authorsString = array_map('trim', explode(';', $data->authors));
 
         foreach ($authorsString as $index => $authorString) {
@@ -54,21 +44,21 @@ class AuthorsProcessor
 				$emailAddress = $contactEmail;
 			}
 
-			$author = $authorDao->newDataObject();
-			$author->setSubmissionId($submissionId);
-			$author->setUserGroupId($userGroupId);
-			$author->setGivenName($givenName, $data->locale);
-			$author->setFamilyName($familyName, $data->locale);
-			$author->setEmail($emailAddress);
-            $author->setAffiliation($affiliation, $data->locale);
-			$author->setData('publicationId', $publication->getId());
-			$authorDao->insert($author);
+            $author = Repo::author()->newDataObject();
 
-			if (!$index) {
-				$author->setPrimaryContact(true);
-				$authorDao->update($author);
+            $author->setSubmissionId($submissionId);
+            $author->setUserGroupId($userGroupId);
+            $author->setData('givenName', $givenName);
+            $author->setData('familyName', $familyName);
+            $author->setData('email', $emailAddress);
+            $author->setData('affiliation', $affiliation);
+            $author->setData('publicationId', $publication->getId());
 
-                PublicationProcessor::updatePrimaryContactId($publication, $author->getId());
+            $authorId = Repo::author()->add($author);
+
+			if ($index === 0) {
+                Repo::author()->edit($author, ['primaryContact' => true]);
+                PublicationProcessor::updatePrimaryContactId($publication, $authorId);
 			}
 		}
 	}

@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/commands/UserCommand.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class UserCommand
@@ -22,30 +22,26 @@ use APP\plugins\importexport\csv\classes\handlers\WelcomeEmailHandler;
 use APP\plugins\importexport\csv\classes\processors\UserGroupsProcessor;
 use APP\plugins\importexport\csv\classes\processors\UserInterestsProcessor;
 use APP\plugins\importexport\csv\classes\processors\UsersProcessor;
+use APP\plugins\importexport\csv\classes\processors\UserSubscriptionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
-use DirectoryIterator;
 use PKP\security\Validation;
 use PKP\user\User;
 
 class UserCommand
 {
-    // Expected row size for a CSV based on the command passed as argument
+    /** Expected row size for a CSV based on the command passed as argument */
     private int $expectedRowSize;
 
-    // The folder containing all CSV files that the command must go through
+    /** The folder containing all CSV files that the command must go through */
     private string $sourceDir;
 
-    // Processed rows from a single CSV file
     private int $processedRows;
 
-    // Failed rows from a single CSV file
     private int $failedRows;
 
-    // Whether to send welcome email to the user
     private bool $sendWelcomeEmail;
 
-    // The user that is importing the CSV file
     private User $senderEmailUser;
 
     public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail)
@@ -58,22 +54,19 @@ class UserCommand
 
     public function run(): void
     {
-        foreach (new DirectoryIterator($this->sourceDir) as $fileInfo) {
+        foreach (new \DirectoryIterator($this->sourceDir) as $fileInfo) {
             if (!$fileInfo->isFile() || $fileInfo->getExtension() !== 'csv') {
                 continue;
             }
 
             $filePath = $fileInfo->getPathname();
-
             $file = CSVFileHandler::createReadableCSVFile($filePath);
-
             if (is_null($file)) {
                 continue;
             }
 
             $basename = $fileInfo->getBasename();
             $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}", RequiredUserHeaders::$userHeaders);
-
             if (is_null($invalidCsvFile)) {
                 continue;
             }
@@ -89,7 +82,6 @@ class UserCommand
                 ++$this->processedRows;
 
                 $reason = InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
-
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                     continue;
@@ -99,7 +91,6 @@ class UserCommand
                 $data = (object) array_combine(RequiredUserHeaders::$userHeaders, $fieldsList);
 
                 $reason = InvalidRowValidations::validateRowHasAllRequiredFields($data, [RequiredUserHeaders::class, 'validateRowHasAllRequiredFields']);
-
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                     continue;
@@ -128,14 +119,34 @@ class UserCommand
                 }
 
                 $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
-
                 $roles = array_map('trim', explode(';', $data->roles));
 
                 $reason = InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
-
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                     continue;
+                }
+
+                if (!empty($data->subscriptionType) || !empty($data->startDate) || !empty($data->endDate)) {
+					if (!RequiredUserHeaders::validateSubscriptionFields($data)) {
+						$reason = __('plugins.importexport.csv.missingSubscriptionFields', ['email' => $data->email]);
+						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+						continue;
+					}
+
+					$subscriptionType = CachedEntities::getCachedSubscriptionType($data->subscriptionType, $journal->getId());
+
+                    $reason = InvalidRowValidations::validateSubscriptionType($subscriptionType, $data->subscriptionType, $journal->getId());
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
+
+					$reason = InvalidRowValidations::validateSubscriptionDates($data->start_date, $data->end_date);
+					if ($reason) {
+						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+						continue;
+					}
                 }
 
                 if (is_null($data->tempPassword)) {
@@ -144,11 +155,15 @@ class UserCommand
 
                 $user = UsersProcessor::process($data, $journal->getPrimaryLocale());
                 $userId = $user->getId();
-
                 $userInterests = array_map('trim', explode(';', $data->reviewInterests));
                 UserInterestsProcessor::process($userInterests, $userId);
-
                 UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+
+				$dateFormat = 'Y-m-d';
+				$startDate = \DateTime::createFromFormat($dateFormat, $data->startDate);
+				$endDate = \DateTime::createFromFormat($dateFormat, $data->endDate);
+
+				UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
 
                 if ($this->sendWelcomeEmail) {
                     WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);

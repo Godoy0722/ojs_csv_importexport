@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/validations/InvalidRowValidations.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class InvalidRowValidations
@@ -18,6 +18,7 @@ namespace APP\plugins\importexport\csv\classes\validations;
 
 use APP\journal\Journal;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\subscription\SubscriptionType;
 
 class InvalidRowValidations
 {
@@ -106,10 +107,33 @@ class InvalidRowValidations
     }
 
     /**
+     * Perform all necessary validations for supplementary files. Returns the reason if an error occurred,
+     * or null if everything is correct.
+     */
+    public static function validateSupplementaryFiles(string $suppFilenames, string $suppLabels, string $sourceDir): ?string
+    {
+        $suppFilenamesArray = explode(';', $suppFilenames);
+        $suppLabelsArray = explode(';', $suppLabels);
+
+        if (count($suppFilenamesArray) !== count($suppLabelsArray)) {
+            return __('plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles');
+        }
+
+        foreach($suppFilenamesArray as $suppFilename) {
+            $suppPath = "{$sourceDir}/{$suppFilename}";
+            if (!is_readable($suppPath)) {
+                return __('plugins.importexport.csv.invalidSupplementaryFile', ['filename' => $suppFilename]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Validates whether the journal is valid for the CSV row. Returns the reason if an error occurred,
      * or null if everything is correct.
      */
-    public static function validateJournalIsValid(?Journal $journal, string $journalPath): ?string
+    public static function validateJournalIsValid(Journal $journal, string $journalPath): ?string
     {
         return !$journal ? __('plugins.importexport.csv.unknownJournal', ['journalPath' => $journalPath]) : null;
     }
@@ -150,6 +174,10 @@ class InvalidRowValidations
             : null;
     }
 
+    /**
+     * Validates if all user groups are valid. Returns the reason if an error occurred
+     * or null if everything is correct.
+     */
     public static function validateAllUserGroupsAreValid(array $roles, int $journalId, string $locale): ?string
     {
         $userGroups = CachedEntities::getCachedUserGroupsByJournalId($journalId);
@@ -164,6 +192,40 @@ class InvalidRowValidations
 
         return $allDbRoles !== count($roles)
             ? __('plugins.importexport.csv.roleDoesntExist', ['role' => $role])
+            : null;
+    }
+
+    /**
+     * Validates if the subscription dates are valid. Returns the reason if an error occurred
+     * or null if everything is correct.
+     */
+    public static function validateSubscriptionDates(string $startDate, string $endDate, ?string $dateFormat = 'Y-m-d'): ?string
+    {
+        $startDateObj = \DateTime::createFromFormat($dateFormat, $startDate);
+        if (!$startDateObj) {
+            return __('plugins.importexport.csv.invalidStartDate', ['date' => $startDate]);
+        }
+
+        $endDateObj = \DateTime::createFromFormat($dateFormat, $endDate);
+        if (!$endDateObj) {
+            return __('plugins.importexport.csv.invalidEndDate', ['date' => $endDate]);
+        }
+
+        if ($endDateObj <= $startDateObj) {
+            return __('plugins.importexport.csv.endDateBeforeStartDate');
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates if the subscription type is valid. Returns the reason if an error occurred
+     * or null if everything is correct.
+     */
+    public static function validateSubscriptionType(?SubscriptionType $subscriptionType, int $subscriptionTypeId): ?string
+    {
+        return !$subscriptionType
+            ? __('plugins.importexport.csv.subscriptionTypeDoesntExist', ['subscriptionTypeId' => $subscriptionTypeId])
             : null;
     }
 }

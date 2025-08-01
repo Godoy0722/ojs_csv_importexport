@@ -1,14 +1,13 @@
 <?php
 
 /**
- * @file plugins/importexport/csv/CSVImportExportPlugin.php
+ * @file plugins/importexport/csv/CSVImportExportPlugin.inc.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CSVImportExportPlugin
- *
  * @ingroup plugins_importexport_csv
  *
  * @brief CSV import/export plugin
@@ -16,52 +15,52 @@
 
 namespace APP\plugins\importexport\csv;
 
-use APP\core\Application;
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\commands\IssueCommand;
 use APP\plugins\importexport\csv\classes\commands\UserCommand;
+use PKP\config\Config;
 use PKP\plugins\ImportExportPlugin;
 use PKP\user\User;
 
 class CSVImportExportPlugin extends ImportExportPlugin
 {
+    /** @var string Command being used from CLI (supports "issues" or "users") */
+    private string $command = '';
 
-    // Which command is the tool using from CLI. Currently supports "issues" or "users"
-    private string $command;
+    /** @var string Username for authentication */
+    private string $username = '';
 
-    // Username passed as parameter from CLI
-    private string $username;
+    /** @var User|null Authenticated user instance */
+    private ?User $user = null;
 
-    // User registered on system to perform the CLI command
-    private User $user;
+    /** @var string Source directory for import/export */
+    private string $sourceDir = '';
 
-    // The folder containing all CSV files that the command must go through
-    private string $sourceDir;
-
-    // Whether to send welcome email to the user
+    /** @var bool Whether to send welcome email */
     private bool $sendWelcomeEmail = false;
 
-    /**
-     * @copydoc Plugin::register()
-     *
-     * @param null|mixed $mainContextId
-     */
+    /** @copydoc Plugin::register() */
     public function register($category, $path, $mainContextId = null)
     {
         $success = parent::register($category, $path, $mainContextId);
-        if (Application::isUnderMaintenance()) {
+		$isInstalled = !!Config::getVar('general', 'installed');
+		$isUpgrading = defined('RUNNING_UPGRADE');
+
+        if (!$isInstalled || $isUpgrading) {
             return $success;
         }
+
         if ($success && $this->getEnabled()) {
             $this->addLocaleData();
         }
+
         return $success;
     }
 
     /**
      * @copydoc Plugin::getDisplayName()
      */
-    public function getDisplayName(): string
+    public function getDisplayName()
     {
         return __('plugins.importexport.csv.displayName');
     }
@@ -69,7 +68,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /**
      * @copydoc Plugin::getDescription()
      */
-    public function getDescription(): string
+    public function getDescription()
     {
         return __('plugins.importexport.csv.description');
     }
@@ -77,7 +76,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /**
      * @copydoc Plugin::getName()
      */
-    public function getName(): string
+    public function getName()
     {
         return 'CSVImportExportPlugin';
     }
@@ -118,36 +117,30 @@ class CSVImportExportPlugin extends ImportExportPlugin
             exit(1);
         }
 
-        $this->validateUser();
+		$this->validateUser();
 
-        match ($this->command) {
-            'issues' => (new IssueCommand($this->sourceDir, $this->user))->run(),
-            'users' => (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run(),
-            default => throw new \InvalidArgumentException("Comando inválido: {$this->command}"),
-        };
+        switch ($this->command) {
+            case 'issues':
+				(new IssueCommand($this->sourceDir, $this->user))->run();
+                break;
+            case 'users':
+                (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run();
+                break;
+            default:
+                throw new \InvalidArgumentException("Comando inválido: {$this->command}");
+        }
 
-        $endTime = microtime(true);
-        $executionTime = $endTime - $startTime;
-        echo "Executed in: {$executionTime} seconds\n";
+		$endTime = microtime(true);
+		$executionTime = $endTime - $startTime;
+		echo "Executed in: " . number_format($executionTime, 2) . " seconds\n";
     }
 
-    /**
-	 * Retrieve and validate the User by username
-	 */
-	private function validateUser(): void
+	private function validateUser()
     {
-		$this->user = $this->getUser();
+		$this->user = Repo::user()->getByUsername($this->username);
 		if (!$this->user) {
 			echo __('plugins.importexport.csv.unknownUser', ['username' => $this->username]) . "\n";
 			exit(1);
 		}
-	}
-
-    /**
-	 * Retrives an user by username
-	 */
-	private function getUser(): ?User
-    {
-		return Repo::user()->getByUsername($this->username);
 	}
 }

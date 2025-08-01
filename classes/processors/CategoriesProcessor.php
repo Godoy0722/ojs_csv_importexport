@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/CategoriesProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CategoriesProcessor
@@ -21,31 +21,46 @@ use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 
 class CategoriesProcessor
 {
-    /**
-	 * Processes data for Submission categories. If there's no category with the name provided, a new one will be created.
-	 */
-	public static function process(string $categories, string $locale, int $journalId, int $publicationId): void
+    public static function process(string $categories, string $locale, int $journalId, int $publicationId)
     {
+        if (empty(trim($categories))) {
+            return;
+        }
+
         $categoriesArray = explode(';', $categories);
+        $publicationCategories = [];
 
         foreach ($categoriesArray as $categoryPath) {
-            $lowerCategoryPath = mb_strtolower(trim($categoryPath));
-            $category = CachedEntities::getCachedCategory($lowerCategoryPath, $journalId);
+            $categoryPath = trim($categoryPath);
 
-            $categoryDao = Repo::category()->dao;
-
-            if (is_null($category)) {
-                $category = $categoryDao->newDataObject();
-                $category->setContextId($journalId);
-                $category->setTitle($categoryPath, $locale);
-                $category->setParentId(null);
-                $category->setSequence(REALLY_BIG_NUMBER);
-                $category->setPath($lowerCategoryPath);
-
-                $categoryDao->insert($category);
+            if (empty($categoryPath)) {
+                continue;
             }
 
-            $categoryDao->insertPublicationAssignment($category->getId(), $publicationId);
+            $lowerCategoryPath = mb_strtolower($categoryPath);
+            $category = CachedEntities::getCachedCategory($lowerCategoryPath, $journalId);
+
+            if (!is_null($category)) {
+                $categoryId = $category->getId();
+                $publicationCategories[] = $categoryId;
+                continue;
+            }
+
+            $category = Repo::category()->newDataObject();
+
+            $category->setContextId($journalId);
+            $category->setTitle($categoryPath, $locale);
+            $category->setParentId(null);
+            $category->setSequence(REALLY_BIG_NUMBER);
+            $category->setPath($lowerCategoryPath);
+
+            $categoryId = Repo::category()->add($category);
+            $publicationCategories[] = $categoryId;
         }
+
+        if (!empty($publicationCategories)) {
+            Repo::publication()->assignCategoriesToPublication($publicationId, $publicationCategories);
+        }
+
 	}
 }

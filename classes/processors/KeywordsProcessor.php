@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/KeywordsProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class KeywordsProcessor
@@ -16,20 +16,24 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
+use APP\facades\Repo;
 
 class KeywordsProcessor
 {
-    /**
-	 * Processes data for Keywords
-	 */
-	public static function process(object $data, int $publicationId): void
+    public static function process(object $data, int $publicationId)
     {
 		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
 
-		if (count($keywordsList[$data->locale]) > 0) {
-			$submissionKeywordDao = CachedDaos::getSubmissionKeywordDao();
-			$submissionKeywordDao->insertKeywords($keywordsList, $publicationId);
-		}
+        if (empty($keywordsList[$data->locale])) {
+            return;
+        }
+
+        $publication = Repo::publication()->get($publicationId);
+
+        if (!$publication) {
+            return;
+        }
+
+        Repo::publication()->edit($publication, ['keywords' => $keywordsList]);
 	}
 }

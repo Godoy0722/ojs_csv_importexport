@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/validations/RequiredUserHeaders.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class RequiredUserHeaders
@@ -29,6 +29,9 @@ class RequiredUserHeaders
         'tempPassword',
         'roles',
         'reviewInterests',
+        'subscriptionType',
+        'startDate',
+        'endDate'
     ];
 
     static $userRequiredHeaders = [
@@ -39,17 +42,17 @@ class RequiredUserHeaders
         'roles',
     ];
 
-    /**
-     * Validates whether the row contains all headers.
-     */
+    static $subscriptionHeaders = [
+        'subscriptionType',
+        'startDate',
+        'endDate'
+    ];
+
     public static function validateRowHasAllFields(array $row): bool
     {
         return count($row) === count(self::$userHeaders);
     }
 
-    /**
-     * Validates whether the row contains all required headers.
-     */
     public static function validateRowHasAllRequiredFields(object $row): bool
     {
         foreach(self::$userRequiredHeaders as $requiredHeader) {
@@ -59,5 +62,15 @@ class RequiredUserHeaders
         }
 
         return true;
+    }
+
+    public static function validateSubscriptionFields(object $row): bool
+    {
+        $hasSubscriptionType = !empty($row->subscriptionType);
+        $hasStartDate = !empty($row->startDate);
+        $hasEndDate = !empty($row->endDate);
+
+		return (!$hasSubscriptionType && !$hasStartDate && !$hasEndDate)
+			|| ($hasSubscriptionType && $hasStartDate && $hasEndDate);
     }
 }

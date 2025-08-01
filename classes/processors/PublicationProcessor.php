@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/PublicationProcessor.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class PublicationProcessor
@@ -25,96 +25,100 @@ use PKP\core\PKPString;
 class PublicationProcessor
 {
     /**
-     * Processes initial data for Publication
+     * Create a temporary Publication without association with Submission.
+     * This Publication will be used to create the Submission and then updated.
      */
-    public static function process(Submission $submission, object $data, Journal $journal): Publication
+    public static function createInitialPublication(object $data): Publication
     {
-		$publicationDao = Repo::publication()->dao;
-		$sanitizedAbstract = PKPString::stripUnsafeHtml($data->articleAbstract);
-		$locale = $data->locale;
+        $publication = Repo::publication()->newDataObject();
 
-		$publication = $publicationDao->newDataObject();
-        $publication->stampModified();
-		$publication->setData('submissionId', $submission->getId());
-		$publication->setData('version', 1);
-		$publication->setData('status', Submission::STATUS_PUBLISHED);
-		$publication->setData('datePublished', $data->datePublished);
-		$publication->setData('abstract', $sanitizedAbstract, $locale);
-		$publication->setData('title', $data->articleTitle, $locale);
-		$publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $locale), $locale);
-
-        if ($data->articleSubtitle) {
-            $publication->setData('subtitle', $data->articleSubtitle, $locale);
-        }
-
-        if ($data->articlePrefix) {
-            $publication->setData('prefix', $data->articlePrefix, $locale);
-        }
-
-        if ($data->startPage && $data->endPage) {
-            $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
-        }
-
-        $publicationDao->insert($publication);
-
-        SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
+        $publication->setData('version', 1);
+        $publication->setData('status', Submission::STATUS_PUBLISHED);
+        $publication->setData('datePublished', $data->datePublished);
+        $publication->setData('title', $data->articleTitle, $data->locale);
 
         return $publication;
     }
 
-    /**
-     * Updates the primary contact ID for the publication
-     */
-    public static function updatePrimaryContactId(Publication $publication, int $authorId): void
+    /** Update the Publication with all necessary data after the Submission is created. */
+    public static function process(Submission $submission, object $data, Journal $journal): Publication
+    {
+        $publication = Repo::publication()->newDataObject();
+
+        $publication->setData('submissionId', $submission->getId());
+        $publication->setData('version', 1);
+        $publication->setData('status', Submission::STATUS_PUBLISHED);
+        $publication->setData('datePublished', $data->datePublished);
+        $publication->setData('title', $data->articleTitle, $data->locale);
+        $publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $data->locale));
+
+        if (!empty($data->articleAbstract)) {
+            $publication->setData('abstract', PKPString::stripUnsafeHtml($data->articleAbstract), $data->locale);
+        }
+
+        if (!empty($data->articleSubtitle)) {
+            $publication->setData('subtitle', $data->articleSubtitle, $data->locale);
+        }
+
+        if (!empty($data->articlePrefix)) {
+            $publication->setData('prefix', $data->articlePrefix, $data->locale);
+        }
+
+        if (!empty($data->startPage) && !empty($data->endPage)) {
+            $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
+        }
+
+        $publication->stampModified();
+
+        $publicationId = Repo::publication()->add($publication);
+        $publication = Repo::publication()->get($publicationId);
+
+        SubmissionProcessor::updateCurrentPublicationId($submission, $publicationId);
+
+        return $publication;
+    }
+
+    public static function updatePrimaryContactId(Publication $publication, int $authorId)
     {
         self::updatePublicationAttribute($publication, 'primaryContactId', $authorId);
     }
 
-    /**
-     * Updates the coverage for the publication
-     */
-    public static function updateCoverage(Publication $publication, string $coverage, string $locale): void
+    public static function updateCoverage(Publication $publication, string $coverage, string $locale)
     {
         self::updatePublicationAttribute($publication, 'coverage', $coverage, $locale);
     }
 
-    /**
-     * Updates the cover image for the publication
-     */
-    public static function updateCoverImage(Publication $publication, object $data, string $uploadName): void
+    public static function updateCoverImage(Publication $publication, object $data, string $uploadName)
     {
-        $coverImage = [];
+        $coverImage = [
+            'dateUploaded' => date('Y-m-d H:i:s'),
+            'uploadName' => $uploadName,
+            'altText' => $data->coverImageAltText ?? '',
+        ];
 
-		$coverImage['uploadName'] = $uploadName;
-		$coverImage['altText'] = $data->coverImageAltText ?? '';
+        $localeData = [$data->locale => [
+            'coverImage' => $coverImage
+        ]];
 
-        self::updatePublicationAttribute($publication, 'coverImage', [$data->locale => $coverImage]);
+        Repo::publication()->edit($publication, $localeData);
     }
 
-    /**
-     * Updates the issue ID for the publication
-     */
-    public static function updateIssueId(Publication $publication, int $issueId): void
+    public static function updateIssueId(Publication $publication, int $issueId)
     {
         self::updatePublicationAttribute($publication, 'issueId', $issueId);
     }
 
-    /**
-     * Updates the section ID for the publication
-     */
-    public static function updateSectionId(Publication $publication, int $sectionId): void
+    public static function updateSectionId(Publication $publication, int $sectionId)
     {
         self::updatePublicationAttribute($publication, 'sectionId', $sectionId);
     }
 
-    /**
-     * Updates a specific attribute of the publication
-     */
-    static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data, ?string $locale = null): void
+    static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data, ?string $locale = null)
     {
-        $publication->setData($attribute, $data, $locale);
+        $updateData = is_null($locale)
+            ? [$attribute => $data]
+            : [$locale => [$attribute => $data]];
 
-        $publicationDao = Repo::publication()->dao;
-        $publicationDao->update($publication);
+        Repo::publication()->edit($publication, $updateData);
     }
 }

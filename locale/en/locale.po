@@ -71,6 +71,12 @@ msgstr "Invalid galley file \"{$filename}\" for this submission."
 msgid "plugins.importexport.csv.invalidNumberOfLabelsAndGalleys"
 msgstr "Galley files don't have the same amount as the labels. Please verify it for this row."
 
+msgid "plugins.importexport.csv.invalidSupplementaryFile"
+msgstr "Invalid supplementary file \"{$filename}\" for this submission."
+
+msgid "plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles"
+msgstr "Supplementary files don't have the same amount as the labels. Please verify it for this row."
+
 msgid "plugins.importexport.csv.noAuthorGroup"
 msgstr "There is no default author group in the journal {$journal}."
 
@@ -89,8 +95,17 @@ msgstr "There is no {$genreName} genre."
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionFile"
 msgstr "An error occurred while saving the Submission file."
 
+msgid "plugins.importexport.csv.errorWhileSavingSupplementaryFile"
+msgstr "An error occurred while saving the supplementary file {$file}."
+
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
 msgstr "An error occurred while saving the galley {$galley}."
+
+msgid "plugins.importexport.csv.abstractRequiredBySection"
+msgstr "Abstract is required for this section but not provided."
+
+msgid "plugins.importexport.csv.atLeastOneIssueFieldRequired"
+msgstr "At least one issue field (issueTitle, issueVolume, issueNumber, or issueYear) must be provided."
 
 msgid "plugins.importexport.csv.userAlreadyExistsWithEmail"
 msgstr "User already exists with email \"{$email}\"."
@@ -100,3 +115,18 @@ msgstr "User already exists with username \"{$username}\"."
 
 msgid "plugins.importexport.csv.roleDoesntExist"
 msgstr "Role \"{$role}\" doesn't exist."
+
+msgid "plugins.importexport.csv.invalidStartDate"
+msgstr "The subscription start date \"{$date}\" is not valid. Format required: YYYY-MM-DD."
+
+msgid "plugins.importexport.csv.invalidEndDate"
+msgstr "The subscription end date \"{$date}\" is not valid. Format required: YYYY-MM-DD."
+
+msgid "plugins.importexport.csv.endDateBeforeStartDate"
+msgstr "The subscription end date must be later than the start date."
+
+msgid "plugins.importexport.csv.missingSubscriptionFields"
+msgstr "Missing required subscription fields (start_date and end_date) for user \"{$email}\"."
+
+msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
+msgstr "Invalid subscripion type with ID \"{$subscriptionTypeId}\""

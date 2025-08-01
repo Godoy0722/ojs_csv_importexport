@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/handlers/WelcomeEmailHandler.php
  *
- * Copyright (c) 2014-2024 Simon Fraser University
- * Copyright (c) 2003-2024 John Willinsky
+ * Copyright (c) 2025 Simon Fraser University
+ * Copyright (c) 2025 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class WelcomeEmailHandler
@@ -16,24 +16,20 @@
 
 namespace APP\plugins\importexport\csv\classes\handlers;
 
-use APP\facades\Repo;
 use APP\journal\Journal;
+use APP\notification\Notification;
 use APP\notification\NotificationManager;
 use Illuminate\Support\Facades\Mail;
+use PKP\facades\Repo;
 use PKP\mail\mailables\UserCreated;
-use PKP\notification\PKPNotification;
 use PKP\user\User;
 use Symfony\Component\Mailer\Exception\TransportException;
 
 class WelcomeEmailHandler
 {
 
-    /**
-     * Send welcome email to user
-     */
     public static function sendWelcomeEmail(Journal $context, User $recipient, User $sender, string $password)
     {
-        // Send welcome email to user
         $mailable = new UserCreated($context, $password);
         $mailable->recipients($recipient);
         $mailable->sender($sender);
@@ -48,7 +44,7 @@ class WelcomeEmailHandler
             $notificationMgr = new NotificationManager();
             $notificationMgr->createTrivialNotification(
                 $sender->getId(),
-                PKPNotification::NOTIFICATION_TYPE_ERROR,
+                Notification::NOTIFICATION_TYPE_ERROR,
                 ['contents' => __('email.compose.error')]
             );
             error_log($e->getMessage());
