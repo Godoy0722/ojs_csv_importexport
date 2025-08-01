@@ -69,11 +69,14 @@ class IssueCommand
 
     private string $format;
 
+    private array $processedIssues;
+
     public function __construct(string $sourceDir, User $user)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->sourceDir = $sourceDir;
         $this->user = $user;
+        $this->processedIssues = [];
     }
 
     public function run()
@@ -311,6 +314,16 @@ class IssueCommand
 
                 $issue = IssueProcessor::process($journal->getId(), $data);
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
+
+                $issueKey = $journal->getId() . '_' . $issue->getId();
+                if (!isset($this->_processedIssues[$issueKey])) {
+                    $this->processedIssues[$issueKey] = [
+                        'issue' => $issue,
+                        'journalId' => $journal->getId(),
+                        'data' => $data
+                    ];
+                }
+
                 $section = SectionsProcessor::process($data, $journal->getId());
                 PublicationProcessor::updateSectionId($publication, $section->getId());
             }
@@ -325,6 +338,8 @@ class IssueCommand
                 unlink($this->sourceDir . '/' . "invalid_{$basename}");
             }
         }
+
+        IssueProcessor::reorderImportedIssues($this->processedIssues);
     }
 
     /** Insert static data that will be used for the submission processing */
