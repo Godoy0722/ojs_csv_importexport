@@ -19,6 +19,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 use APP\facades\Repo;
 use APP\issue\Issue;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use Illuminate\Support\Facades\DB;
 use PKP\core\Core;
 use PKP\core\PKPString;
 
@@ -156,7 +157,7 @@ class IssueProcessor
         });
 
         // Apply custom ordering
-        $sequence = 1;
+        $sequence = self::getCurrentMaxSequence($journalId) + 1;
         foreach ($issues as $issueData) {
             $issue = $issueData['issue'];
             $issueDao->moveCustomIssueOrder($journalId, $issue->getId(), $sequence);
@@ -205,5 +206,17 @@ class IssueProcessor
         }
 
         return null;
+    }
+
+    /**
+     * Get the current maximum sequence value for a journal's custom issue orders
+     */
+    public static function getCurrentMaxSequence(int $journalId): int
+    {
+        $maxSequence = DB::table('custom_issue_orders')
+            ->where('journal_id', '=', $journalId)
+            ->max('seq');
+
+        return $maxSequence ? (int)$maxSequence : 0;
     }
 }
