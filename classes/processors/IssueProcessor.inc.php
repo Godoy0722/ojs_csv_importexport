@@ -169,7 +169,7 @@ class IssueProcessor
         });
 
         // Apply custom ordering
-        $sequence = 1;
+		$sequence = self::getCurrentMaxSequence($journalId) + 1;
         foreach ($issues as $issueData) {
             $issue = $issueData['issue'];
             $issueDao->moveCustomIssueOrder($journalId, $issue->getId(), $sequence);
@@ -218,5 +218,20 @@ class IssueProcessor
         }
 
         return null;
+    }
+
+	/**
+     * Get the current maximum sequence value for a journal's custom issue orders
+     */
+    public static function getCurrentMaxSequence(int $journalId): int
+    {
+        $issueDao = CachedDaos::getIssueDao();
+        $result = $issueDao->retrieve(
+            'SELECT MAX(seq) AS max_seq FROM custom_issue_orders WHERE journal_id = ?',
+            [(int) $journalId]
+        );
+
+        $row = $result->current();
+        return ($row && $row->max_seq) ? (int) $row->max_seq : 0;
     }
 }
