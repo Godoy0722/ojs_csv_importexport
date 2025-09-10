@@ -73,6 +73,8 @@ class PublicationProcessor
         $publicationId = Repo::publication()->add($publication);
         $publication = Repo::publication()->get($publicationId);
 
+        self::setCopyrightFromSystem($submission, $publication, $data);
+
         SubmissionProcessor::updateCurrentPublicationId($submission, $publicationId);
 
         return $publication;
@@ -120,5 +122,34 @@ class PublicationProcessor
             : [$locale => [$attribute => $data]];
 
         Repo::publication()->edit($publication, $updateData);
+    }
+
+    private static function setCopyrightFromSystem(
+        Submission $submission,
+        Publication &$publication,
+        object $data
+    ): void
+    {
+        $copyrightHolder = $data->copyrightHolder ?? $submission->_getContextLicenseFieldValue(
+            null,
+            Submission::PERMISSIONS_FIELD_COPYRIGHT_HOLDER,
+            $publication
+        );
+
+        self::updatePublicationAttribute($publication, 'copyrightHolder', $copyrightHolder);
+
+        $copyrightYear = $data->copyrightYear ?? $submission->_getContextLicenseFieldValue(
+            null,
+            Submission::PERMISSIONS_FIELD_COPYRIGHT_YEAR,
+            $publication
+        );
+        self::updatePublicationAttribute($publication, 'copyrightYear', $copyrightYear);
+
+        $licenseUrl =  $data->licenseUrl ?? $submission->_getContextLicenseFieldValue(
+            null,
+            Submission::PERMISSIONS_FIELD_LICENSE_URL,
+            $publication
+        );
+        self::updatePublicationAttribute($publication, 'licenseUrl', $licenseUrl);
     }
 }
