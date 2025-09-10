@@ -47,6 +47,9 @@ class RequiredIssueHeaders
         'datePublished',
         'startPage',
         'endPage',
+        'copyrightYear',
+		'copyrightHolder',
+		'licenseUrl',
     ];
 
     static $issueRequiredHeaders = [
