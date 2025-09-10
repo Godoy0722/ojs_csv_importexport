@@ -60,6 +60,9 @@ class PublicationProcessor
 
         $publicationDao->insertObject($publication);
 
+		self::setCopyrightFromSystem($submission, $publication, $data);
+		$publicationDao->updateObject($publication);
+
         SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
 
         return $publication;
@@ -153,5 +156,39 @@ class PublicationProcessor
 
         $publicationDao = CachedDaos::getPublicationDao();
         $publicationDao->updateObject($publication);
+    }
+
+	/**
+	 * Set copyright data for the publication
+	 *
+	 * @param \Submission $submission
+	 * @param \Publication $publication
+	 * @param object $data
+	 *
+	 * @return void
+	 *
+	 */
+	private static function setCopyrightFromSystem($submission, &$publication, $data): void
+    {
+        $copyrightHolder = $data->copyrightHolder ?? $submission->_getContextLicenseFieldValue(
+            null,
+            PERMISSIONS_FIELD_COPYRIGHT_HOLDER,
+            $publication
+        );
+        $publication->setData('copyrightHolder', $copyrightHolder);
+
+        $copyrightYear = $data->copyrightYear ?? $submission->_getContextLicenseFieldValue(
+            null,
+            PERMISSIONS_FIELD_COPYRIGHT_YEAR,
+            $publication
+        );
+        $publication->setData('copyrightYear', $copyrightYear);
+
+        $licenseUrl =  $data->licenseUrl ?? $submission->_getContextLicenseFieldValue(
+            null,
+            PERMISSIONS_FIELD_LICENSE_URL,
+            $publication
+        );
+        $publication->setData('licenseUrl', $licenseUrl);
     }
 }
