@@ -334,12 +334,12 @@ class IssueCommand
                 $section = SectionsProcessor::process($data, $journal->getId());
                 PublicationProcessor::updateSectionId($publication, $section->getId());
 
+                $issue = IssueProcessor::process($journal->getId(), $data);
+                PublicationProcessor::updateIssueId($publication, $issue->getId());
+
                 if ($data->coverImageFilename) {
                     PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
                 }
-
-                $issue = IssueProcessor::process($journal->getId(), $data);
-                PublicationProcessor::updateIssueId($publication, $issue->getId());
 
                 if ($data->categories) {
                     CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
