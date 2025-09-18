@@ -197,7 +197,7 @@ class CachedEntities
     /** Retrieves a cached Section by sectionTitle, sectionAbbrev, and journalId. Returns null if an error occurs. */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, string $locale, int $journalId): ?Section
     {
-        $customSectionKey = "{$sectionTitle}_{$sectionAbbrev}";
+        $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
 
         if (isset(self::$sections[$customSectionKey])) {
             return self::$sections[$customSectionKey];

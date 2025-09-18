@@ -26,21 +26,18 @@ class UsersProcessor
 {
 	public static function process(object $data, string $locale): User
     {
-        $userData = [
-            $locale => [
-                'givenName' => $data->firstname,
-                'familyName' => $data->lastname,
-                'affiliation' => $data->affiliation
-            ],
-            'email' => $data->email,
-            'country' => $data->country,
-            'username' => $data->username,
-            'password' => Validation::encryptCredentials($data->username, $data->tempPassword),
-            'mustChangePassword' => true,
-            'dateRegistered' => Core::getCurrentDate()
-        ];
+        $user = Repo::user()->newDataObject();
 
-        $user = Repo::user()->newDataObject($userData);
+        $user->setGivenName($data->firstname, $locale);
+        $user->setFamilyName($data->lastname, $locale);
+        $user->setAffiliation($data->affiliation, $locale);
+        $user->setEmail($data->email);
+        $user->setCountry($data->country);
+        $user->setUsername($data->username);
+        $user->setPassword(Validation::encryptCredentials($data->username, $data->tempPassword));
+        $user->setMustChangePassword(true);
+        $user->setDateRegistered(Core::getCurrentDate());
+
         $userId = Repo::user()->add($user);
 
         return Repo::user()->get($userId);

@@ -22,15 +22,14 @@ class GalleyProcessor
 {
     public static function process(int $submissionFileId, object $data, string $label, int $publicationId, string $extension): int
     {
-        $galley = Repo::galley()->newDataObject([
-            'submissionFileId' => $submissionFileId,
-            'publicationId' => $publicationId,
-            'label' => $label,
-            'locale' => $data->locale,
-            'isApproved' => true,
-            'seq' => REALLY_BIG_NUMBER,
-        ]);
+        $galley = Repo::galley()->newDataObject();
 
+        $galley->setLabel($label);
+        $galley->setLocale($data->locale);
+        $galley->setSequence(REALLY_BIG_NUMBER);
+        $galley->setIsApproved(true);
+        $galley->setData('submissionFileId', $submissionFileId);
+        $galley->setData('publicationId', $publicationId);
         $galley->setName(mb_strtoupper($extension), $data->locale);
 
         if (!empty($data->doi)) {

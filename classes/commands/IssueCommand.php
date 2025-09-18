@@ -182,7 +182,7 @@ class IssueCommand
                 }
 
                 // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
-                $genreName = mb_strtoupper($data->genreName ?? 'SUBMISSION');
+                $genreName = 'SUBMISSION';
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
 
                 $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
@@ -331,6 +331,12 @@ class IssueCommand
                     PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
                 }
 
+                $section = SectionsProcessor::process($data, $journal->getId());
+                PublicationProcessor::updateSectionId($publication, $section->getId());
+
+                $issue = IssueProcessor::process($journal->getId(), $data);
+                PublicationProcessor::updateIssueId($publication, $issue->getId());
+
                 if ($data->coverImageFilename) {
                     PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
                 }
@@ -338,9 +344,6 @@ class IssueCommand
                 if ($data->categories) {
                     CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
                 }
-
-                $issue = IssueProcessor::process($journal->getId(), $data);
-                PublicationProcessor::updateIssueId($publication, $issue->getId());
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
                 if (!isset($this->processedIssues[$issueKey])) {
@@ -350,9 +353,6 @@ class IssueCommand
                         'data' => $data
                     ];
                 }
-
-                $section = SectionsProcessor::process($data, $journal->getId());
-                PublicationProcessor::updateSectionId($publication, $section->getId());
             }
 
             echo __('plugins.importexpot.csv.fileProcessFinished', [

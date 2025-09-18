@@ -25,27 +25,19 @@ class SubmissionProcessor
 {
     public static function process(object $data, Publication $publication, Context $journal): Submission
     {
-        $submissionData = [
-            'contextId' => $journal->getId(),
-            'status' => Submission::STATUS_PUBLISHED,
-            'locale' => $data->locale,
-            'stageId' => WORKFLOW_STAGE_ID_PRODUCTION,
-            'submissionProgress' => '0',
-            $data->locale => [
-                'abstract' => $data->articleAbstract
-            ]
-        ];
+        $submission = Repo::submission()->newDataObject();
 
-        $submission = Repo::submission()->newDataObject($submissionData);
+        $submission->setData('contextId', $journal->getId());
+        $submission->setData('status', Submission::STATUS_PUBLISHED);
+        $submission->setData('locale', $data->locale);
+        $submission->setData('stageId', WORKFLOW_STAGE_ID_PRODUCTION);
+        $submission->setData('submissionProgress', '0');
+        $submission->setData('abstract', $data->articleAbstract, $data->locale);
+
         $submission->stampLastActivity();
         $submission->stampModified();
 
         $submissionId = Repo::submission()->add($submission, $publication, $journal);
         return Repo::submission()->get($submissionId);
-    }
-
-    public static function updateCurrentPublicationId(Submission $submission, int $publicationId)
-    {
-        Repo::submission()->edit($submission, ['currentPublicationId' => $publicationId]);
     }
 }

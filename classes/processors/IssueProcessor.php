@@ -36,25 +36,37 @@ class IssueProcessor
         if (is_null($issue)) {
             $sanitizedIssueDescription = PKPString::stripUnsafeHtml($data->issueDescription ?? '');
 
-            $issueData = [
-                'journalId' => $journalId,
-                'volume' => $data->issueVolume ?? null,
-                'number' => $data->issueNumber ?? null,
-                'year' => $data->issueYear ?? null,
-                'showVolume' => !empty($data->issueVolume),
-                'showNumber' => !empty($data->issueNumber),
-                'showYear' => !empty($data->issueYear),
-                'showTitle' => 1,
-                'published' => true,
-                'datePublished' => Core::getCurrentDate(),
-                'title' => $data->issueTitle ?? '',
-                'description' => $sanitizedIssueDescription,
-                'accessStatus' => Issue::ISSUE_ACCESS_OPEN,
-                'locale' => $data->locale,
-                'lastModified' => Core::getCurrentDate(),
-            ];
+            $issue = Repo::issue()->newDataObject();
 
-            $issue = Repo::issue()->newDataObject($issueData);
+            $issue->setJournalId($journalId);
+
+            $issue->setShowVolume(!empty($data->issueVolume));
+            $issue->setShowNumber(!empty($data->issueNumber));
+            $issue->setShowYear(!empty($data->issueYear));
+            $issue->setShowTitle(!empty($data->issueTitles));
+            $issue->setPublished(true);
+            $issue->setDatePublished(Core::getCurrentDate());
+            $issue->setDescription($sanitizedIssueDescription, $data->locale);
+            $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
+            $issue->setData('locale', $data->locale);
+            $issue->stampModified();
+
+            if (!empty($data->issueVolume)) {
+                $issue->setVolume($data->issueVolume);
+            }
+
+            if (!empty($data->issueNumber)) {
+                $issue->setNumber($data->issueNumber);
+            }
+
+            if (!empty($data->issueYear)) {
+                $issue->setYear($data->issueYear);
+            }
+
+            if (!empty($data->issueTitle)) {
+                $issue->setTitle($data->issueTitle, $data->locale);
+            }
+
             $issueId = Repo::issue()->add($issue);
             $issue = Repo::issue()->get($issueId);
         }

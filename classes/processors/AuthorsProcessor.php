@@ -44,15 +44,15 @@ class AuthorsProcessor
 				$emailAddress = $contactEmail;
 			}
 
-            $author = Repo::author()->newDataObject([
-                'submissionId' => $submissionId,
-                'userGroupId' => $userGroupId,
-                'givenName' => $givenName,
-                'familyName' => $familyName,
-                'email' => $emailAddress,
-                'affiliation' => $affiliation,
-                'publicationId' => $publication->getId(),
-            ]);
+            $author = Repo::author()->newDataObject();
+
+            $author->setSubmissionId($submissionId);
+            $author->setUserGroupId($userGroupId);
+            $author->setGivenName($givenName, $data->locale);
+            $author->setFamilyName($familyName, $data->locale);
+            $author->setEmail($emailAddress);
+            $author->setData('publicationId', $publication->getId());
+            $author->setAffiliation($affiliation, $data->locale);
 
             $authorId = Repo::author()->add($author);
 

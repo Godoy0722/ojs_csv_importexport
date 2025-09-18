@@ -16,6 +16,7 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
+use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\subscription\Subscription;
 
@@ -52,7 +53,7 @@ class UserSubscriptionProcessor
 			$subscription->setDateEnd($endDate->format('Y-m-d'));
 			$subscription->setStatus(Subscription::SUBSCRIPTION_STATUS_ACTIVE);
 
-			$individualSubscriptionDao->update($subscription);
+			$individualSubscriptionDao->updateObject($subscription);
 		}
 	}
 }

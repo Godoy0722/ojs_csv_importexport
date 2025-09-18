@@ -30,27 +30,29 @@ class SectionsProcessor
 			return $section;
 		}
 
-        $sectionData = [
-            'contextId' => $journalId,
-            'sequence' => REALLY_BIG_NUMBER,
-            'editorRestricted' => false,
-            'metaIndexed' => true,
-            'metaReviewed' => true,
-            'abstractsNotRequired' => false,
-            'hideTitle' => false,
-            'hideAuthor' => false,
-            'isInactive' => false,
-            $data->locale => [
-                'title' => $data->sectionTitle,
-                'abbrev' => mb_strtoupper(trim($data->sectionAbbrev)),
-                'identifyType' => '',
-                'policy' => '',
-            ]
-        ];
+        $section = Repo::section()->newDataObject();
 
-        $section = Repo::section()->newDataObject($sectionData);
+        $section->setContextId($journalId);
+        $section->setSequence(REALLY_BIG_NUMBER);
+        $section->setEditorRestricted(false);
+        $section->setMetaIndexed(true);
+        $section->setMetaReviewed(true);
+        $section->setAbstractsNotRequired(false);
+        $section->setAbstractWordCount(REALLY_BIG_NUMBER);
+        $section->setHideTitle(false);
+        $section->setHideAuthor(false);
+        $section->setIsInactive(false);
+        $section->setTitle($data->sectionTitle, $data->locale);
+        $section->setAbbrev(mb_strtoupper(trim($data->sectionAbbrev)), $data->locale);
+        $section->setIdentifyType('', $data->locale);
+        $section->setPolicy('', $data->locale);
+
         $sectionId = Repo::section()->add($section);
 
-        return Repo::section()->get($sectionId, $journalId);
+        $createdSection = Repo::section()->get($sectionId, $journalId);
+        $customSectionKey = $data->sectionTitle . '_' . mb_strtoupper(trim($data->sectionAbbrev));
+        CachedEntities::$sections[$customSectionKey] = $createdSection;
+
+        return $createdSection;
 	}
 }
