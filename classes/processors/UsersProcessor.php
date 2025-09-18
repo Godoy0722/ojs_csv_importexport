@@ -32,7 +32,7 @@ class UsersProcessor
         $user->setAffiliation($data->affiliation, $locale);
         $user->setEmail($data->email);
         $user->setCountry($data->country);
-        $user->setUsername($data->username ?? self::getValidUsername($data->firstname, $data->lastname));
+        $user->setUsername($data->username);
         $user->setPassword(Validation::encryptCredentials($data->username, $data->tempPassword));
         $user->setMustChangePassword(true);
         $user->setDateRegistered(Core::getCurrentDate());

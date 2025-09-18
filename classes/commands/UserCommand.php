@@ -118,7 +118,10 @@ class UserCommand
                     }
                 }
 
-                $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                if (empty($data->username)) {
+                    $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                }
+
                 $roles = array_map('trim', explode(';', $data->roles));
 
                 $reason = InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
@@ -159,11 +162,13 @@ class UserCommand
                 UserInterestsProcessor::process($userInterests, $userId);
                 UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
 
-				$dateFormat = 'Y-m-d';
-				$startDate = \DateTime::createFromFormat($dateFormat, $data->startDate);
-				$endDate = \DateTime::createFromFormat($dateFormat, $data->endDate);
+                if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
+                    $dateFormat = 'Y-m-d';
+                    $startDate = \DateTime::createFromFormat($dateFormat, $data->startDate);
+                    $endDate = \DateTime::createFromFormat($dateFormat, $data->endDate);
 
-				UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
+                    UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
+                }
 
                 if ($this->sendWelcomeEmail) {
                     WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
