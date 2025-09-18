@@ -55,6 +55,8 @@ class CategoriesProcessor
             $category->setPath($lowerCategoryPath);
 
             $categoryId = Repo::category()->add($category);
+            CachedEntities::$categories[$lowerCategoryPath] = Repo::category()->get($categoryId);
+
             $publicationCategories[] = $categoryId;
         }
 

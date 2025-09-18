@@ -78,7 +78,7 @@ class CachedEntities
         }
 
         $userGroup = $userGroups->first();
-        return self::$userGroupIds[$journalPath] = $userGroup->getId();
+        return self::$userGroupIds[$journalPath] = isset($userGroup?->id) ? $userGroup->id : null;
     }
 
 	/** Retrieves a cached User by email. Returns null if an error occurs. */
@@ -108,7 +108,7 @@ class CachedEntities
         $userGroupsCollection = UserGroup::withContextIds([$journalId])->get();
 
         foreach ($userGroupsCollection as $userGroup) {
-            $userGroups[$userGroup->getId()] = $userGroup;
+            $userGroups[$userGroup->id] = $userGroup;
         }
 
         return self::$userGroups[$journalId] = $userGroups;
@@ -120,7 +120,7 @@ class CachedEntities
         $userGroups = self::getCachedUserGroupsByJournalId($journalId);
 
         foreach ($userGroups as $userGroup) {
-            if (mb_strtolower($userGroup->getName($locale)) === mb_strtolower($name)) {
+            if (mb_strtolower($userGroup->name[$locale]) === mb_strtolower($name)) {
                 return $userGroup;
             }
         }
@@ -195,7 +195,7 @@ class CachedEntities
     /** Retrieves a cached Section by sectionTitle, sectionAbbrev, and journalId. Returns null if an error occurs. */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, string $locale, int $journalId): ?Section
     {
-        $customSectionKey = "{$sectionTitle}_{$sectionAbbrev}";
+        $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
 
         if (isset(self::$sections[$customSectionKey])) {
             return self::$sections[$customSectionKey];

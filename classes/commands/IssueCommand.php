@@ -139,11 +139,6 @@ class IssueCommand
                     continue;
                 }
 
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
                 if ($data->galleyFilenames) {
                     $reason = InvalidRowValidations::validateArticleGalleys(
                         $data->galleyFilenames,
@@ -186,8 +181,7 @@ class IssueCommand
 
                 $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journal->getId());
 
-                // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
-                $genreName = mb_strtoupper($data->genreName ?? 'SUBMISSION');
+                $genreName = 'SUBMISSION';
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
 
                 $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
@@ -206,6 +200,7 @@ class IssueCommand
 
                 $this->initializeStaticVariables();
 
+                $coverImageUploadName = null;
                 if ($data->coverImageFilename) {
                     $reason = InvalidRowValidations::validateCoverImageIsValid($data->coverImageFilename, $this->sourceDir);
                     if (!is_null($reason)) {
@@ -336,16 +331,19 @@ class IssueCommand
                     PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
                 }
 
+                $section = SectionsProcessor::process($data, $journal->getId());
+                PublicationProcessor::updateSectionId($publication, $section->getId());
+
                 if ($data->coverImageFilename) {
                     PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
                 }
 
+                $issue = IssueProcessor::process($journal->getId(), $data);
+                PublicationProcessor::updateIssueId($publication, $issue->getId());
+
                 if ($data->categories) {
                     CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
                 }
-
-                $issue = IssueProcessor::process($journal->getId(), $data);
-                PublicationProcessor::updateIssueId($publication, $issue->getId());
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
                 if (!isset($this->processedIssues[$issueKey])) {
@@ -355,9 +353,6 @@ class IssueCommand
                         'data' => $data
                     ];
                 }
-
-                $section = SectionsProcessor::process($data, $journal->getId());
-                PublicationProcessor::updateSectionId($publication, $section->getId());
             }
 
             echo __('plugins.importexpot.csv.fileProcessFinished', [
@@ -434,7 +429,6 @@ class IssueCommand
             $item['id'],
         );
 
-        // Now that we have the submission file ID, it's time to process the galley itself.
         $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $label, $publicationId, $galleyExtension);
         SubmissionFileProcessor::updateAssocInfo($submissionFile, $galleyId);
     }

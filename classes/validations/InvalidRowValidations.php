@@ -185,7 +185,7 @@ class InvalidRowValidations
         $allDbRoles = 0;
         foreach ($roles as $role) {
             $matchingGroups = array_filter($userGroups, function($userGroup) use ($role, $locale) {
-                return mb_strtolower($userGroup->getName($locale)) === mb_strtolower($role);
+                return mb_strtolower($userGroup->name[$locale]) === mb_strtolower($role);
             });
             $allDbRoles += count($matchingGroups);
         }

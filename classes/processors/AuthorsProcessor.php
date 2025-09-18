@@ -48,11 +48,17 @@ class AuthorsProcessor
 
             $author->setSubmissionId($submissionId);
             $author->setUserGroupId($userGroupId);
-            $author->setData('givenName', $givenName);
-            $author->setData('familyName', $familyName);
-            $author->setData('email', $emailAddress);
-            $author->setData('affiliation', $affiliation);
+            $author->setGivenName($givenName, $data->locale);
+            $author->setFamilyName($familyName, $data->locale);
+            $author->setEmail($emailAddress);
             $author->setData('publicationId', $publication->getId());
+
+            if ($affiliation) {
+                $affiliationEntity = Repo::affiliation()->newDataObject();
+                $affiliationEntity->setName((string) $affiliation, $data->locale);
+
+                $author->addAffiliation($affiliationEntity);
+            }
 
             $authorId = Repo::author()->add($author);
 

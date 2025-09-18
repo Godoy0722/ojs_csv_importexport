@@ -39,20 +39,33 @@ class IssueProcessor
             $issue = Repo::issue()->newDataObject();
 
             $issue->setJournalId($journalId);
-            $issue->setVolume($data->issueVolume ?? null);
-            $issue->setNumber($data->issueNumber ?? null);
-            $issue->setYear($data->issueYear ?? null);
+
             $issue->setShowVolume(!empty($data->issueVolume));
             $issue->setShowNumber(!empty($data->issueNumber));
             $issue->setShowYear(!empty($data->issueYear));
-            $issue->setShowTitle(true);
+            $issue->setShowTitle(!empty($data->issueTitles));
             $issue->setPublished(true);
             $issue->setDatePublished(Core::getCurrentDate());
-            $issue->setTitle($data->issueTitle ?? '', $data->locale);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
             $issue->setData('locale', $data->locale);
             $issue->stampModified();
+
+            if (!empty($data->issueVolume)) {
+                $issue->setVolume($data->issueVolume);
+            }
+
+            if (!empty($data->issueNumber)) {
+                $issue->setNumber($data->issueNumber);
+            }
+
+            if (!empty($data->issueYear)) {
+                $issue->setYear($data->issueYear);
+            }
+
+            if (!empty($data->issueTitle)) {
+                $issue->setTitle($data->issueTitle, $data->locale);
+            }
 
             $issueId = Repo::issue()->add($issue);
             $issue = Repo::issue()->get($issueId);

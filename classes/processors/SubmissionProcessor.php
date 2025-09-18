@@ -34,15 +34,7 @@ class SubmissionProcessor
         $submission->setData('submissionProgress', '0');
         $submission->setData('abstract', $data->articleAbstract, $data->locale);
 
-        $submission->stampLastActivity();
-        $submission->stampModified();
-
         $submissionId = Repo::submission()->add($submission, $publication, $journal);
         return Repo::submission()->get($submissionId);
-    }
-
-    public static function updateCurrentPublicationId(Submission $submission, int $publicationId)
-    {
-        Repo::submission()->edit($submission, ['currentPublicationId' => $publicationId]);
     }
 }

@@ -26,7 +26,7 @@ class UserGroupsProcessor
         foreach ($roles as $role) {
             $userGroup = CachedEntities::getCachedUserGroupByName($role, $journalId, $locale);
             if ($userGroup) {
-                Repo::userGroup()->assignUserToGroup($userId, $userGroup->getId());
+                Repo::userGroup()->assignUserToGroup($userId, $userGroup->id);
             }
         }
 	}
