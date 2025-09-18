@@ -47,6 +47,7 @@ class SectionsProcessor
 		$section->setMetaIndexed(true);
 		$section->setMetaReviewed(true);
 		$section->setAbstractsNotRequired(false);
+		$section->setAbstractWordCount(REALLY_BIG_NUMBER);
 		$section->setHideTitle(false);
 		$section->setHideAuthor(false);
 		$section->setIsInactive(false);

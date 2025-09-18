@@ -41,21 +41,34 @@ class IssueProcessor
 			/** @var \Issue $issue */
             $issue = $issueDao->newDataObject();
             $issue->setJournalId($journalId);
-            $issue->setVolume($data->issueVolume);
-            $issue->setNumber($data->issueNumber);
-            $issue->setYear($data->issueYear);
-            $issue->setShowVolume($data->issueVolume);
-            $issue->setShowNumber($data->issueNumber);
-            $issue->setShowYear($data->issueYear);
-            $issue->setShowTitle(1);
+
+            $issue->setShowVolume(!empty($data->issueVolume));
+            $issue->setShowNumber(!empty($data->issueNumber));
+            $issue->setShowYear(!empty($data->issueYear));
+            $issue->setShowTitle(!empty($data->issueTitles));
             $issue->setPublished(true);
             $issue->setDatePublished(\Core::getCurrentDate());
-            $issue->setTitle($data->issueTitle, $data->locale);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
+            $issue->setAccessStatus(ISSUE_ACCESS_OPEN);
+            $issue->setData('locale', $data->locale);
             $issue->stampModified();
 
-            // Assume open access, no price.
-            $issue->setAccessStatus(ISSUE_ACCESS_OPEN);
+            if (!empty($data->issueVolume)) {
+                $issue->setVolume($data->issueVolume);
+            }
+
+            if (!empty($data->issueNumber)) {
+                $issue->setNumber($data->issueNumber);
+            }
+
+            if (!empty($data->issueYear)) {
+                $issue->setYear($data->issueYear);
+            }
+
+            if (!empty($data->issueTitle)) {
+                $issue->setTitle($data->issueTitle, $data->locale);
+            }
+
             $issueDao->insertObject($issue);
         }
 

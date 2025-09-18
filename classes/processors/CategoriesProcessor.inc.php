@@ -45,6 +45,7 @@ class CategoriesProcessor
                 $category = $categoryDao->newDataObject();
                 $category->setContextId($journalId);
                 $category->setTitle($categoryPath, $locale);
+				$category->setData('locale', $locale);
                 $category->setParentId(null);
                 $category->setSequence(REALLY_BIG_NUMBER);
                 $category->setPath($lowerCategoryPath);

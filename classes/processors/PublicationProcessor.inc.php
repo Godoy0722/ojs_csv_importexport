@@ -175,7 +175,7 @@ class PublicationProcessor
             PERMISSIONS_FIELD_COPYRIGHT_HOLDER,
             $publication
         );
-        $publication->setData('copyrightHolder', $copyrightHolder);
+        $publication->setData('copyrightHolder', $copyrightHolder, $data->locale);
 
         $copyrightYear = $data->copyrightYear ?? $submission->_getContextLicenseFieldValue(
             null,

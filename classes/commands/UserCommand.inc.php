@@ -141,7 +141,9 @@ class UserCommand
                 }
 
 				import('plugins.importexport.csv.classes.processors.UsersProcessor');
-                $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+				if (empty($data->username)) {
+					$data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+				}
 
                 $roles = array_map('trim', explode(';', $data->roles));
 
@@ -190,11 +192,14 @@ class UserCommand
 				import('plugins.importexport.csv.classes.processors.UserGroupsProcessor');
                 UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
 
-				$dateFormat = 'Y-m-d';
-				$startDate = \DateTime::createFromFormat($dateFormat, $data->start_date);
-				$endDate = \DateTime::createFromFormat($dateFormat, $data->end_date);
+				if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
+					$dateFormat = 'Y-m-d';
+					$startDate = \DateTime::createFromFormat($dateFormat, $data->start_date);
+					$endDate = \DateTime::createFromFormat($dateFormat, $data->end_date);
 
-				UserSubscriptionProcessor::process($data, $user->getId(), $journal->getId(), $startDate, $endDate);
+					import('plugins.importexport.csv.classes.processors.UserSubscriptionProcessor');
+					UserSubscriptionProcessor::process($data, $user->getId(), $journal->getId(), $startDate, $endDate);
+				}
 
                 if ($this->_sendWelcomeEmail) {
 					import('plugins.importexport.csv.classes.handlers.WelcomeEmailHandler');

@@ -148,6 +148,17 @@ class IssueCommand
 
                 $fieldsList = array_pad($fields, $this->_expectedRowSize, null);
 
+				$hasIssueData = !empty(trim($data->issueTitle))
+                                || !empty(trim($data->issueVolume))
+                                || !empty(trim($data->issueNumber))
+                                || !empty(trim($data->issueYear));
+
+                if (!$hasIssueData) {
+                    $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
+                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+                    continue;
+                }
+
                 if ($data->galleyFilenames) {
                     $reason = InvalidRowValidations::validateArticleGalleys(
                         $data->galleyFilenames,
@@ -190,18 +201,18 @@ class IssueCommand
                 }
 
                 // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
-			    $genreName = mb_strtoupper($data->genreName ?? 'SUBMISSION');
+			    $genreName = 'SUBMISSION';
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
-                $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
 
+                $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
                     continue;
                 }
 
                 $userGroupId = CachedEntities::getCachedUserGroupId($data->journalPath, $journal->getId());
-                $reason = InvalidRowValidations::validateUserGroupId($userGroupId, $data->journalPath);
 
+                $reason = InvalidRowValidations::validateUserGroupId($userGroupId, $data->journalPath);
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
                     continue;
@@ -242,7 +253,6 @@ class IssueCommand
 
                 // Array to store each galley ID to its respective galley file
                 $galleyIds = [];
-
                 if ($data->galleyFilenames) {
                     foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
                         $galleyFileId = $this->_saveSubmissionFile(
@@ -347,6 +357,14 @@ class IssueCommand
                     PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
                 }
 
+				import('plugins.importexport.csv.classes.processors.SectionsProcessor');
+                $section = SectionsProcessor::process($data, $journal->getId());
+                PublicationProcessor::updateSectionId($publication, $section->getId());
+
+				import('plugins.importexport.csv.classes.processors.IssueProcessor');
+                $issue = IssueProcessor::process($journal->getId(), $data);
+                PublicationProcessor::updateIssueId($publication, $issue->getId());
+
                 if ($data->coverImageFilename) {
                     PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
                 }
@@ -356,10 +374,6 @@ class IssueCommand
                     CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
                 }
 
-				import('plugins.importexport.csv.classes.processors.IssueProcessor');
-                $issue = IssueProcessor::process($journal->getId(), $data);
-                PublicationProcessor::updateIssueId($publication, $issue->getId());
-
                 $issueKey = $journal->getId() . '_' . $issue->getId();
                 if (!isset($this->_processedIssues[$issueKey])) {
                     $this->_processedIssues[$issueKey] = [
@@ -368,10 +382,6 @@ class IssueCommand
                         'data' => $data
                     ];
                 }
-
-				import('plugins.importexport.csv.classes.processors.SectionsProcessor');
-                $section = SectionsProcessor::process($data, $journal->getId());
-                PublicationProcessor::updateSectionId($publication, $section->getId());
             }
 
             echo __('plugins.importexpot.csv.fileProcessFinished', [
