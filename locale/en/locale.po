@@ -132,3 +132,108 @@ msgstr "Missing required subscription fields (start_date and end_date) for user 
 
 msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
 msgstr "Invalid subscripion type with ID \"{$subscriptionTypeId}\""
+
+msgid "plugins.importexport.csv.tab.description"
+msgstr "Import users and issues from CSV files. Select the import type and upload your CSV file to get started."
+
+msgid "plugins.importexport.csv.tab.title"
+msgstr "CSV Import/Export Tool"
+
+msgid "plugins.importexport.csv.importType"
+msgstr "Import Type"
+
+msgid "plugins.importexport.csv.importType.users"
+msgstr "Users"
+
+msgid "plugins.importexport.csv.importType.issues"
+msgstr "Issues"
+
+msgid "plugins.importexport.csv.selectImportType"
+msgstr "Please select what type of data to import"
+
+msgid "plugins.importexport.csv.selectFile"
+msgstr "Select CSV File"
+
+msgid "plugins.importexport.csv.uploadCSV"
+msgstr "Upload CSV"
+
+msgid "plugins.importexport.csv.executeImport"
+msgstr "Execute Import"
+
+msgid "plugins.importexport.csv.importTypeRequired"
+msgstr "Please select an import type (Users or Issues)."
+
+msgid "plugins.importexport.csv.fileRequired"
+msgstr "Please select a CSV file to import."
+
+msgid "plugins.importexport.csv.invalidFileType"
+msgstr "Please upload a valid CSV file."
+
+msgid "plugins.importexport.csv.invalidFile"
+msgstr "The uploaded file is invalid or has expired."
+
+msgid "plugins.importexport.csv.importSuccess"
+msgstr "CSV import completed successfully."
+
+msgid "plugins.importexport.csv.importError"
+msgstr "Import failed with error: {$error}"
+
+msgid "plugins.importexport.csv.sendWelcomeEmail"
+msgstr "Send welcome email to new users"
+
+msgid "plugins.importexport.csv.instructions"
+msgstr "Use this tool to import users or issues from CSV files. First select the type of data you want to import, then upload your CSV file. The file will be processed using the same logic as the command-line interface."
+
+msgid "plugins.importexport.csv.dragCSVFile"
+msgstr "Drag CSV file here"
+
+msgid "plugins.importexport.csv.addCSVFile"
+msgstr "Add CSV File"
+
+msgid "plugins.importexport.csv.changeCSVFile"
+msgstr "Change CSV File"
+
+msgid "plugins.importexport.csv.help.users"
+msgstr "Import user accounts with roles and subscriptions. The CSV file should contain columns for user information such as username, email, first name, last name, and role assignments."
+
+msgid "plugins.importexport.csv.help.issues"
+msgstr "Import journal issues and articles with metadata, files, and publication details. The CSV file should contain columns for issue and article information including titles, abstracts, authors, and file paths."
+
+msgid "plugins.importexport.csv.help.users.detailed"
+msgstr "Import user accounts with comprehensive profile information, role assignments, and subscription details. Your CSV file should include columns such as username, email, first name, last name, affiliation, country, journal path, and role. Users will be created with encrypted passwords and can be assigned to specific journals and roles. Enable the welcome email option to automatically notify new users of their account creation."
+
+msgid "plugins.importexport.csv.help.issues.detailed"
+msgstr "Import complete journal issues including articles, metadata, and associated files. Your CSV file should contain detailed information about each article including title, abstract, authors, keywords, DOI, publication dates, and file paths. The system will automatically create issues, articles, publications, and link all associated files. Ensure all referenced files exist in your source directory before importing."
+
+msgid "plugins.importexport.csv.help.fileFormat"
+msgstr "CSV File Format Requirements"
+
+msgid "plugins.importexport.csv.help.fileFormat.description"
+msgstr "CSV files must be properly formatted with UTF-8 encoding and comma-separated values. The first row should contain column headers that match the expected field names. For examples and detailed field specifications, check the plugin documentation and example files in the plugin directory."
+
+msgid "plugins.importexport.csv.fileUploadHint"
+msgstr "Drag and drop your CSV file here, or click to browse. Only CSV files are accepted."
+
+msgid "plugins.importexport.csv.exampleFiles"
+msgstr "Example CSV Files"
+
+msgid "plugins.importexport.csv.exampleFiles.description"
+msgstr "Download example CSV files to understand the exact format and structure required for your imports."
+
+msgid "plugins.importexport.csv.downloadUsersExample"
+msgstr "Download Users Example"
+
+msgid "plugins.importexport.csv.downloadIssuesExample"
+msgstr "Download Issues Example"
+
+msgid "plugins.importexport.csv.invalidExampleType"
+msgstr "Invalid example file type requested."
+
+msgid "plugins.importexport.csv.exampleFileNotFound"
+msgstr "Example file not found."
+
+msgid "plugins.importexport.csv.help.structure.title"
+msgstr "Important: File Structure Requirements"
+
+msgid "plugins.importexport.csv.help.structure"
+msgstr "Your CSV file must contain exactly the same column headers and structure as the example files. Download the example files above to see the required format. Any missing or incorrectly named columns will cause import errors."
