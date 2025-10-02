@@ -28,11 +28,17 @@ class AuthorsProcessor
 	 * @param int $submissionId
 	 * @param \Publication $publication
 	 * @param int $userGroupId
+	 * @param ?\Publication $basePublication
 	 *
 	 * @return void
 	 */
-	public static function process($data, $contactEmail, $submissionId, $publication, $userGroupId)
+	public static function process($data, $contactEmail, $submissionId, $publication, $userGroupId, $basePublication = null)
     {
+		if (empty($data->authors) && !is_null($basePublication)) {
+            self::cloneAuthorsFromBasePublication($basePublication, $publication, $submissionId);
+            return;
+        }
+
 		$authorDao = CachedDaos::getAuthorDao();
 		$authorsString = array_map('trim', explode(';', $data->authors));
 
@@ -48,8 +54,12 @@ class AuthorsProcessor
              *
              * By default, if an author doesn't have an email, the primary contact email will be used in its place.
              */
-			$givenName = $familyName = $emailAddress = null;
-			[$givenName, $familyName, $emailAddress, $affiliation] = array_map('trim', explode(',', $authorString));
+			$givenName = $familyName = $emailAddress = $affiliation = null;
+			$authorParts = array_map('trim', explode(',', $authorString));
+			$givenName = $authorParts[0] ?? '';
+			$familyName = $authorParts[1] ?? '';
+			$emailAddress = $authorParts[2] ?? '';
+			$affiliation = $authorParts[3] ?? '';
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
@@ -74,4 +84,35 @@ class AuthorsProcessor
 			}
 		}
 	}
+
+	/**
+     * Clone authors from base publication to new versioned publication
+	 *
+	 * @param \Publication $basePublication
+	 * @param \Publication $newPublication
+	 * @param int $submissionId
+	 *
+	 * @return void
+     */
+    private static function cloneAuthorsFromBasePublication($basePublication, $newPublication, $submissionId)
+    {
+        $authors = $basePublication->getData('authors');
+        if (empty($authors)) {
+            return;
+        }
+
+		$authorDao = CachedDaos::getAuthorDao();
+        foreach ($authors as $author) {
+            $newAuthor = clone $author;
+            $newAuthor->setData('id', null);
+            $newAuthor->setData('publicationId', $newPublication->getId());
+            $newAuthor->setSubmissionId($submissionId);
+
+            $newAuthorId = $authorDao->insertObject($newAuthor);
+
+            if ($author->getId() === $basePublication->getData('primaryContactId')) {
+                PublicationProcessor::updatePrimaryContactId($newPublication, $newAuthorId);
+            }
+        }
+    }
 }

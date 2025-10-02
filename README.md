@@ -125,15 +125,19 @@ interest one; interest two; another interest
 
 ### Issues CSV Format
 
+**Note:** The column order must match exactly as shown below. All columns must be present in the CSV header, even if they are empty.
+
 | Column | Required | Description | Example | Notes |
 |--------|----------|-------------|---------|-------|
-| journalPath | Yes | Path of the target journal | leo | Must exist in the system |
+| journalPath | Yes | Path of the target journal | liv | Must exist in the system |
 | locale | Yes | Article locale | en_US | Must be enabled in the journal |
-| articleTitle | Yes | Article title | My Research Paper | |
-| articlePrefix | No | Article prefix | PREF | Optional |
+| versionIdentifier | No | Unique identifier for versioning | article-002 | See [Article Versioning](#article-versioning) |
+| version | Conditional | Version number | 1, 2, 3 | Required if versionIdentifier is set |
+| articlePrefix | No | Article prefix | PREF | Optional title prefix |
+| articleTitle | Yes* | Article title | My Research Paper | *Not required for versions > 1 |
 | articleSubtitle | No | Article subtitle | A Study of... | Optional |
 | articleAbstract | No | Article abstract | This paper examines... | Optional |
-| authors | Yes | Author information | See [Authors Format](#authors-format) | |
+| authors | Yes* | Author information | See [Authors Format](#authors-format) | *Not required for versions > 1 |
 | keywords | No | Semicolon-separated keywords | science;research | Optional |
 | subjects | No | Semicolon-separated subjects | Biology;Ecology | Optional |
 | coverage | No | Coverage information | Global study | Optional |
@@ -141,23 +145,71 @@ interest one; interest two; another interest
 | doi | No | Digital Object Identifier | 10.1234/abc123 | Must be valid format |
 | coverImageFilename | No | Cover image filename | cover.jpg | Must be in same directory |
 | coverImageAltText | No | Alt text for cover | Journal Cover | Required if cover image used |
-| galleyFilenames | No | Semicolon-separated primary galley files | doc.docx;data.xlsx | Optional |
-| galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
+| galleyFilenames | No | Semicolon-separated galley files | article.pdf;presentation.pptx | PDF, DOCX, PPTX, etc. |
+| galleyLabels | No | Labels for galleys | PDF;SLIDES | Must match galleyFilenames count |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | sectionTitle | No | Section name | Articles | Will be created if needed |
 | sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
-| issueTitle | No | Issue title | Vol 1, No 1 (2024) | |
-| issueVolume | No | Volume number | 1 | |
-| issueNumber | No | Issue number | 1 | |
-| issueYear | No | Publication year | 2024 | |
+| issueTitle | No | Issue title | Technology Issue | Optional |
+| issueVolume | No | Volume number | 2 | Numeric value |
+| issueNumber | No | Issue number | 1 | Numeric value |
+| issueYear | No | Publication year | 2024 | Four-digit year |
 | issueDescription | No | Issue description | Special Edition | Optional |
-| datePublished | No | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
-| startPage | No | First page | 1 | |
-| endPage | No | Last page | 15 | |
-| copyrightYear | No | Copyright year | 2025 | If not provided, uses system default |
+| datePublished | Yes* | Publication date | 2024-10-15 | *Not required for versions > 1. Format: YYYY-MM-DD |
+| startPage | No | First page | 20 | Numeric value |
+| endPage | No | Last page | 35 | Numeric value |
+| copyrightYear | No | Copyright year | 2024 | If not provided, uses system default |
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | If not provided, uses system default |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | If not provided, uses system default |
+
+### Article Versioning
+
+The CSV import plugin supports creating multiple versions of articles, mimicking OJS's native versioning functionality. This allows you to track changes and updates to articles over time.
+
+#### Overview
+
+When using versioning:
+- One **submission** contains multiple **publication versions**
+- Each version can have different metadata, authors, content, and files
+- The highest version number automatically becomes the "current" version visible to readers
+- All versions remain accessible in the submission workflow
+
+#### How It Works
+
+##### Creating Version 1 (Initial Publication)
+
+Set both `versionIdentifier` and `version`:
+- `versionIdentifier`: Unique identifier for this article (e.g., "article-002")
+- `version`: Set to `1`
+- All required fields must be provided:
+  - `journalPath`, `locale`, `articleTitle`, `authors`, `datePublished`
+  - At least one issue field (`issueTitle`, `issueVolume`, `issueNumber`, or `issueYear`)
+
+**Example:**
+```csv
+liv,en_US,article-002,1,,"Machine Learning Applications","Implementation Guide","Abstract text...","Maria Silva,Rodriguez,maria@university.edu,CS Dept","AI;ML","Computer Science",,Research,10.5678/ml2024,cover.jpg,"ML Cover","article.pdf","PDF","data.csv","Dataset",Research,RES,"Tech Issue",2,1,2024,"Tech special issue",2024-10-15,20,35,2024,Public Knowledge Project,https://creativecommons.org/licenses/by/4.0
+```
+
+##### Creating Additional Versions (2, 3, etc.)
+
+Use the same `versionIdentifier` with an incremented `version` number:
+- `versionIdentifier`: Same as version 1
+- `version`: 2, 3, 4, etc.
+- Only populate fields you want to **update**
+- Leave fields empty to **inherit** from version 1
+
+**Relaxed Requirements for Versions > 1:**
+When `version > 1`, the following normally required fields become optional:
+- `articleTitle` (inherits from version 1 if empty)
+- `authors` (inherits from version 1 if empty)
+- `datePublished` (inherits from version 1 if empty)
+- Issue fields (inherits issue assignment from version 1 if all empty)
+
+**Result:**
+- Version 1: Has analysis.pdf and code.zip
+- Version 2: Has ONLY updated_code.zip (no auto-copy because galley data was provided)
+
 
 ### Complete Example: Users CSV
 
@@ -170,10 +222,16 @@ myjournal,Jane,Smith,jane@example.com,Research Institute,CA,jsmith,temp456,Reade
 ### Complete Example: Issues CSV
 
 ```csv
-journalPath,locale,articleTitle,authors,articleAbstract,keywords,subjects,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,suppFilenames,suppLabels,sectionTitle,issueTitle,issueVolume,issueNumber,issueYear,datePublished,startPage,endPage,copyrightYear,copyrightHolder,licenseUrl
-myjournal,en_US,"Climate Change Impacts","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","This study examines...","climate change;environment","Environmental Science;Ecology",cover.jpg,"Journal Cover 2024","article.pdf","PDF","supplement.pdf;data.xlsx","Supplement;Dataset",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-15,1,15,2024,"University of Example","https://creativecommons.org/licenses/by/4.0"
-myjournal,en_US,"Biodiversity Loss","Alice,Johnson,alice@example.com,Conservation Org","This paper discusses...","biodiversity;conservation","Biology;Environmental Science",,"article2.pdf;presentation.pptx","PDF;SLIDES","supplementary_data.csv","Data",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-20,16,30,2024,"Conservation Org","https://creativecommons.org/licenses/by-nc/4.0"
+journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,subjects,coverage,categories,doi,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,suppFilenames,suppLabels,sectionTitle,sectionAbbrev,issueTitle,issueVolume,issueNumber,issueYear,issueDescription,datePublished,startPage,endPage,copyrightYear,copyrightHolder,licenseUrl
+liv,en_US,article-001,1,,"Climate Change Impacts","Study of Coastal Effects","This study examines the impact of rising temperatures on coastal ecosystems over a 10-year period.","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","climate change;coastal ecosystems;environment","Environmental Science;Marine Biology",global,"Research Articles",10.5678/climate2024,cover.jpg,"Climate Research Cover","article.pdf","PDF","supplement.pdf;data.xlsx","Supplement;Dataset",Research Articles,RES,"Environmental Studies",5,1,2024,"Special issue on climate research",2024-03-15,1,15,2024,"University of Example",https://creativecommons.org/licenses/by/4.0
+liv,en_US,article-002,1,,"Biodiversity Conservation","Methods and Approaches","This paper discusses modern approaches to biodiversity conservation in urban environments.","Alice,Johnson,alice@example.com,Conservation Org","biodiversity;conservation;urban ecology","Biology;Environmental Science",urban areas,"Research Articles",10.5678/biodiversity2024,,,"article2.pdf;presentation.pptx","PDF;SLIDES","data.csv","Research Data",Research Articles,RES,"Environmental Studies",5,1,2024,"Special issue on climate research",2024-03-20,16,30,2024,"Conservation Org",https://creativecommons.org/licenses/by-nc/4.0
+liv,en_US,article-001,2,,"Climate Change Impacts - Updated Edition",,,,,,,,10.5678/climate2024v2,,,,,,,,,,,,,2024-06-15,1,15,2024,"University of Example",https://creativecommons.org/licenses/by/4.0
 ```
+
+**Explanation:**
+- **Row 2:** Creates article-001 version 1 with full metadata and files
+- **Row 3:** Creates article-002 version 1 as a separate article
+- **Row 4:** Creates version 2 of article-001, updating only the title and DOI. All other fields (abstract, authors, files, etc.) are inherited from version 1, and galleys are automatically copied.
 
 ## File Structure for Import
 
@@ -181,7 +239,6 @@ When importing issues, the following file structure is recommended:
 
 ```
 import_directory/
-├── users.csv
 ├── issues.csv
 ├── article.pdf
 ├── article2.pdf
@@ -191,6 +248,8 @@ import_directory/
 ├── supplementary_data.csv
 ├── cover.jpg
 ```
+
+**Note:** All files referenced in the CSV (galleys, supplementary files, cover images) must be in the same directory as the CSV file or in a subdirectory relative to it.
 
 ## Troubleshooting
 
@@ -267,10 +326,48 @@ import_directory/
      - Verify author information follows the required format
      - Check that required author fields (first name) are provided
 
+#### Versioning Issues
+10. **Version Field Validation Errors**
+    - Error: `Version must be a positive integer` or `versionIdentifier is required when version is provided`
+    - Solution:
+      - Ensure `version` is a number (1, 2, 3, etc.), not text
+      - Always provide `versionIdentifier` when using `version`
+      - Do not use decimals (e.g., use `2` not `2.0`)
+
+11. **Duplicate Version Error**
+    - Error: `Duplicate version: [identifier] version [number]`
+    - Solution:
+      - Check for duplicate rows in your CSV with the same versionIdentifier and version
+      - Ensure you're not importing the same version twice
+      - Each versionIdentifier + version combination must be unique
+
+12. **Missing Base Version**
+    - Error: Version 2 or higher imports but nothing appears in OJS
+    - Solution:
+      - Ensure version 1 exists and was imported successfully first
+      - Import versions in sequential order (1, then 2, then 3)
+      - Check that all versions use the exact same versionIdentifier (case-sensitive)
+
+13. **Galleys Not Appearing in Versions**
+    - Issue: Version 2+ doesn't show any files
+    - Solution:
+      - Verify version 1 has galleys successfully imported
+      - Leave both `galleyFilenames` and `suppFilenames` empty to trigger auto-copy
+      - If you provide ANY galley data, auto-copy is disabled - provide all files needed
+
+14. **Version Not Set as Current**
+    - Issue: Highest version doesn't show as current
+    - Solution:
+      - Ensure all versions were processed in the same import run
+      - Check that version numbers are correctly set (1, 2, 3, not all 1)
+      - Verify the `version` field contains numeric values, not text
+
 #### General Troubleshooting Tips
 - Always back up your database before running imports
-- Test with a small CSV file first
+- Test with a small CSV file first (1-2 articles) before large imports
+- For versioning, test with a single article with 2 versions first
 - Check the OJS error log for detailed error messages
 - Ensure your CSV file is saved with UTF-8 encoding
 - On Linux systems, check file permissions with `ls -l` and adjust with `chmod` if needed
 - For large imports, monitor server resources as the process may be memory-intensive
+- When importing versioned articles, process all versions in the same CSV file to ensure proper tracking

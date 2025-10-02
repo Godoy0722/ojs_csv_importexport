@@ -26,11 +26,23 @@ class SectionsProcessor
 	 *
 	 * @param object $data
 	 * @param int $journalId
+	 * @param ?\Publication $basePublication
 	 *
 	 * @return \Section
 	 */
-	public static function process($data, $journalId)
+	public static function process($data, $journalId, $basePublication = null)
     {
+		if (empty($data->sectionTitle) && empty($data->sectionAbbrev) && !is_null($basePublication)) {
+            $baseSectionId = $basePublication->getData('sectionId');
+            $locale = $basePublication->getData('locale');
+
+            $section = CachedEntities::getCachedSectionById($baseSectionId, $journalId, $locale);
+
+            if (!is_null($section)) {
+                return $section;
+            }
+        }
+
         $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journalId);
 
 		if (!is_null($section)) {

@@ -251,6 +251,47 @@ class InvalidRowValidations
             : null;
     }
 
+	/**
+	 * Validates whether version field is valid when versionIdentifier is provided
+	 *
+	 * @param object $row
+	 *
+	 * @return ?string
+	 */
+	public static function validateVersionFields($row)
+	{
+		if (!empty($row->versionIdentifier) && empty($row->version)) {
+			return __('plugins.importexport.csv.versionRequiredWhenIdentifierProvided');
+		}
+
+		if (!empty($data->version)) {
+			if (!empty($row->version) && ((int)$row->version < 1 || !is_numeric($row->version))) {
+				return __('plugins.importexport.csv.invalidVersionFields');
+			}
+		}
+
+		return null;
+	}
+
+	/**
+     * Validates that no duplicate version exists for the same preprint identifier
+     * in the current import session
+     */
+    public static function validateNoDuplicateVersion(object $data, array $processedPreprints): ?string
+    {
+        $identifier = $data->versionIdentifier;
+        $version = (int)$data->version;
+
+        if (isset($processedPreprints[$identifier][$version])) {
+            return __('plugins.importexport.csv.duplicatePreprintVersionFound', [
+                'identifier' => $identifier,
+                'version' => $version
+            ]);
+        }
+
+        return null;
+    }
+
     /**
      * Validates if the subscription dates are valid. Returns the reason if an error occurred
      * or null if everything is correct.

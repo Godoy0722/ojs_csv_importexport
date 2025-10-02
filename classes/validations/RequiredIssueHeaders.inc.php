@@ -21,8 +21,10 @@ class RequiredIssueHeaders
     static $issueHeaders = [
         'journalPath',
         'locale',
-        'articleTitle',
+		'versionIdentifier',
+		'version',
         'articlePrefix',
+        'articleTitle',
         'articleSubtitle',
         'articleAbstract',
         'authors',
@@ -81,6 +83,10 @@ class RequiredIssueHeaders
      */
     public static function validateRowHasAllRequiredFields($row)
     {
+		if (!empty($row->version) && !empty($row->versionIdentifier) && (int)$row->version > 1) {
+			return true;
+		}
+
         foreach(self::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
                 return false;

@@ -56,4 +56,37 @@ class CategoriesProcessor
             $categoryDao->insertPublicationAssignment($category->getId(), $publicationId);
         }
 	}
+
+	/**
+     * Process categories for a versioned publication
+     * Clears existing categories and adds new ones from CSV data or clones from base publication
+	 *
+	 * @param string $categories
+	 * @param string $locale
+	 * @param int $journalId
+	 * @param int $publicationId
+	 * @param ?\Publication $basePublication
+	 *
+	 * @return void
+     */
+    public static function processForVersion($categories, $locale, $journalId, $publicationId,  $basePublication = null)
+    {
+		$categoryDao = CachedDaos::getCategoryDao();
+		$categoryDao->deletePublicationAssignments($publicationId);
+
+        if (empty(trim($categories)) && !is_null($basePublication)) {
+			/** @var \Category[] */
+            $basePublicationCategoriesArray = $categoryDao->getByPublicationId($basePublication->getId())->toArray();
+
+			if (!empty($basePublicationCategoriesArray)) {
+				foreach($basePublicationCategoriesArray as $category) {
+					$categoryDao->insertPublicationAssignment($category->getId(), $publicationId);
+				}
+
+				return;
+			}
+        }
+
+        self::process($categories, $locale, $journalId, $publicationId);
+    }
 }

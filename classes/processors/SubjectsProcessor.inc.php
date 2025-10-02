@@ -25,11 +25,30 @@ class SubjectsProcessor
 	 *
 	 * @param object $data
 	 * @param int $publicationId
+	 * @param \Publication $basePublication
 	 *
 	 * @return void
 	 */
-	public static function process($data, $publicationId)
+	public static function process($data, $publicationId, $basePublication)
     {
+		if (empty($data->subjects) && !is_null($basePublication)) {
+            $baseSubjects = $basePublication->getData('subjects');
+
+            if (empty($baseSubjects)) {
+                return;
+            }
+
+			$publicationDao = CachedDaos::getPublicationDao();
+            $publication = $publicationDao->getById($publicationId);
+
+            if ($publication) {
+				$submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
+				$submissionSubjectDao->insertSubjects($baseSubjects, $publicationId);
+            }
+
+            return;
+        }
+
 		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
 		if (count($subjectsList[$data->locale]) > 0) {

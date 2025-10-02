@@ -21,17 +21,36 @@ use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 
 class IssueProcessor
 {
-    /**
+	/**
 	 * Processes data for the Issue. If there's no issue registered, a new one will be created and attached
 	 * to the submission.
 	 *
 	 * @param int $journalId
 	 * @param object $data
+	 * @param ?\Publication $basePublication
 	 *
 	 * @return \Issue
 	 */
-	public static function process($journalId, $data)
+	public static function process($journalId, $data, $basePublication = null)
     {
+        if (!is_null($basePublication)) {
+            $hasIssueData = !empty($data->issueVolume)
+                || !empty($data->issueNumber)
+                || !empty($data->issueYear)
+                || !empty($data->issueTitle);
+
+            if (!$hasIssueData) {
+                $issueId = $basePublication->getData('issueId');
+                if (!empty($issueId)) {
+                    $issueDao = CachedDaos::getIssueDao();
+                    $issue = $issueDao->getById($issueId, $journalId);
+                    if ($issue) {
+                        return $issue;
+                    }
+                }
+            }
+        }
+
         $issue = CachedEntities::getCachedIssue($data, $journalId);
 
         if(is_null($issue)) {

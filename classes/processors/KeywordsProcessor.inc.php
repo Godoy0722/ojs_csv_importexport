@@ -25,11 +25,30 @@ class KeywordsProcessor
 	 *
 	 * @param object $data
 	 * @param int $publicationId
+	 * @param \Publication $basePublication
 	 *
 	 * @return void
 	 */
-	public static function process($data, $publicationId)
+	public static function process($data, $publicationId, $basePublication)
     {
+		if (empty($data->keywords) && !is_null($basePublication)) {
+            $baseKeywords = $basePublication->getData('keywords');
+
+            if (empty($baseKeywords)) {
+                return;
+            }
+
+			$publicationDao = CachedDaos::getPublicationDao();
+            $publication = $publicationDao->getById($publicationId);
+
+            if ($publication) {
+				$submissionKeywordDao = CachedDaos::getSubmissionKeywordDao();
+				$submissionKeywordDao->insertKeywords($baseKeywords, $publicationId);
+            }
+
+            return;
+        }
+
 		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
 
 		if (count($keywordsList[$data->locale]) > 0) {

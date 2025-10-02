@@ -39,14 +39,14 @@ class IssueCommand
 {
     /**
      * Expected row size for a CSV based on the command passed as argument
-	 *
+     *
      * @var int
      */
     private $_expectedRowSize;
 
     /**
      * The folder containing all CSV files that the command must go through
-	 *
+     *
      * @var string
      */
     private $_sourceDir;
@@ -70,11 +70,11 @@ class IssueCommand
     private $_user;
 
     /**
-	 * The file directory array map used by the application.
-	 *
-	 * @var string[]
-	 */
-	private $_dirNames;
+     * The file directory array map used by the application.
+     *
+     * @var string[]
+     */
+    private $_dirNames;
 
     /** @var string */
     private $_format;
@@ -83,16 +83,38 @@ class IssueCommand
     private $_processedIssues;
 
     /**
-	 * @param string $sourceDir
-	 * @param \User $user
-	 */
+     * Array to track processed articles by identifier
+     * Structure: [
+     *     'identifier' => [
+     *         'version1' => [
+     *             'data' => csv_row,
+     *             'publication' => Publication,
+     *             'submission' => Submission
+     *         ],
+     *         'version2' => [
+     *             'data' => csv_row,
+     *             'publication' => Publication,
+     *             'submission' => Submission
+     *         ]
+     *     ]
+     * ]
+     *
+     * @var array
+     */
+    private $_processedPublications;
+
+    /**
+     * @param string $sourceDir
+     * @param \User $user
+     */
     public function __construct($sourceDir, $user)
     {
-		import('plugins.importexport.csv.classes.validations.RequiredIssueHeaders');
+        import('plugins.importexport.csv.classes.validations.RequiredIssueHeaders');
         $this->_expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->_sourceDir = $sourceDir;
         $this->_user = $user;
         $this->_processedIssues = [];
+        $this->_processedPublications = [];
     }
 
     public function run()
@@ -146,18 +168,34 @@ class IssueCommand
                     continue;
                 }
 
+                $reason = InvalidRowValidations::validateVersionFields($data);
+                if ($reason) {
+                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+                    continue;
+                }
+
+                if (!empty($data->versionIdentifier)) {
+                    $reason = InvalidRowValidations::validateNoDuplicateVersion($data, $this->_processedPublications);
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+                        continue;
+                    }
+                }
+
                 $fieldsList = array_pad($fields, $this->_expectedRowSize, null);
 
-				$hasIssueData = !empty(trim($data->issueTitle))
+                $hasIssueData = !empty(trim($data->issueTitle))
                                 || !empty(trim($data->issueVolume))
                                 || !empty(trim($data->issueNumber))
                                 || !empty(trim($data->issueYear));
 
-                if (!$hasIssueData) {
-                    $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
-                    continue;
-                }
+				if (empty($data->version) || (!empty($data->version) && (int)$data->version === 1)) {
+					if (!$hasIssueData) {
+						$reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
+						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
+						continue;
+					}
+				}
 
                 if ($data->galleyFilenames) {
                     $reason = InvalidRowValidations::validateArticleGalleys(
@@ -201,7 +239,7 @@ class IssueCommand
                 }
 
                 // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
-			    $genreName = 'SUBMISSION';
+                $genreName = 'SUBMISSION';
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
 
                 $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
@@ -245,11 +283,32 @@ class IssueCommand
                 }
 
                 // All requirements passed. Start processing from here.
-				import('plugins.importexport.csv.classes.processors.SubmissionProcessor');
-                $submission = SubmissionProcessor::process($journal->getId(), $data);
+                /** @var null|\Submission */
+                $existingSubmission = null;
+                /** @var null|\Publication */
+                $basePublication = null;
+                if (!empty($data->versionIdentifier) && isset($this->_processedPublications[$data->versionIdentifier])) {
+                    $firstVersionData = reset($this->_processedPublications[$data->versionIdentifier]);
+                    $existingSubmission = $firstVersionData['submission'];
+                    $basePublication = $firstVersionData['publication'];
+                }
 
+                import('plugins.importexport.csv.classes.processors.SubmissionProcessor');
                 import('plugins.importexport.csv.classes.processors.PublicationProcessor');
-                $publication = PublicationProcessor::process($submission, $data, $journal);
+                if ($existingSubmission && $basePublication) {
+                    $submission = $existingSubmission;
+                    $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
+
+                    $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication);
+
+                    $hasGalleyData = !empty($data->galleyFilenames) || !empty($data->suppFilenames);
+                    if (!$hasGalleyData) {
+                        PublicationProcessor::copyGalleysFromBasePublication($publication, $basePublication);
+                    }
+                } else {
+                    $submission = SubmissionProcessor::process($journal->getId(), $data);
+                    $publication = PublicationProcessor::process($submission, $data, $journal);
+                }
 
                 // Array to store each galley ID to its respective galley file
                 $galleyIds = [];
@@ -322,10 +381,10 @@ class IssueCommand
                         $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
                     }
 
-					// Get supplementary genre for supplementary files
-					$genreDao = CachedDaos::getGenreDao();
-					$supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
-					$suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
+                    // Get supplementary genre for supplementary files
+                    $genreDao = CachedDaos::getGenreDao();
+                    $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
+                    $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
 
                     $suppLabelsArray = array_map('trim', explode(';', $data->suppLabels));
                     for($i = 0; $i < count($suppLabelsArray); $i++) {
@@ -343,35 +402,47 @@ class IssueCommand
                     }
                 }
 
-				import('plugins.importexport.csv.classes.processors.AuthorsProcessor');
-                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
+                import('plugins.importexport.csv.classes.processors.AuthorsProcessor');
+                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
 
                 // Process submission file data into the database
-				import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
-                KeywordsProcessor::process($data, $publication->getId());
+                import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
+                KeywordsProcessor::process($data, $publication->getId(), $basePublication);
 
-				import('plugins.importexport.csv.classes.processors.SubjectsProcessor');
-                SubjectsProcessor::process($data, $publication->getId());
+                import('plugins.importexport.csv.classes.processors.SubjectsProcessor');
+                SubjectsProcessor::process($data, $publication->getId(), $basePublication);
 
-                if ($data->coverage) {
-                    PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
+                if ($data->coverage || ($basePublication && !$data->coverage)) {
+                    if (!empty($data->coverage)) {
+                        PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
+                    } elseif ($basePublication && $basePublication->getLocalizedData('coverage', $data->locale)) {
+                        PublicationProcessor::updateCoverage($publication, $basePublication->getLocalizedData('coverage', $data->locale), $data->locale);
+                    }
                 }
 
-				import('plugins.importexport.csv.classes.processors.SectionsProcessor');
-                $section = SectionsProcessor::process($data, $journal->getId());
+                import('plugins.importexport.csv.classes.processors.SectionsProcessor');
+                $section = SectionsProcessor::process($data, $journal->getId(), $basePublication);
                 PublicationProcessor::updateSectionId($publication, $section->getId());
 
-				import('plugins.importexport.csv.classes.processors.IssueProcessor');
-                $issue = IssueProcessor::process($journal->getId(), $data);
+                import('plugins.importexport.csv.classes.processors.IssueProcessor');
+                $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
 
                 if ($data->coverImageFilename) {
                     PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
+                } elseif ($basePublication && $basePublication->getLocalizedData('coverImage', $data->locale)) {
+                    PublicationProcessor::updatePublicationAttribute($publication, 'coverImage', $basePublication->getData('coverImage'));
                 }
 
-                if ($data->categories) {
-					import('plugins.importexport.csv.classes.processors.CategoriesProcessor');
-                    CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                import('plugins.importexport.csv.classes.processors.CategoriesProcessor');
+                if ($data->categories || $basePublication) {
+                    ($existingSubmission && $basePublication)
+                        ? CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication)
+                        : CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                }
+
+				if (!empty($data->versionIdentifier)) {
+                    $this->_trackProcessedPreprint($data, $submission, $publication);
                 }
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
@@ -395,21 +466,24 @@ class IssueCommand
             }
         }
 
-		import('plugins.importexport.csv.classes.processors.IssueProcessor');
+		$this->_setCurrentVersionsForProcessedPreprints();
+
+        import('plugins.importexport.csv.classes.processors.IssueProcessor');
         IssueProcessor::reorderImportedIssues($this->_processedIssues);
+
     }
 
     /**
-	 * Insert static data that will be used for the submission processing
-	 */
-	private function _initializeStaticVariables(): void
+     * Insert static data that will be used for the submission processing
+     */
+    private function _initializeStaticVariables(): void
     {
-		$this->_dirNames ??= \Application::getFileDirectories();
-		$this->_format ??= trim($this->_dirNames['context'], '/') . '/%d/' . trim($this->_dirNames['submission'], '/') . '/%d';
-		$this->_fileManager ??= new \FileManager();
-		$this->_publicFileManager ??= new \PublicFileManager();
-		$this->_fileService ??= \Services::get('file');
-	}
+        $this->_dirNames ??= \Application::getFileDirectories();
+        $this->_format ??= trim($this->_dirNames['context'], '/') . '/%d/' . trim($this->_dirNames['submission'], '/') . '/%d';
+        $this->_fileManager ??= new \FileManager();
+        $this->_publicFileManager ??= new \PublicFileManager();
+        $this->_fileService ??= \Services::get('file');
+    }
 
     /**
      * Save a submission file. If an error occurred, the method will delete the submission already saved
@@ -441,7 +515,7 @@ class IssueCommand
         }
     }
 
-	/**
+    /**
      * Process data for primary and supplementary galleys.
      *
      * @param array $item
@@ -450,15 +524,15 @@ class IssueCommand
      * @param int $genreId
      * @param string $label
      * @param int $publicationId
-	 *
-	 * @return void
+     *
+     * @return void
      */
-	private function _handleGalley($item, $data, $submissionId, $genreId, $label, $publicationId)
-	{
-		$galleyCompletePath = "{$this->_sourceDir}/{$item['file']}";
+    private function _handleGalley($item, $data, $submissionId, $genreId, $label, $publicationId)
+    {
+        $galleyCompletePath = "{$this->_sourceDir}/{$item['file']}";
         $galleyExtension = $this->_fileManager->parseFileExtension($galleyCompletePath);
 
-		import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
+        import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
         $file = SubmissionFileProcessor::process(
             $data->locale,
             $this->_user->getId(),
@@ -468,9 +542,68 @@ class IssueCommand
             $item['id'],
         );
 
-		// Now that we have the submission file ID, it's time to process the galley itself.
-		import('plugins.importexport.csv.classes.processors.GalleyProcessor');
+        // Now that we have the submission file ID, it's time to process the galley itself.
+        import('plugins.importexport.csv.classes.processors.GalleyProcessor');
         $galleyId = GalleyProcessor::process($file->getId(), $data, $label, $publicationId, $galleyExtension);
         SubmissionFileProcessor::updateAssocInfo($file, $galleyId);
-	}
+    }
+
+	/**
+     * Tracks a processed preprint for version management
+	 *
+	 * @param object $data - The CSV row
+	 * @param \Submission $submission
+	 * @param \Publication $publication
+	 *
+	 * @return void
+     */
+    private function _trackProcessedPreprint($data, $submission, $publication)
+    {
+        $identifier = $data->versionIdentifier;
+        $version = (int)$data->version;
+
+        if (!isset($this->_processedPublications[$identifier])) {
+            $this->_processedPublications[$identifier] = [];
+        }
+
+        $this->_processedPublications[$identifier][$version] = [
+            'data' => $data,
+            'submission' => $submission,
+            'publication' => $publication
+        ];
+    }
+
+	/**
+     * Set the highest version as current for each processed preprint identifier
+	 *
+	 * @return void
+     */
+    private function _setCurrentVersionsForProcessedPreprints()
+    {
+        foreach ($this->_processedPublications as $identifier => $versions) {
+            if (count($versions) <= 1) {
+                continue; // Skip if only one version exists
+            }
+
+            $highestVersion = 0;
+            $currentVersionData = null;
+
+            foreach ($versions as $versionKey => $versionData) {
+                $versionNumber = (int)$versionData['data']->version;
+                if ($versionNumber > $highestVersion) {
+                    $highestVersion = $versionNumber;
+                    $currentVersionData = $versionData;
+                }
+            }
+
+            if ($currentVersionData) {
+                /** @var Submission */
+                $submission = $currentVersionData['submission'];
+                /** @var Publication */
+                $publication = $currentVersionData['publication'];
+
+                SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
+            }
+        }
+    }
 }

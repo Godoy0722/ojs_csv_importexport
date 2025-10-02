@@ -159,6 +159,96 @@ class PublicationProcessor
     }
 
 	/**
+     * Create a new publication version manually to avoid CLI context dependency
+	 *
+	 * @param \Publication $basePublication
+	 * @param object $data
+	 *
+	 * @return \Publication
+     */
+    public static function createPublicationVersion($basePublication, $data)
+    {
+        $newPublication = clone $basePublication;
+        $newPublication->setData('id', null);
+        $newPublication->setData('datePublished', null);
+        $newPublication->setData('status', STATUS_PUBLISHED);
+        $newPublication->setData('version', (int)$data->version);
+        $newPublication->stampModified();
+
+		$publicationDao = CachedDaos::getPublicationDao();
+        $newPublicationId = $publicationDao->insertObject($newPublication);
+
+        $authors = $basePublication->getData('authors');
+
+        if (empty($authors)) {
+            return $newPublication;
+        }
+
+        $newPublication->setData('authors', []);
+        $newPublication->setData('primaryContactId', null);
+		$publicationDao->updateObject($newPublication);
+
+		$newPublication = $publicationDao->getById($newPublicationId);
+
+        return $newPublication;
+    }
+
+	/**
+     * Process a versioned publication with CSV data
+     * This method processes a publication that was created through OJS versioning mechanism
+     * OJS versioning already copied all data from base version, we only update what changed
+	 *
+	 * @param \Publication $publication
+	 * @param object $data
+	 * @param \Publication $basePublication
+	 *
+	 * @return \Publication
+     */
+    public static function processVersionedPublication($publication, $data, $basePublication)
+    {
+        self::updatePublicationAttribute($publication, 'version', (int)$data->version);
+        self::updatePublicationAttribute($publication, 'status', STATUS_PUBLISHED);
+
+        $datePublished = !empty($data->datePublished) ? $data->datePublished : $basePublication->getData('datePublished');
+        self::updatePublicationAttribute($publication, 'datePublished', $datePublished);
+
+        $title = !empty($data->articleTitle) ? $data->articleTitle : $basePublication->getLocalizedData('title', $data->locale);
+        self::updatePublicationAttribute($publication, 'title', $title, $data->locale);
+
+        if (!empty($data->articleSubtitle)) {
+            self::updatePublicationAttribute($publication, 'subtitle', $data->articleSubtitle, $data->locale);
+        } elseif ($basePublication->getLocalizedData('subtitle', $data->locale)) {
+            self::updatePublicationAttribute($publication, 'subtitle', $basePublication->getLocalizedData('subtitle', $data->locale), $data->locale);
+        }
+
+        if (!empty($data->articleAbstract)) {
+            self::updatePublicationAttribute($publication, 'abstract', $data->articleAbstract, $data->locale);
+        } elseif ($basePublication->getLocalizedData('abstract', $data->locale)) {
+            self::updatePublicationAttribute($publication, 'abstract', $basePublication->getLocalizedData('abstract', $data->locale), $data->locale);
+        }
+
+        if (!empty($data->articlePrefix)) {
+            self::updatePublicationAttribute($publication, 'prefix', $data->articlePrefix, $data->locale);
+        } elseif ($basePublication->getLocalizedData('prefix', $data->locale)) {
+            self::updatePublicationAttribute($publication, 'prefix', $basePublication->getLocalizedData('prefix', $data->locale), $data->locale);
+        }
+
+        if (!empty($data->doi)) {
+            self::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
+        }
+
+        if (!empty($data->coverage)) {
+            self::updatePublicationAttribute($publication, 'coverage', $data->coverage, $data->locale);
+        } elseif ($basePublication->getLocalizedData('coverage', $data->locale)) {
+            self::updatePublicationAttribute($publication, 'coverage', $basePublication->getLocalizedData('coverage', $data->locale), $data->locale);
+        }
+
+        self::setCopyrightFromSystemForVersion($publication, $data, $basePublication);
+
+        return $publication;
+    }
+
+	/**
 	 * Set copyright data for the publication
 	 *
 	 * @param \Submission $submission
@@ -190,5 +280,70 @@ class PublicationProcessor
             $publication
         );
         $publication->setData('licenseUrl', $licenseUrl);
+    }
+
+	/**
+     * Set copyright information for versioned publications
+     * Clone from base version if CSV fields are empty
+	 *
+	 * @param \Publication $publication
+	 * @param object $data
+	 * @param \Publication $basePublication
+	 *
+	 * @return void
+     */
+    private static function setCopyrightFromSystemForVersion(&$publication, $data, $basePublication)
+    {
+        if (!empty($data->copyrightHolder)) {
+            self::updatePublicationAttribute($publication, 'copyrightHolder', $data->copyrightHolder, $data->locale);
+        } elseif ($basePublication->getLocalizedData('copyrightHolder', $data->locale)) {
+            self::updatePublicationAttribute($publication, 'copyrightHolder', $basePublication->getLocalizedData('copyrightHolder', $data->locale), $data->locale);
+        }
+
+        if (!empty($data->copyrightYear)) {
+            self::updatePublicationAttribute($publication, 'copyrightYear', $data->copyrightYear);
+        } elseif ($basePublication->getData('copyrightYear')) {
+            self::updatePublicationAttribute($publication, 'copyrightYear', $basePublication->getData('copyrightYear'));
+        }
+
+        if (!empty($data->licenseUrl)) {
+            self::updatePublicationAttribute($publication, 'licenseUrl', $data->licenseUrl);
+        } elseif ($basePublication->getData('licenseUrl')) {
+            self::updatePublicationAttribute($publication, 'licenseUrl', $basePublication->getData('licenseUrl'));
+        }
+    }
+
+    /**
+     * Copy galleys from a base publication to a new publication version
+     * This mimics the behavior of OJS native versioning when creating new versions
+     *
+     * @param \Publication $newPublication The new publication version
+     * @param \Publication $basePublication The base publication to copy from
+     *
+     * @return void
+     */
+    public static function copyGalleysFromBasePublication($newPublication, $basePublication)
+    {
+        $galleyDao = CachedDaos::getArticleGalleyDao();
+
+        // Load galleys directly from the database to ensure we have the latest data
+        $galleysResultFactory = $galleyDao->getByPublicationId($basePublication->getId());
+        $galleys = $galleysResultFactory->toArray();
+
+        if (empty($galleys)) {
+            return;
+        }
+
+        foreach ($galleys as $galley) {
+            $newGalley = clone $galley;
+            $newGalley->setData('id', null);
+            $newGalley->setData('publicationId', $newPublication->getId());
+            $galleyDao->insertObject($newGalley);
+        }
+
+        // Refresh the publication with the new galleys
+        $publicationDao = CachedDaos::getPublicationDao();
+        $refreshedPublication = $publicationDao->getById($newPublication->getId());
+        $newPublication->setData('galleys', $refreshedPublication->getData('galleys'));
     }
 }
