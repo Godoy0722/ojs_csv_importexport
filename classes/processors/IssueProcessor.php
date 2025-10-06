@@ -19,6 +19,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 use APP\facades\Repo;
 use APP\issue\Issue;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\publication\Publication;
 use PKP\core\Core;
 use PKP\core\PKPString;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,23 @@ class IssueProcessor
 	 * Processes data for the Issue. If there's no issue registered, a new one will be created and attached
 	 * to the submission.
 	 */
-	public static function process(int $journalId, object $data): Issue
+	public static function process(int $journalId, object $data, ?Publication $basePublication = null): Issue
     {
+        if (!is_null($basePublication)) {
+            $hasIssueData = !empty($data->issueVolume)
+                || !empty($data->issueNumber)
+                || !empty($data->issueYear)
+                || !empty($data->issueTitle);
+
+            if (!$hasIssueData) {
+                $issueId = $basePublication->getData('issueId');
+                if (!empty($issueId)) {
+                    $issue = Repo::issue()->getByBestId($issueId, $journalId);
+                    if ($issue) return $issue;
+                }
+            }
+        }
+
         $issue = CachedEntities::getCachedIssue($data, $journalId);
 
         if (is_null($issue)) {

@@ -16,16 +16,33 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
+use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
+use APP\publication\Publication;
 
 class SubjectsProcessor
 {
-	public static function process(object $data, int $publicationId)
+	public static function process(object $data, int $publicationId, ?Publication $basePublication = null)
     {
+        $submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
+
+        if (empty($data->subjects) && !is_null($basePublication)) {
+            $baseSubjects = $submissionSubjectDao->getSubjects($basePublication->getId());
+            if (empty($baseSubjects)) {
+                return;
+            }
+
+            $publication = Repo::publication()->get($publicationId);
+            if ($publication) {
+                $submissionSubjectDao->insertSubjects($baseSubjects, $publicationId);
+            }
+
+            return;
+        }
+
 		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
 		if (!empty($subjectsList[$data->locale])) {
-			$submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
 			$submissionSubjectDao->insertSubjects($subjectsList, $publicationId);
 		}
 	}

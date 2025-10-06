@@ -1,6 +1,6 @@
 # OJS CSV Import Plugin (CLI)
 
-This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.3.X. This plugin operates exclusively via command-line interface (CLI).
+This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.4.X. This plugin operates exclusively via command-line interface (CLI).
 
 ## Table of Contents
 - [Usage](#usage)
@@ -10,6 +10,10 @@ This plugin allows administrators to import users and issues with their associat
 - [CSV File Format](#csv-file-format)
   - [Users CSV Format](#users-csv-format)
   - [Issues CSV Format](#issues-csv-format)
+- [Multiversion Import](#multiversion-import)
+  - [How It Works](#how-it-works)
+  - [Version Management Rules](#version-management-rules)
+  - [Practical Examples](#practical-examples)
 - [Troubleshooting](#troubleshooting)
 - [Support](#support)
 
@@ -129,11 +133,13 @@ interest one; interest two; another interest
 |--------|----------|-------------|---------|-------|
 | journalPath | Yes | Path of the target journal | leo | Must exist in the system |
 | locale | Yes | Article locale | en_US | Must be enabled in the journal |
-| articleTitle | Yes | Article title | My Research Paper | |
+| versionIdentifier | No | Unique identifier for article versions | article-001 | Links versions together. Leave empty for single-version articles |
+| version | No | Version number | 1 | Required if versionIdentifier is provided. Must be positive integer |
 | articlePrefix | No | Article prefix | PREF | Optional |
+| articleTitle | Yes | Article title | My Research Paper | Required for version 1, optional for versions > 1 |
 | articleSubtitle | No | Article subtitle | A Study of... | Optional |
 | articleAbstract | No | Article abstract | This paper examines... | Optional |
-| authors | Yes | Author information | See [Authors Format](#authors-format) | |
+| authors | Yes | Author information | See [Authors Format](#authors-format) | Required for version 1, optional for versions > 1 |
 | keywords | No | Semicolon-separated keywords | science;research | Optional |
 | subjects | No | Semicolon-separated subjects | Biology;Ecology | Optional |
 | coverage | No | Coverage information | Global study | Optional |
@@ -152,7 +158,7 @@ interest one; interest two; another interest
 | issueNumber | No | Issue number | 1 | |
 | issueYear | No | Publication year | 2024 | |
 | issueDescription | No | Issue description | Special Edition | Optional |
-| datePublished | No | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
+| datePublished | Yes | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |
 | copyrightYear | No | Copyright year | 2025 | Defaults to system setting if not provided |
@@ -170,9 +176,9 @@ myjournal,Jane,Smith,jane@example.com,Research Institute,CA,jsmith,temp456,Reade
 ### Complete Example: Issues CSV
 
 ```csv
-journalPath,locale,articleTitle,authors,articleAbstract,keywords,subjects,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,suppFilenames,suppLabels,sectionTitle,issueTitle,issueVolume,issueNumber,issueYear,datePublished,startPage,endPage,copyrightYear,copyrightHolder,licenseUrl
-myjournal,en_US,"Climate Change Impacts","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","This study examines...","climate change;environment","Environmental Science;Ecology",cover.jpg,"Journal Cover 2024","article.pdf","PDF","supplement.pdf;data.xlsx","Supplement;Dataset",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-15,1,15,2025,"Public Knowledge Project","https://creativecommons.org/licenses/by/4.0"
-myjournal,en_US,"Biodiversity Loss","Alice,Johnson,alice@example.com,Conservation Org","This paper discusses...","biodiversity;conservation","Biology;Environmental Science",,"article2.pdf;presentation.pptx","PDF;SLIDES","supplementary_data.csv","Data",Research Articles,"Volume 5, Issue 1",5,1,2024,2024-03-20,16,30,2024,"Conservation Organization","https://creativecommons.org/licenses/by-sa/4.0"
+journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,subjects,coverage,categories,doi,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,suppFilenames,suppLabels,sectionTitle,sectionAbbrev,issueTitle,issueVolume,issueNumber,issueYear,issueDescription,datePublished,startPage,endPage,copyrightYear,copyrightHolder,licenseUrl
+myjournal,en_US,,,,"Climate Change Impacts",,"This study examines...","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","climate change;environment","Environmental Science;Ecology",,Research Articles,10.1234/abc123,cover.jpg,"Journal Cover 2024","article.pdf","PDF","supplement.pdf;data.xlsx","Supplement;Dataset",Research Articles,RES,"Volume 5, Issue 1",5,1,2024,"Special Edition",2024-03-15,1,15,2025,"Public Knowledge Project","https://creativecommons.org/licenses/by/4.0"
+myjournal,en_US,,,,"Biodiversity Loss",,"This paper discusses...","Alice,Johnson,alice@example.com,Conservation Org","biodiversity;conservation","Biology;Environmental Science",,Environmental Science,10.1234/bio456,,"article2.pdf;presentation.pptx","PDF;SLIDES","supplementary_data.csv","Data",Research Articles,RES,"Volume 5, Issue 1",5,1,2024,"Special Edition",2024-03-20,16,30,2024,"Conservation Organization","https://creativecommons.org/licenses/by-sa/4.0"
 ```
 
 ## File Structure for Import
@@ -191,6 +197,128 @@ import_directory/
 ├── supplementary_data.csv
 ├── cover.jpg
 ```
+
+## Multiversion Import
+
+The CSV import plugin supports creating multiple versions of the same article in a single import operation. This feature allows you to track revisions, corrections, and updates to published articles while maintaining a complete version history.
+
+### How It Works
+
+The multiversion system uses two key fields to manage article versions:
+
+- **versionIdentifier**: A unique string that links multiple versions of the same article together
+- **version**: A positive integer indicating the version number (1, 2, 3, etc.)
+
+When you provide these fields in your CSV:
+1. Articles with the same `versionIdentifier` are treated as different versions of the same submission
+2. Each version can have updated content, metadata, or files
+3. The system automatically sets the highest version number as the current published version
+4. All versions remain accessible in the system's version history
+
+### Version Management Rules
+
+1. **Version Identifiers**:
+   - Can be any unique string (e.g., "article-001", "ml-paper-2024", "climate-study")
+   - Leave empty for single-version articles
+   - Must be unique across different articles (don't reuse identifiers)
+
+2. **Version Numbers**:
+   - Must be positive integers (1, 2, 3, ...)
+   - Required when `versionIdentifier` is provided
+   - Must be unique for each version of the same article
+   - Version 1 is always the initial/base version
+
+3. **Required Fields**:
+   - **Version 1** must include ALL required fields: `articleTitle`, `authors`, `datePublished`, etc.
+   - **Versions > 1** can include only the fields you want to update (partial updates)
+   - Fields not provided in higher versions inherit values from the previous version
+
+4. **Automatic Current Version**:
+   - After import, the system automatically sets the highest version as "current"
+   - All other versions remain in the system as historical versions
+   - Readers will see the highest version by default
+
+### Practical Examples
+
+#### Example 1: Single Article Without Versions
+
+For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty:
+
+```csv
+journalPath,locale,versionIdentifier,version,articleTitle,authors,datePublished,...
+myjournal,en_US,,,Simple Article,"John,Doe,john@email.com,",2024-01-15,...
+```
+
+#### Example 2: Article with Three Versions
+
+Version 1 (complete initial article):
+```csv
+journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,datePublished,startPage,endPage,copyrightYear,...
+myjournal,en_US,ml-2024,1,,"Machine Learning Applications","Practical Guide","This article explores ML applications...","Maria,Silva,maria@email.com,Dept of CS;John,Smith,john@email.com,Tech Institute","machine learning;AI;neural networks",2024-10-15,20,35,2024,...
+```
+
+Version 2 (update title only - partial update):
+```csv
+journalPath,locale,versionIdentifier,version,articleTitle,datePublished,copyrightYear,...
+myjournal,en_US,ml-2024,2,"Machine Learning Applications: Revised",2024-10-15,2024,...
+```
+
+Version 3 (comprehensive update with new content):
+```csv
+journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,datePublished,startPage,endPage,copyrightYear,...
+myjournal,en_US,ml-2024,3,ML,"Machine Learning Applications: Comprehensive Edition","Advanced Implementation Guide","This extensively revised article includes new case studies...","Maria,Silva,maria@email.com,Dept of CS;John,Smith,john@email.com,Tech Institute;Anna,Kowalski,anna@email.com,AI Lab","machine learning;AI;neural networks;enterprise AI",2024-11-01,20,42,2024,...
+```
+
+#### Example 3: Multiple Articles with and without Versions
+
+You can mix single-version and multi-version articles in the same CSV file:
+
+```csv
+journalPath,locale,versionIdentifier,version,articleTitle,authors,datePublished,...
+myjournal,en_US,,,Single Version Article,"Author,One,author1@email.com,",2024-01-15,...
+myjournal,en_US,climate-2024,1,"Climate Research v1","Author,Two,author2@email.com,",2024-02-01,...
+myjournal,en_US,climate-2024,2,"Climate Research: Updated","Author,Two,author2@email.com,",2024-03-01,...
+myjournal,en_US,,,Another Single Version,"Author,Three,author3@email.com,",2024-03-15,...
+myjournal,en_US,bio-study,1,"Biodiversity Study v1","Author,Four,author4@email.com,",2024-04-01,...
+myjournal,en_US,bio-study,2,"Biodiversity Study: Revised",,2024-05-01,...
+myjournal,en_US,bio-study,3,"Biodiversity Study: Final Edition",,2024-06-01,...
+```
+
+**Note**: In this example, the climate-2024 article has 2 versions, and bio-study has 3 versions. Version 3 of bio-study will be set as the current published version automatically.
+
+#### Example 4: Updating Different Fields Across Versions
+
+Each version can update different aspects of the article:
+
+```csv
+journalPath,locale,versionIdentifier,version,articleTitle,articleAbstract,authors,keywords,doi,startPage,endPage,datePublished,...
+myjournal,en_US,research-001,1,"Original Title","Original abstract...","Main,Author,main@email.com,Univ","original;keywords",10.1234/v1,1,10,2024-01-01,...
+myjournal,en_US,research-001,2,,"Corrected abstract with new findings...",,,,,,2024-02-01,...
+myjournal,en_US,research-001,3,"Updated Title",,,"original;keywords;new keyword",10.1234/v3,,,2024-03-01,...
+myjournal,en_US,research-001,4,,,"Main,Author,main@email.com,Univ;New,Contributor,new@email.com,Institute",,,1,15,2024-04-01,...
+```
+
+In this example:
+- Version 1: Complete initial article
+- Version 2: Only updates the abstract
+- Version 3: Updates title, keywords, and DOI
+- Version 4: Adds a new author and updates pagination
+
+### Common Use Cases
+
+1. **Corrections and Errata**: Publish a new version when you need to correct errors in a published article
+2. **Content Updates**: Add new findings, data, or sections to an existing article
+3. **Metadata Updates**: Update author affiliations, keywords, or other metadata
+4. **File Updates**: Replace or add new galley files or supplementary materials
+5. **Translation Updates**: Publish improved translations of the same article
+
+### Important Notes
+
+- All versions of an article share the same submission ID but have different publication IDs
+- Each version can have its own DOI if needed
+- Readers can access previous versions through the article's version history
+- The import process validates that no duplicate versions exist (same identifier + version number)
+- Versions must be imported in sequence within a single CSV file (version 1 before version 2, etc.)
 
 ## Troubleshooting
 
@@ -266,6 +394,23 @@ import_directory/
      - Ensure the journal has at least one author group configured
      - Verify author information follows the required format
      - Check that required author fields (first name) are provided
+
+10. **Version Import Issues**
+   - Error: `Version is required when versionIdentifier is provided`
+   - Solution:
+     - Always provide the `version` field when using `versionIdentifier`
+     - Use positive integers (1, 2, 3, ...) for version numbers
+
+   - Error: `Version must be a positive integer greater than 0`
+   - Solution:
+     - Ensure version numbers are positive integers
+     - Don't use 0, negative numbers, or decimals
+
+   - Error: `Duplicate article version found for identifier [id], version [num]`
+   - Solution:
+     - Check for duplicate rows with the same versionIdentifier and version
+     - Ensure each version number is unique within the same article
+     - Remove duplicate entries from your CSV file
 
 #### General Troubleshooting Tips
 - Always back up your database before running imports

@@ -16,17 +16,35 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
+use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
+use APP\publication\Publication;
 
 class KeywordsProcessor
 {
-    public static function process(object $data, int $publicationId)
+    public static function process(object $data, int $publicationId, ?Publication $basePublication = null)
     {
-		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
+        $submissionKeywordDao = CachedDaos::getSubmissionKeywordDao();
 
-		if (!empty($keywordsList[$data->locale])) {
-			$submissionKeywordDao = CachedDaos::getSubmissionKeywordDao();
-			$submissionKeywordDao->insertKeywords($keywordsList, $publicationId);
-		}
+        if (empty($data->keywords) && !is_null($basePublication)) {
+            $baseKeywords = $submissionKeywordDao->getKeywords($basePublication->getId());
+            if (empty($baseKeywords)) {
+                return;
+            }
+
+            $publication = Repo::publication()->get($publicationId);
+            if ($publication) {
+                $submissionKeywordDao->insertKeywords($baseKeywords, $publicationId);
+            }
+
+            return;
+        }
+
+		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
+        if (empty($keywordsList[$data->locale])) {
+            return;
+        }
+
+        $submissionKeywordDao->insertKeywords($keywordsList, $publicationId);
 	}
 }

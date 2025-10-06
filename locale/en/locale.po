@@ -132,3 +132,12 @@ msgstr "Missing required subscription fields (start_date and end_date) for user 
 
 msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
 msgstr "Invalid subscripion type with ID \"{$subscriptionTypeId}\""
+
+msgid "plugins.importexport.csv.versionRequiredWhenIdentifierProvided"
+msgstr "Version is required when versionIdentifier is provided."
+
+msgid "plugins.importexport.csv.versionMustBePositiveInteger"
+msgstr "Version must be a positive integer greater than 0."
+
+msgid "plugins.importexport.csv.duplicateArticleVersionFound"
+msgstr "An article with identifier \"{$identifier}\" and version \"{$version}\" already exists in this import. Please check the article's version."

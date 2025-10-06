@@ -71,13 +71,18 @@ class CachedEntities
             return self::$userGroupIds[$journalPath];
         }
 
-        $userGroups = Repo::userGroup()->getByRoleIds([Role::ROLE_ID_AUTHOR], $journalId);
+        $userGroup = Repo::userGroup()->getCollector()
+            ->filterByContextIds([$journalId])
+            ->filterByRoleIds([Role::ROLE_ID_AUTHOR])
+            ->filterByPermitSelfRegistration(true)
+            ->limit(1)
+            ->getMany()
+            ->first();
 
-        if (empty($userGroups)) {
+        if (!$userGroup) {
             return null;
         }
 
-        $userGroup = $userGroups->first();
         return self::$userGroupIds[$journalPath] = $userGroup->getId();
     }
 
@@ -214,6 +219,29 @@ class CachedEntities
         }
 
         return null;
+    }
+
+    static function getCachedSectionById(int $baseSectionId, int $serverId, string $locale): ?Section
+    {
+        $existingSection = null;
+        foreach (self::$sections as $section) {
+            if ($section instanceof Section && $section->getId() === $baseSectionId) {
+                $existingSection = $section;
+                break;
+            }
+        }
+
+        if ($existingSection) {
+            return $existingSection;
+        }
+
+        $section = Repo::section()->get($baseSectionId, $serverId);
+        $sectionTitle = $section->getTitle($locale);
+        $sectionAbbrev = $section->getAbbrev($locale);
+
+        $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
+        self::$sections[$customSectionKey] = $section;
+        return $section;
     }
 
 	/** Retrieves a cached SubscriptionType by subscriptionType and journalId. Returns null if an error occurs. */

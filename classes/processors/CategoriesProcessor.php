@@ -19,6 +19,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\publication\Publication;
 
 class CategoriesProcessor
 {
@@ -58,4 +59,37 @@ class CategoriesProcessor
             CachedDaos::getCategoryDao()->insertPublicationAssignment($category->getId(), $publicationId);
         }
 	}
+
+    /**
+     * Process categories for a versioned publication
+     * Clears existing categories and adds new ones from CSV data or clones from base publication
+     */
+    public static function processForVersion(
+        string $categories,
+        string $locale,
+        int $journalId,
+        int $publicationId,
+        ?Publication $basePublication = null
+    ): void
+    {
+        $categoryDao = CachedDaos::getCategoryDao();
+        $categoryDao->deletePublicationAssignments($publicationId);
+
+        if (empty(trim($categories)) && !is_null($basePublication)) {
+            $categoryIds = Repo::category()->getCollector()
+                ->filterByPublicationIds([$basePublication->getId()])
+                ->getIds()
+                ->toArray();
+
+            if (!empty($categoryIds)) {
+                foreach ($categoryIds as $categoryId) {
+                    $categoryDao->insertPublicationAssignment($categoryId, $publicationId);
+                }
+
+                return;
+            }
+        }
+
+        self::process($categories, $locale, $journalId, $publicationId);
+    }
 }

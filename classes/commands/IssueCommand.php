@@ -35,6 +35,7 @@ use APP\plugins\importexport\csv\classes\processors\SubmissionFileProcessor;
 use APP\plugins\importexport\csv\classes\processors\SubmissionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredIssueHeaders;
+use APP\publication\Publication;
 use APP\submission\Submission;
 use PKP\core\PKPString;
 use PKP\file\FileManager;
@@ -72,12 +73,34 @@ class IssueCommand
 
     private array $processedIssues;
 
+    /**
+     * Array to track processed articles by identifier
+     * Structure: [
+     *     'identifier' => [
+     *         'version1' => [
+     *             'data' => csv_row,
+     *             'publication' => Publication,
+     *             'submission' => Submission
+     *         ],
+     *         'version2' => [
+     *             'data' => csv_row,
+     *             'publication' => Publication,
+     *             'submission' => Submission
+     *         ]
+     *     ]
+     * ]
+     *
+     * @var array
+     */
+    private array $processedArticles;
+
     public function __construct(string $sourceDir, User $user)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->sourceDir = $sourceDir;
         $this->user = $user;
         $this->processedIssues = [];
+        $this->processedArticles = [];
     }
 
     public function run()
@@ -128,6 +151,20 @@ class IssueCommand
                     continue;
                 }
 
+                $reason = InvalidRowValidations::validateArticleVersioningFields($data);
+                if (!is_null($reason)) {
+                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                    continue;
+                }
+
+                if (!empty($data->versionIdentifier)) {
+                    $reason = InvalidRowValidations::validateNoDuplicateVersion($data, $this->processedArticles);
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
+                }
+
                 $fieldsList = array_pad($fields, $this->expectedRowSize, null);
 
                 $hasIssueData = !empty(trim($data->issueTitle))
@@ -135,10 +172,12 @@ class IssueCommand
                                 || !empty(trim($data->issueNumber))
                                 || !empty(trim($data->issueYear));
 
-                if (!$hasIssueData) {
-                    $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
+                if (empty($data->version) || (!empty($data->version) && (int)$data->version === 1)) {
+                    if (!$hasIssueData) {
+                        $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
                 }
 
                 if ($data->galleyFilenames) {
@@ -224,10 +263,37 @@ class IssueCommand
                     }
                 }
 
-                $initialPublication = PublicationProcessor::createInitialPublication($data, $journal);
-                $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
+                $existingSubmission = null; /** @var null|Submission */
+                $basePublication = null; /** @var null|Publication */
 
-                $publication = PublicationProcessor::process($submission, $data, $journal);
+                if (!empty($data->versionIdentifier) && isset($this->processedArticles[$data->versionIdentifier])) {
+                    $lastVersionData = end($this->processedArticles[$data->versionIdentifier]);
+                    $existingSubmission = $lastVersionData['submission'];
+                    $basePublication = $lastVersionData['publication'];
+                }
+
+                if ($existingSubmission && $basePublication) {
+                    $submission = $existingSubmission;
+                    $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
+
+                    $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication);
+
+                    // Handle cover image for versioned publication if provided in CSV
+                    if ($data->coverImageFilename) {
+                        $publication = PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
+                    }
+                } else {
+                    $initialPublication = PublicationProcessor::createInitialPublication($data);
+                    $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
+                    $publication = PublicationProcessor::process($submission, $data, $journal);
+
+                    // Handle cover image for new publication
+                    if ($data->coverImageFilename) {
+                        $publication = PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
+                    }
+                }
+
+                $publication = PublicationProcessor::process($submission, $data, $journal, $publication);
                 if (!$publication) {
                     $reason = __('plugins.importexport.csv.errorWhileCreatingPublication');
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fieldsList, $this->expectedRowSize, $reason, $this->failedRows);
@@ -272,6 +338,8 @@ class IssueCommand
                             $publication->getId()
                         );
                     }
+                } elseif ($basePublication) {
+                    $this->cloneGalleysFromBasePublication($basePublication, $publication);
                 }
 
                 // Process supplementary files
@@ -323,26 +391,28 @@ class IssueCommand
                     }
                 }
 
-                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
-                KeywordsProcessor::process($data, $publication->getId());
-                SubjectsProcessor::process($data, $publication->getId());
+                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
+                KeywordsProcessor::process($data, $publication->getId(), $basePublication);
+                SubjectsProcessor::process($data, $publication->getId(), $basePublication);
 
-                if ($data->coverage) {
-                    PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
+                if ($data->coverage || ($basePublication && !$data->coverage)) {
+                    if (!empty($data->coverage)) {
+                        PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
+                    } elseif ($basePublication && $basePublication->getLocalizedData('coverage', $data->locale)) {
+                        PublicationProcessor::updateCoverage($publication, $basePublication->getLocalizedData('coverage', $data->locale), $data->locale);
+                    }
                 }
 
-                $section = SectionsProcessor::process($data, $journal->getId());
+                $section = SectionsProcessor::process($data, $journal->getId(), $basePublication);
                 PublicationProcessor::updateSectionId($publication, $section->getId());
 
-                $issue = IssueProcessor::process($journal->getId(), $data);
+                $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
 
-                if ($data->coverImageFilename) {
-                    PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
-                }
-
-                if ($data->categories) {
-                    CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                if ($data->categories || $basePublication) {
+                    ($existingSubmission && $basePublication)
+                        ? CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication)
+                        : CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
                 }
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
@@ -352,6 +422,10 @@ class IssueCommand
                         'journalId' => $journal->getId(),
                         'data' => $data
                     ];
+                }
+
+                if (!empty($data->versionIdentifier)) {
+                    $this->trackProcessedArticle($data, $submission, $publication);
                 }
             }
 
@@ -365,6 +439,8 @@ class IssueCommand
                 unlink($this->sourceDir . '/' . "invalid_{$basename}");
             }
         }
+
+        $this->setCurrentVersionsForProcessedArticles();
 
         IssueProcessor::reorderImportedIssues($this->processedIssues);
     }
@@ -432,5 +508,96 @@ class IssueCommand
         // Now that we have the submission file ID, it's time to process the galley itself.
         $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $label, $publicationId, $galleyExtension);
         SubmissionFileProcessor::updateAssocInfo($submissionFile, $galleyId);
+    }
+
+    /**
+     * Tracks a processed article for version management
+     */
+   private function trackProcessedArticle(object $data, Submission $submission, Publication $publication): void
+   {
+       $identifier = $data->versionIdentifier;
+       $version = (int)$data->version;
+
+       if (!isset($this->processedArticles[$identifier])) {
+           $this->processedArticles[$identifier] = [];
+       }
+
+       $this->processedArticles[$identifier][$version] = [
+           'data' => $data,
+           'submission' => $submission,
+           'publication' => $publication
+       ];
+   }
+
+   /**
+    * Set the highest version as current for each processed article identifier
+    */
+   private function setCurrentVersionsForProcessedArticles(): void
+   {
+       foreach ($this->processedArticles as $identifier => $versions) {
+           if (count($versions) <= 1) {
+               continue; // Skip if only one version exists
+           }
+
+           $highestVersion = 0;
+           $currentVersionData = null;
+
+           foreach ($versions as $versionKey => $versionData) {
+               $versionNumber = (int)$versionData['data']->version;
+               if ($versionNumber > $highestVersion) {
+                   $highestVersion = $versionNumber;
+                   $currentVersionData = $versionData;
+               }
+           }
+
+           if ($currentVersionData) {
+               $submission = $currentVersionData['submission']; /** @var Submission */
+               $publication = $currentVersionData['publication']; /** @var Publication */
+               SubmissionProcessor::setCurrentPublicationId($submission, $publication->getId());
+           }
+       }
+   }
+
+    /**
+     * Clone galleys from base publication to versioned publication
+     */
+    private function cloneGalleysFromBasePublication(Publication $basePublication, Publication $newPublication): void
+    {
+        $baseGalleys = Repo::galley()->getCollector()
+            ->filterByPublicationIds([$basePublication->getId()])
+            ->getMany()
+            ->toArray();
+
+        if (empty($baseGalleys)) {
+            return;
+        }
+
+        foreach ($baseGalleys as $baseGalley) {
+            $newGalley = clone $baseGalley;
+            $newGalley->setData('id', null);
+            $newGalley->setData('publicationId', $newPublication->getId());
+
+            // Clone the submission file associated with the galley
+            $baseSubmissionFileId = $baseGalley->getData('submissionFileId');
+            if ($baseSubmissionFileId) {
+                $baseSubmissionFile = Repo::submissionFile()->get($baseSubmissionFileId);
+                if ($baseSubmissionFile) {
+                    $newSubmissionFile = clone $baseSubmissionFile;
+                    $newSubmissionFile->setData('id', null);
+                    $newSubmissionFileId = Repo::submissionFile()->add($newSubmissionFile);
+                    $newGalley->setData('submissionFileId', $newSubmissionFileId);
+                }
+            }
+
+            $newGalleyId = Repo::galley()->add($newGalley);
+
+            // Update the submission file's assoc info to point to the new galley
+            if (isset($newSubmissionFileId)) {
+                $newSubmissionFile = Repo::submissionFile()->get($newSubmissionFileId);
+                if ($newSubmissionFile) {
+                    SubmissionFileProcessor::updateAssocInfo($newSubmissionFile, $newGalleyId);
+                }
+            }
+        }
     }
 }

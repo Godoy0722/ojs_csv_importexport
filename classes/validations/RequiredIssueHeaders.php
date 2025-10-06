@@ -21,8 +21,10 @@ class RequiredIssueHeaders
     static $issueHeaders = [
         'journalPath',
         'locale',
-        'articleTitle',
+		'versionIdentifier',
+		'version',
         'articlePrefix',
+        'articleTitle',
         'articleSubtitle',
         'articleAbstract',
         'authors',
@@ -47,7 +49,7 @@ class RequiredIssueHeaders
         'datePublished',
         'startPage',
         'endPage',
-        'copyrightYear',
+		'copyrightYear',
 		'copyrightHolder',
 		'licenseUrl',
     ];
