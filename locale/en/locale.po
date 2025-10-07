@@ -237,3 +237,12 @@ msgstr "Important: File Structure Requirements"
 
 msgid "plugins.importexport.csv.help.structure"
 msgstr "Your CSV file must contain exactly the same column headers and structure as the example files. Download the example files above to see the required format. Any missing or incorrectly named columns will cause import errors."
+
+msgid "plugins.importexport.csv.versionRequiredWhenIdentifierProvided"
+msgstr "Version is required when versionIdentifier is provided."
+
+msgid "plugins.importexport.csv.versionMustBePositiveInteger"
+msgstr "Version must be a positive integer greater than 0."
+
+msgid "plugins.importexport.csv.duplicateArticleVersionFound"
+msgstr "An article with identifier \"{$identifier}\" and version \"{$version}\" already exists in this import. Please check the article's version."

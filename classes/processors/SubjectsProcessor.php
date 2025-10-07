@@ -17,11 +17,26 @@
 namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
+use APP\publication\Publication;
 
 class SubjectsProcessor
 {
-	public static function process(object $data, int $publicationId)
+	public static function process(object $data, int $publicationId, ?Publication $basePublication = null)
     {
+        if (empty($data->subjects) && !is_null($basePublication)) {
+            $baseSubjects = $basePublication->getData('subjects');
+            if (empty($baseSubjects)) {
+                return;
+            }
+
+            $publication = Repo::publication()->get($publicationId);
+            if ($publication) {
+                Repo::publication()->edit($publication, ['subjects' => $baseSubjects]);
+            }
+
+            return;
+        }
+
 		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
 		if (empty($subjectsList[$data->locale])) {

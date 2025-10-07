@@ -17,11 +17,26 @@
 namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
+use APP\publication\Publication;
 
 class KeywordsProcessor
 {
-    public static function process(object $data, int $publicationId)
+    public static function process(object $data, int $publicationId, ?Publication $basePublication = null)
     {
+        if (empty($data->keywords) && !is_null($basePublication)) {
+            $baseKeywords = $basePublication->getData('keywords');
+            if (empty($baseKeywords)) {
+                return;
+            }
+
+            $publication = Repo::publication()->get($publicationId);
+            if ($publication) {
+                Repo::publication()->edit($publication, ['keywords' => $baseKeywords]);
+            }
+
+            return;
+        }
+
 		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
 
         if (empty($keywordsList[$data->locale])) {

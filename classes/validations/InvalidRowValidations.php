@@ -43,6 +43,10 @@ class InvalidRowValidations
      */
     public static function validateRowHasAllRequiredFields(object $data, callable $requiredFieldsValidation): ?string
     {
+        if (!empty($data->version) && !empty($data->versionIdentifier) && (int)$data->version > 1) {
+			return null;
+		}
+
         return !$requiredFieldsValidation($data)
             ? __('plugins.importexport.csv.verifyRequiredFieldsForThisRow')
             : null;
@@ -227,5 +231,39 @@ class InvalidRowValidations
         return !$subscriptionType
             ? __('plugins.importexport.csv.subscriptionTypeDoesntExist', ['subscriptionTypeId' => $subscriptionTypeId])
             : null;
+    }
+
+    public static function validateArticleVersioningFields(object $data): ?string
+    {
+        if (!empty($data->versionIdentifier) && empty($data->version)) {
+            return __('plugins.importexport.csv.versionRequiredWhenIdentifierProvided');
+        }
+
+        if (!empty($data->version)) {
+            if (!is_numeric($data->version) || (int)$data->version < 1) {
+                return __('plugins.importexport.csv.versionMustBePositiveInteger');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates that no duplicate version exists for the same article identifier
+     * in the current import session
+     */
+    public static function validateNoDuplicateVersion(object $data, array $processedArticles): ?string
+    {
+        $identifier = $data->versionIdentifier;
+        $version = (int)$data->version;
+
+        if (isset($processedArticles[$identifier][$version])) {
+            return __('plugins.importexport.csv.duplicateArticleVersionFound', [
+                'identifier' => $identifier,
+                'version' => $version
+            ]);
+        }
+
+        return null;
     }
 }

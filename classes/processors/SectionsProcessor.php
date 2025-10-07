@@ -18,12 +18,24 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\publication\Publication;
 use APP\section\Section;
 
 class SectionsProcessor
 {
-	public static function process(object $data, int $journalId): Section
+	public static function process(object $data, int $journalId, ?Publication $basePublication = null): Section
     {
+        if (empty($data->sectionTitle) && empty($data->sectionAbbrev) && !is_null($basePublication)) {
+            $baseSectionId = $basePublication->getData('sectionId');
+            $locale = $basePublication->getData('locale');
+
+            $section = CachedEntities::getCachedSectionById($baseSectionId, $journalId, $locale);
+
+            if (!is_null($section)) {
+                return $section;
+            }
+        }
+
         $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journalId);
 
 		if (!is_null($section)) {

@@ -17,6 +17,10 @@
 namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
+use APP\publication\Publication;
+use PKP\config\Config;
+use PKP\file\FileManager;
+use PKP\services\PKPFileService;
 
 class GalleyProcessor
 {
@@ -36,5 +40,60 @@ class GalleyProcessor
         }
 
         return Repo::galley()->add($galley);
+    }
+
+    /**
+    * Copy galleys from base publication to new versioned publication
+    * This replicates the behavior in OJS core's Repository::version() method
+    */
+   public static function copyGalleysFromBasePublication(
+        Publication $basePublication,
+        Publication $newPublication,
+        FileManager $fileManager,
+        string $format,
+        PKPFileService $fileService
+    ): void
+    {
+        $galleys = $basePublication->getData('galleys');
+
+        if (!empty($galleys)) {
+            foreach ($galleys as $galley) {
+                $newGalley = clone $galley;
+                $newGalley->setData('id', null);
+                $newGalley->setData('publicationId', $newPublication->getId());
+                $newGalley->setData('submissionFileId', null);
+
+                $newGalleyId = Repo::galley()->add($newGalley);
+
+                $originalSubmissionFileId = $galley->getData('submissionFileId');
+                if ($originalSubmissionFileId) {
+                    $originalSubmissionFile = Repo::submissionFile()->get($originalSubmissionFileId);
+
+                    if ($originalSubmissionFile) {
+                        $newSubmissionFile = clone $originalSubmissionFile;
+                        $newSubmissionFile->setData('id', null);
+                        $newSubmissionFile->setData('assocId', $newGalleyId);
+
+                        $oldFileId = $originalSubmissionFile->getData('fileId');
+                        $oldFile = app()->get('file')->get($oldFileId);
+
+                        $submission = Repo::submission()->get($newPublication->getData('submissionId'));
+                        $extension = $fileManager->parseFileExtension($oldFile->path);
+                        $submissionDir = sprintf($format, $submission->getData('contextId'), $submission->getId());
+
+                        $newFileId = $fileService->add(
+                            Config::getVar('files', 'files_dir') . '/' . $oldFile->path,
+                            $submissionDir . '/' . uniqid() . '.' . $extension
+                        );
+
+                        $newSubmissionFile->setData('fileId', $newFileId);
+                        $newSubmissionFileId = Repo::submissionFile()->add($newSubmissionFile);
+
+                        $newGalley = Repo::galley()->get($newGalleyId);
+                        Repo::galley()->edit($newGalley, ['submissionFileId' => $newSubmissionFileId]);
+                    }
+                }
+            }
+        }
     }
 }

@@ -34,9 +34,11 @@ use APP\plugins\importexport\csv\classes\processors\SubmissionFileProcessor;
 use APP\plugins\importexport\csv\classes\processors\SubmissionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredIssueHeaders;
+use APP\publication\Publication;
 use APP\submission\Submission;
 use PKP\file\FileManager;
 use PKP\services\PKPFileService;
+use PKP\submissionFile\SubmissionFile;
 use PKP\user\User;
 
 class IssueCommand
@@ -70,12 +72,34 @@ class IssueCommand
 
     private array $processedIssues;
 
+    /**
+     * Array to track processed articles by identifier
+     * Structure: [
+     *     'identifier' => [
+     *         'version1' => [
+     *             'data' => csv_row,
+     *             'publication' => Publication,
+     *             'submission' => Submission
+     *         ],
+     *         'version2' => [
+     *             'data' => csv_row,
+     *             'publication' => Publication,
+     *             'submission' => Submission
+     *         ]
+     *     ]
+     * ]
+     *
+     * @var array
+     */
+    private array $processedArticles;
+
     public function __construct(string $sourceDir, User $user)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->sourceDir = $sourceDir;
         $this->user = $user;
         $this->processedIssues = [];
+        $this->processedArticles = [];
     }
 
     public function run()
@@ -126,6 +150,20 @@ class IssueCommand
                     continue;
                 }
 
+                $reason = InvalidRowValidations::validateArticleVersioningFields($data);
+                if (!is_null($reason)) {
+                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                    continue;
+                }
+
+                if (!empty($data->versionIdentifier)) {
+                    $reason = InvalidRowValidations::validateNoDuplicateVersion($data, $this->processedArticles);
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
+                }
+
                 $fieldsList = array_pad($fields, $this->expectedRowSize, null);
 
                 $hasIssueData = !empty(trim($data->issueTitle))
@@ -133,10 +171,12 @@ class IssueCommand
                                 || !empty(trim($data->issueNumber))
                                 || !empty(trim($data->issueYear));
 
-                if (!$hasIssueData) {
-                    $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
+                if (empty($data->version) || (!empty($data->version) && (int)$data->version === 1)) {
+                    if (!$hasIssueData) {
+                        $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
                 }
 
                 if ($data->galleyFilenames) {
@@ -178,8 +218,6 @@ class IssueCommand
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                     continue;
                 }
-
-                $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journal->getId());
 
                 $genreName = 'SUBMISSION';
                 $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
@@ -224,14 +262,44 @@ class IssueCommand
                     }
                 }
 
-                $initialPublication = PublicationProcessor::createInitialPublication($data, $journal);
-                $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
+                $existingSubmission = null; /** @var null|Submission */
+                $basePublication = null; /** @var null|Publication */
 
-                $publication = PublicationProcessor::process($submission, $data, $journal);
+                if (!empty($data->versionIdentifier) && isset($this->processedArticles[$data->versionIdentifier])) {
+                    $lastVersionData = end($this->processedArticles[$data->versionIdentifier]);
+                    $existingSubmission = $lastVersionData['submission'];
+                    $basePublication = $lastVersionData['publication'];
+                }
+
+                if ($existingSubmission && $basePublication) {
+                    $submission = $existingSubmission;
+                    $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
+
+                    $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication);
+                } else {
+                    $initialPublication = PublicationProcessor::createInitialPublication($data);
+                    $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
+                    $publication = PublicationProcessor::process($submission, $data, $journal);
+                }
+
                 if (!$publication) {
                     $reason = __('plugins.importexport.csv.errorWhileCreatingPublication');
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fieldsList, $this->expectedRowSize, $reason, $this->failedRows);
                     continue;
+                }
+
+                if ($data->coverImageFilename) {
+                    $publication = PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
+                }
+
+                if ($existingSubmission && $basePublication && !$data->galleyFilenames) {
+                    GalleyProcessor::copyGalleysFromBasePublication(
+                        $basePublication,
+                        $publication,
+                        $this->fileManager,
+                        $this->format,
+                        $this->fileService
+                    );
                 }
 
                 // Array to store each galley ID to its respective galley file
@@ -323,26 +391,27 @@ class IssueCommand
                     }
                 }
 
-                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
-                KeywordsProcessor::process($data, $publication->getId());
-                SubjectsProcessor::process($data, $publication->getId());
+                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
+                KeywordsProcessor::process($data, $publication->getId(), $basePublication);
+                SubjectsProcessor::process($data, $publication->getId(), $basePublication);
 
-                if ($data->coverage) {
+                if (
+                    ((!empty($data->version) && (int) $data->version === 1) || empty($data->version))
+                    && $data->coverage
+                ) {
                     PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
                 }
 
-                $section = SectionsProcessor::process($data, $journal->getId());
+                $section = SectionsProcessor::process($data, $journal->getId(), $basePublication);
                 PublicationProcessor::updateSectionId($publication, $section->getId());
 
-                $issue = IssueProcessor::process($journal->getId(), $data);
+                $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
 
-                if ($data->coverImageFilename) {
-                    PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
-                }
-
-                if ($data->categories) {
-                    CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                if ($data->categories || $basePublication) {
+                    ($existingSubmission && $basePublication)
+                        ? CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication)
+                        : CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
                 }
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
@@ -352,6 +421,13 @@ class IssueCommand
                         'journalId' => $journal->getId(),
                         'data' => $data
                     ];
+                }
+
+                // Refresh publication to retrieve all its data correctly
+                $publication = Repo::publication()->get($publication->getId());
+
+                if (!empty($data->versionIdentifier)) {
+                    $this->trackProcessedArticle($data, $submission, $publication);
                 }
             }
 
@@ -365,6 +441,8 @@ class IssueCommand
                 unlink($this->sourceDir . '/' . "invalid_{$basename}");
             }
         }
+
+        $this->setCurrentVersionsForProcessedArticles();
 
         IssueProcessor::reorderImportedIssues($this->processedIssues);
     }
@@ -431,5 +509,53 @@ class IssueCommand
 
         $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $label, $publicationId, $galleyExtension);
         SubmissionFileProcessor::updateAssocInfo($submissionFile, $galleyId);
+    }
+
+   /**
+    * Tracks a processed article for version management
+    */
+   private function trackProcessedArticle(object $data, Submission $submission, Publication $publication): void
+   {
+       $identifier = $data->versionIdentifier;
+       $version = (int)$data->version;
+
+       if (!isset($this->processedArticles[$identifier])) {
+           $this->processedArticles[$identifier] = [];
+       }
+
+       $this->processedArticles[$identifier][$version] = [
+           'data' => $data,
+           'submission' => $submission,
+           'publication' => $publication
+       ];
+   }
+
+   /**
+    * Set the highest version as current for each processed article identifier
+    */
+   private function setCurrentVersionsForProcessedArticles(): void
+   {
+        foreach ($this->processedArticles as $identifier => $versions) {
+            if (count($versions) <= 1) {
+                continue; // Skip if only one version exists
+            }
+
+            $highestVersion = 0;
+            $currentVersionData = null;
+
+            foreach ($versions as $versionKey => $versionData) {
+                $versionNumber = (int)$versionData['data']->version;
+                if ($versionNumber > $highestVersion) {
+                    $highestVersion = $versionNumber;
+                    $currentVersionData = $versionData;
+                }
+            }
+
+           if ($currentVersionData) {
+                $submission = $currentVersionData['submission']; /** @var Submission */
+                $publication = $currentVersionData['publication']; /** @var Publication */
+                SubmissionProcessor::setCurrentPublicationId($submission, $publication->getId());
+            }
+        }
     }
 }
