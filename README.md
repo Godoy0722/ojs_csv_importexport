@@ -1,6 +1,6 @@
 # OJS CSV Import Plugin (CLI)
 
-This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.4.X. This plugin operates exclusively via command-line interface (CLI).
+This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.5.X. This plugin operates exclusively via command-line interface (CLI).
 
 ## Table of Contents
 - [Usage](#usage)
