@@ -1,37 +1,42 @@
 # OJS CSV Import Plugin (CLI)
 
-This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.3.X. This plugin operates exclusively via command-line interface (CLI).
+This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.5.X. This plugin operates exclusively via command-line interface (CLI).
 
 ## Table of Contents
-- [Usage](#usage)
+- [CLI Usage](#cli-usage)
   - [Importing Users](#importing-users)
   - [Importing Issues](#importing-issues)
-  - [Exporting Data](#exporting-data)
-- [CSV File Format](#csv-file-format)
+- [CSV General Rules](#csv-general-rules)
   - [Users CSV Format](#users-csv-format)
+    - [CSV Example](#users-csv-example)
   - [Issues CSV Format](#issues-csv-format)
-- [Multiversion Import](#multiversion-import)
+    - [CSV Example](#issues-csv-example)
+    - [Import File Structure](#import-file-structure)
+- [Article Versions](#article-versions)
   - [How It Works](#how-it-works)
   - [Version Management Rules](#version-management-rules)
   - [Practical Examples](#practical-examples)
+    - [Single Version Articles](#example-1-single-article-without-versions)
+    - [Multi Version Articles](#example-2-multi-version-articles)
+    - [Mixed Articles](#example-3-mixed-articles)
+  - [Important Notes](#important-notes)
 - [Troubleshooting](#troubleshooting)
-- [Support](#support)
 
 
-## Command Line Usage
+## CLI Usage
 
 ### Importing Users
 
 To import users from a CSV file, use the following command:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin users [username] [pathToCsvFile] [sendWelcomeEmail]
+php tools/importExport.php CSVImportExportPlugin users [username] [pathToFolderWithCsvFiles] [sendWelcomeEmail]
 ```
 
 Parameters:
-- `username`: The username of an administrator who will be associated with the import
-- `pathToCsvFile`: Path to the CSV file containing user data. Can be absolute or relative to the OJS root directory.
-- `sendWelcomeEmail`: (Optional) Set to `true` to send welcome emails to imported users
+- `username`: The username of a valid Journal manager. This username is used to validate that the command is running by a valid user as a security step.
+- `pathToFolderWithCsvFiles`: Path to the CSV file containing user data. Can be absolute or relative to the OJS root directory.
+- `sendWelcomeEmail`: (Optional) Set to `true` to send welcome emails to imported users. If set to true, the sender email will be the user retrieved by the username on the CLI command.
 
 Example:
 ```bash
@@ -43,72 +48,28 @@ php tools/importExport.php CSVImportExportPlugin users admin /path/to/folder_wit
 To import issues from a CSV file, use the following command:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin issues [username] [pathToCsvFile]
+php tools/importExport.php CSVImportExportPlugin issues [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
-- `username`: The username of an administrator who will be associated with the import
-- `pathToCsvFile`: Path to the CSV file containing issue data. Can be absolute or relative to the OJS root directory.
+- `username`: The username of a valid Journal manager. This username is used to validate that the command is running by a valid user as a security step.
+- `pathToFolderWithCsvFiles`: Path to the CSV file containing issue data. Can be absolute or relative to the OJS root directory.
 
 Example:
 ```bash
 php tools/importExport.php CSVImportExportPlugin issues admin /path/to/folder_with_csv_issue_files
 ```
 
-### Important Notes:
-- The last CLI attribute must be the path to the CSV file, and not directly the CSV file itself.
-- The CSV file and any referenced files (PDFs, images) must be readable by the user running the CLI script.
-- The script must be executed from the OJS installation directory
-- Ensure you have proper permissions to execute PHP scripts and access the files
+> **Important Notes**
+>
+>  - The user obtained through the username will be the same one assigned to the submission files. It's also recommended that a dedicated importUser is created for this purpose with the Author role so that it's separate from existing Journal Manager and editor user accounts.
+>  - The last CLI attribute must be the path to the CSV file, and not directly the CSV file itself.
+>  - The CSV file and any referenced files (PDFs, images) must be readable by the user running the CLI script.
+>  - The script must be executed from the OJS installation directory
+>  - Ensure you have proper permissions to execute PHP scripts and access the files
+>
 
-## CSV File Format
-
-## Data Structure Reference
-
-### Authors Format
-
-The `authors` field in the issues CSV must contain author information in the following format:
-
-```
-GivenName,FamilyName,Email,Affiliation;GivenName2,FamilyName2,Email2,Affiliation2
-```
-
-- Fields are separated by commas within each author
-- Multiple authors are separated by semicolons
-- All fields except GivenName are optional and can be left empty
-- If email is empty, the primary contact email will be used
-
-Examples:
-```
-"John,Doe,john@example.com,University of Example; Jane,Smith,,Another University"
-"Maria,Silva,maria@example.com,"
-"Carlos,,carlos@example.com,Example Corp"
-```
-
-### Keywords, Subjects, and Categories
-
-These fields use a simple semicolon-separated format:
-
-- **Keywords**: `keyword1; keyword two; another keyword`
-- **Subjects**: `subject1; subject two; another subject`
-- **Categories**: `Category1; Category Two; Another Category`
-
-Notes:
-- Leading/trailing spaces are automatically trimmed
-- Empty values are ignored
-- Categories will be created if they don't exist
-
-### User Interests
-
-User interests in the users CSV use a semicolon-separated format:
-
-```
-interest one; interest two; another interest
-```
-
-- Leading/trailing spaces are automatically trimmed
-- Empty values are ignored
-- Each interest will be associated with the user's profile
+## CSV General Rules
 
 ### Users CSV Format
 
@@ -127,6 +88,21 @@ interest one; interest two; another interest
 | subscriptionType | No | Subscription type ID | 1 |
 | start_date | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
 | end_date | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
+
+> **User Interests:** User interests in the users CSV use a semicolon-separated format:
+>
+> ```
+> interest one; interest two; another interest
+> ```
+>
+>  - Leading/trailing spaces are automatically trimmed
+>  - Empty values are ignored
+>  - Each interest will be associated with the created user's profile
+>
+
+#### Users CSV Example
+
+You can take a look at the example we provide on the [User CSV file](./examples/users/users_example.csv).
 
 ### Issues CSV Format
 
@@ -166,17 +142,44 @@ interest one; interest two; another interest
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
 
-### Example: Users CSV
+> **Authors Format**
+> The `authors` field in the issues CSV must contain author information in the following format:
+>
+> ```
+> GivenName,FamilyName,Email,Affiliation;GivenName2,FamilyName2,Email2,Affiliation2
+> ```
+>
+>  - Fields are separated by commas within each author
+>  - Multiple authors are separated by semicolons
+>  - All fields except GivenName are optional and can be left empty
+>  - If email is empty, the primary contact email will be used
+>
+> Examples:
+>
+> ```
+> "John,Doe,john@example.com,University of Example; Jane,Smith,,Another University"
+> "Maria,Silva,maria@example.com,"
+> "Carlos,,carlos@example.com,Example Corp"
+> ```
 
-You can take a look at the example we provide on the [User CSV file](./examples/users/users_example.csv).
+> **Keywords, Subjects, and Categories**
+> These fields use a simple semicolon-separated format:
+>  - **Keywords**: `keyword1; keyword two; another keyword`
+>  - **Subjects**: `subject1; subject two; another subject`
+>  - **Categories**: `Category1; Category Two; Another Category`
+>
+> Notes:
+>  - Leading/trailing spaces are automatically trimmed
+>  - Empty values are ignored
+>  - Categories will be created if they don't exist
 
-### Example: Issues CSV
+#### Issues CSV Example
 
 You can take a look at the example we provide on the [Issue CSV file](./examples/issues/issues_example.csv).
 
-## File Structure for Import
+#### Import File Structure
 
-When importing issues, the following file structure is recommended:
+When importing issues, it's important to keep all issue assets in the same directory as the CSV file, so you just need to pass the asset names instead of a path for the asset. Here's an example of the recommended structure:
 
 ```
 import_directory/
@@ -191,7 +194,7 @@ import_directory/
 ├── cover.jpg
 ```
 
-## Multiversion Import
+## Article Versions
 
 The CSV import plugin supports creating multiple versions of the same article in a single import operation. This feature allows you to track revisions, corrections, and updates to published articles while maintaining a complete version history.
 
@@ -242,7 +245,7 @@ For articles that don't need version tracking, simply leave `versionIdentifier` 
 
 For article with multiple versions, you'll need to set the `versionIdentifier` and `version` fields. The `versionIdentifier` tracks the same article and the `version` handles with the article different verisons. See [multi version CSV file](./examples/issues/multi_version_issues.csv) example.
 
-#### Example 3: Multiple Articles with and without Versions
+#### Example 3: Mixed Articles
 
 You can mix single-version and multi-version articles in the same CSV file. Take a look at [the default CSV file](./examples/issues/issues_example.csv).
 
