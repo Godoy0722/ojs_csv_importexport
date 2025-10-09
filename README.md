@@ -35,7 +35,7 @@ Parameters:
 
 Example:
 ```bash
-php tools/importExport.php CSVImportExportPlugin users admin /path/to/users.csv true
+php tools/importExport.php CSVImportExportPlugin users admin /path/to/folder_with_csv_user_files true
 ```
 
 ### Importing Issues
