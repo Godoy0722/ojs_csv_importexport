@@ -52,11 +52,12 @@ Parameters:
 
 Example:
 ```bash
-php tools/importExport.php CSVImportExportPlugin issues admin /path/to/csv_file_for_issues
+php tools/importExport.php CSVImportExportPlugin issues admin /path/to/folder_with_csv_issue_files
 ```
 
 ### Important Notes:
-- The CSV file and any referenced files (PDFs, images) must be readable by the web server user
+- The last CLI attribute must be the path to the CSV file, and not directly the CSV file itself.
+- The CSV file and any referenced files (PDFs, images) must be readable by the user running the CLI script.
 - The script must be executed from the OJS installation directory
 - Ensure you have proper permissions to execute PHP scripts and access the files
 
@@ -165,21 +166,13 @@ interest one; interest two; another interest
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
 
-### Complete Example: Users CSV
+### Example: Users CSV
 
-```csv
-journalPath,firstname,lastname,email,affiliation,country,username,tempPassword,roles,reviewInterests,subscriptionType,start_date,end_date
-myjournal,John,Doe,john@example.com,University of Example,US,jdoe,temp123,"Reader;Author","science;research",1,2024-01-01,2024-12-31
-myjournal,Jane,Smith,jane@example.com,Research Institute,CA,jsmith,temp456,Reader,"biology;ecology",2,2024-01-01,2024-12-31
-```
+You can take a look at the example we provide on the [User CSV file](./examples/users/users_example.csv).
 
-### Complete Example: Issues CSV
+### Example: Issues CSV
 
-```csv
-journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,subjects,coverage,categories,doi,coverImageFilename,coverImageAltText,galleyFilenames,galleyLabels,suppFilenames,suppLabels,sectionTitle,sectionAbbrev,issueTitle,issueVolume,issueNumber,issueYear,issueDescription,datePublished,startPage,endPage,copyrightYear,copyrightHolder,licenseUrl
-myjournal,en_US,,,,"Climate Change Impacts",,"This study examines...","John,Doe,john@example.com,University of Example;Jane,Smith,jane@example.com,Research Institute","climate change;environment","Environmental Science;Ecology",,Research Articles,10.1234/abc123,cover.jpg,"Journal Cover 2024","article.pdf","PDF","supplement.pdf;data.xlsx","Supplement;Dataset",Research Articles,RES,"Volume 5, Issue 1",5,1,2024,"Special Edition",2024-03-15,1,15,2025,"Public Knowledge Project","https://creativecommons.org/licenses/by/4.0"
-myjournal,en_US,,,,"Biodiversity Loss",,"This paper discusses...","Alice,Johnson,alice@example.com,Conservation Org","biodiversity;conservation","Biology;Environmental Science",,Environmental Science,10.1234/bio456,,"article2.pdf;presentation.pptx","PDF;SLIDES","supplementary_data.csv","Data",Research Articles,RES,"Volume 5, Issue 1",5,1,2024,"Special Edition",2024-03-20,16,30,2024,"Conservation Organization","https://creativecommons.org/licenses/by-sa/4.0"
-```
+You can take a look at the example we provide on the [Issue CSV file](./examples/issues/issues_example.csv).
 
 ## File Structure for Import
 
@@ -242,75 +235,16 @@ When you provide these fields in your CSV:
 
 #### Example 1: Single Article Without Versions
 
-For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty:
+For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty. You can take a look at the [single version CSV file](./examples/issues/single_version_issues.csv).
 
-```csv
-journalPath,locale,versionIdentifier,version,articleTitle,authors,datePublished,...
-myjournal,en_US,,,Simple Article,"John,Doe,john@email.com,",2024-01-15,...
-```
 
-#### Example 2: Article with Three Versions
+#### Example 2: Multi Version Articles
 
-Version 1 (complete initial article):
-```csv
-journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,datePublished,startPage,endPage,copyrightYear,...
-myjournal,en_US,ml-2024,1,,"Machine Learning Applications","Practical Guide","This article explores ML applications...","Maria,Silva,maria@email.com,Dept of CS;John,Smith,john@email.com,Tech Institute","machine learning;AI;neural networks",2024-10-15,20,35,2024,...
-```
-
-Version 2 (update title only - partial update):
-```csv
-journalPath,locale,versionIdentifier,version,articleTitle,datePublished,copyrightYear,...
-myjournal,en_US,ml-2024,2,"Machine Learning Applications: Revised",2024-10-15,2024,...
-```
-
-Version 3 (comprehensive update with new content):
-```csv
-journalPath,locale,versionIdentifier,version,articlePrefix,articleTitle,articleSubtitle,articleAbstract,authors,keywords,datePublished,startPage,endPage,copyrightYear,...
-myjournal,en_US,ml-2024,3,ML,"Machine Learning Applications: Comprehensive Edition","Advanced Implementation Guide","This extensively revised article includes new case studies...","Maria,Silva,maria@email.com,Dept of CS;John,Smith,john@email.com,Tech Institute;Anna,Kowalski,anna@email.com,AI Lab","machine learning;AI;neural networks;enterprise AI",2024-11-01,20,42,2024,...
-```
+For article with multiple versions, you'll need to set the `versionIdentifier` and `version` fields. The `versionIdentifier` tracks the same article and the `version` handles with the article different verisons. See [multi version CSV file](./examples/issues/multi_version_issues.csv) example.
 
 #### Example 3: Multiple Articles with and without Versions
 
-You can mix single-version and multi-version articles in the same CSV file:
-
-```csv
-journalPath,locale,versionIdentifier,version,articleTitle,authors,datePublished,...
-myjournal,en_US,,,Single Version Article,"Author,One,author1@email.com,",2024-01-15,...
-myjournal,en_US,climate-2024,1,"Climate Research v1","Author,Two,author2@email.com,",2024-02-01,...
-myjournal,en_US,climate-2024,2,"Climate Research: Updated","Author,Two,author2@email.com,",2024-03-01,...
-myjournal,en_US,,,Another Single Version,"Author,Three,author3@email.com,",2024-03-15,...
-myjournal,en_US,bio-study,1,"Biodiversity Study v1","Author,Four,author4@email.com,",2024-04-01,...
-myjournal,en_US,bio-study,2,"Biodiversity Study: Revised",,2024-05-01,...
-myjournal,en_US,bio-study,3,"Biodiversity Study: Final Edition",,2024-06-01,...
-```
-
-**Note**: In this example, the climate-2024 article has 2 versions, and bio-study has 3 versions. Version 3 of bio-study will be set as the current published version automatically.
-
-#### Example 4: Updating Different Fields Across Versions
-
-Each version can update different aspects of the article:
-
-```csv
-journalPath,locale,versionIdentifier,version,articleTitle,articleAbstract,authors,keywords,doi,startPage,endPage,datePublished,...
-myjournal,en_US,research-001,1,"Original Title","Original abstract...","Main,Author,main@email.com,Univ","original;keywords",10.1234/v1,1,10,2024-01-01,...
-myjournal,en_US,research-001,2,,"Corrected abstract with new findings...",,,,,,2024-02-01,...
-myjournal,en_US,research-001,3,"Updated Title",,,"original;keywords;new keyword",10.1234/v3,,,2024-03-01,...
-myjournal,en_US,research-001,4,,,"Main,Author,main@email.com,Univ;New,Contributor,new@email.com,Institute",,,1,15,2024-04-01,...
-```
-
-In this example:
-- Version 1: Complete initial article
-- Version 2: Only updates the abstract
-- Version 3: Updates title, keywords, and DOI
-- Version 4: Adds a new author and updates pagination
-
-### Common Use Cases
-
-1. **Corrections and Errata**: Publish a new version when you need to correct errors in a published article
-2. **Content Updates**: Add new findings, data, or sections to an existing article
-3. **Metadata Updates**: Update author affiliations, keywords, or other metadata
-4. **File Updates**: Replace or add new galley files or supplementary materials
-5. **Translation Updates**: Publish improved translations of the same article
+You can mix single-version and multi-version articles in the same CSV file. Take a look at [the default CSV file](./examples/issues/issues_example.csv).
 
 ### Important Notes
 
@@ -331,7 +265,7 @@ In this example:
      - Verify the file exists and the path is correct
      - Use absolute paths for reliability
      - For relative paths, they are resolved from the OJS root directory
-     - Check file permissions (must be readable by the web server user)
+     - Check file permissions (must be readable by the user running the CLI script)
      - Ensure the file is not empty
 
 2. **Invalid Source Directory**
@@ -339,7 +273,7 @@ In this example:
    - Solution:
      - Verify the directory exists and is accessible
      - Check for typos in the path
-     - Ensure the web server user has read permissions
+     - Ensure the user running the CLI command has read permissions
 
 #### CSV Format Issues
 3. **Missing or Invalid Fields**
