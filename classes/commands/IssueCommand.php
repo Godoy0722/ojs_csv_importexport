@@ -285,7 +285,7 @@ class IssueCommand
 
                     $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication, $this->sourceDir);
                 } else {
-                    $initialPublication = PublicationProcessor::createInitialPublication($data, $this->sourceDir);
+                    $initialPublication = PublicationProcessor::createInitialPublication($data);
                     $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
                     $publication = PublicationProcessor::process($submission, $data, $journal, $this->sourceDir);
                 }
