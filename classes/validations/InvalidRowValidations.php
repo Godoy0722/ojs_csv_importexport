@@ -266,4 +266,28 @@ class InvalidRowValidations
 
         return null;
     }
+
+    /**
+     * Validates the references file. Returns the reason if an error occurred,
+     * or null if everything is correct.
+     */
+    public static function validateReferencesFile(?string $referencesFilename, string $sourceDir): ?string
+    {
+        if (empty($referencesFilename)) {
+            return null; // References file is optional
+        }
+
+        $referencesFilePath = "{$sourceDir}/{$referencesFilename}";
+
+        if (!is_readable($referencesFilePath)) {
+            return __('plugins.importexport.csv.invalidReferencesFile', ['filename' => $referencesFilename]);
+        }
+
+        $extension = pathinfo(mb_strtolower($referencesFilename), PATHINFO_EXTENSION);
+        if ($extension !== 'txt') {
+            return __('plugins.importexport.csv.invalidReferencesFileExtension');
+        }
+
+        return null;
+    }
 }

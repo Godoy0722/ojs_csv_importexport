@@ -20,7 +20,6 @@ use APP\facades\Repo;
 use APP\journal\Journal;
 use APP\publication\Publication;
 use APP\submission\Submission;
-use PKP\core\PKPString;
 
 class PublicationProcessor
 {
@@ -42,7 +41,7 @@ class PublicationProcessor
     }
 
     /** Update the Publication with all necessary data after the Submission is created. */
-    public static function process(Submission $submission, object $data, Journal $journal): Publication
+    public static function process(Submission $submission, object $data, Journal $journal, string $sourceDir): Publication
     {
         /** @var Publication */
         $submissionPublication = $submission->getCurrentPublication();
@@ -65,7 +64,16 @@ class PublicationProcessor
             $submissionPublication->setData('pages', "{$data->startPage}-{$data->endPage}");
         }
 
-        Repo::publication()->dao->update($submissionPublication);
+        if (!empty($data->references)) {
+            $referencesString = self::getReferencesContent($data->references, $sourceDir);
+
+            if (!empty($referencesString)) {
+                $submissionPublication->setData('citationsRaw', $referencesString);
+            }
+        }
+
+        $oldPublication = Repo::publication()->get($submissionPublication->getId());
+        Repo::publication()->dao->update($submissionPublication, $oldPublication);
 
         self::setCopyrightFromSystem($submission, $submissionPublication, $data);
 
@@ -167,7 +175,6 @@ class PublicationProcessor
         // Clear authors from the cloned publication to avoid duplicates
         $newPublication->setData('authors', []);
         $newPublication->setData('primaryContactId', null);
-        Repo::publication()->dao->update($newPublication);
 
         // Copy cover image from base publication if it exists
         $coverImage = $basePublication->getData('coverImage');
@@ -180,6 +187,16 @@ class PublicationProcessor
             $newPublication = Repo::publication()->get($publicationId);
         }
 
+        $citationsRaw = $basePublication->getData('citationsRaw');
+        if (!empty($citationsRaw)) {
+            $newPublication->setData('citationsRaw', (string)$citationsRaw);
+            $oldPublication = Repo::publication()->get($publicationId);
+
+            Repo::publication()->dao->update($newPublication, $oldPublication);
+
+            $newPublication = Repo::publication()->get($publicationId);
+        }
+
         return $newPublication;
     }
 
@@ -188,8 +205,12 @@ class PublicationProcessor
      * This method processes a publication that was created through OPS versioning mechanism
      * OPS versioning already copied all data from base version, we only update what changed
      */
-    public static function processVersionedPublication(Publication $publication, object $data, Publication $basePublication): Publication
-    {
+    public static function processVersionedPublication(
+        Publication $publication,
+        object $data,
+        Publication $basePublication,
+        string $sourceDir
+    ): Publication {
         // Update version and status
         self::updatePublicationAttribute($publication, 'version', (int)$data->version);
         self::updatePublicationAttribute($publication, 'status', Submission::STATUS_PUBLISHED);
@@ -228,6 +249,31 @@ class PublicationProcessor
             self::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
         }
 
+        if (!empty($data->references)) {
+            $referencesString = self::getReferencesContent($data->references, $sourceDir);
+
+            if (!empty($referencesString)) {
+                $publication->setData('citationsRaw', $referencesString);
+            }
+        } elseif (!empty($basePublication->getData('citationsRaw'))) {
+            $citationsRaw = (string)$basePublication->getData('citationsRaw');
+            $publication->setData('citationsRaw', $citationsRaw);
+        }
+
+        $oldPublication = Repo::publication()->get($publication->getId());
+        Repo::publication()->dao->update($publication, $oldPublication);
+
+        $publication = Repo::publication()->get($publication->getId());
+
         return $publication;
+    }
+
+    /**
+     * Process references from a file and add them to the publication
+     */
+    public static function getReferencesContent(string $referencesFilename, string $sourceDir): string|false
+    {
+        $referencesFilePath = "{$sourceDir}/{$referencesFilename}";
+        return file_get_contents($referencesFilePath);
     }
 }

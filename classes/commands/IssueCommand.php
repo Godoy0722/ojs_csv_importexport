@@ -205,6 +205,14 @@ class IssueCommand
                     }
                 }
 
+                if ($data->references) {
+                    $reason = InvalidRowValidations::validateReferencesFile($data->references, $this->sourceDir);
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
+                }
+
                 $journal = CachedEntities::getCachedJournal($data->journalPath);
 
                 $reason = InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
@@ -275,11 +283,11 @@ class IssueCommand
                     $submission = $existingSubmission;
                     $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
 
-                    $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication);
+                    $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication, $this->sourceDir);
                 } else {
-                    $initialPublication = PublicationProcessor::createInitialPublication($data);
+                    $initialPublication = PublicationProcessor::createInitialPublication($data, $this->sourceDir);
                     $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
-                    $publication = PublicationProcessor::process($submission, $data, $journal);
+                    $publication = PublicationProcessor::process($submission, $data, $journal, $this->sourceDir);
                 }
 
                 if (!$publication) {

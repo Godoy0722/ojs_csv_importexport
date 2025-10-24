@@ -52,6 +52,7 @@ class RequiredIssueHeaders
 		'copyrightYear',
 		'copyrightHolder',
 		'licenseUrl',
+		'references',
     ];
 
     static $issueRequiredHeaders = [
