@@ -141,6 +141,7 @@ You can take a look at the example we provide on the [User CSV file](./examples/
 | copyrightYear | No | Copyright year | 2025 | Defaults to system setting if not provided |
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
+| references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
 
 > **Authors Format**
 > The `authors` field in the issues CSV must contain author information in the following format:
@@ -172,6 +173,22 @@ You can take a look at the example we provide on the [User CSV file](./examples/
 >  - Leading/trailing spaces are automatically trimmed
 >  - Empty values are ignored
 >  - Categories will be created if they don't exist
+
+> **References File**
+> The `references` field in the issues CSV can contain the path to a TXT file with article references:
+>  - The file must be in TXT format
+>  - The file must be located in the same directory as the CSV file
+>  - Each reference should be on a separate line or separated by a blank line
+>  - The content of the file will be imported as the publication's citations
+>
+> Example references.txt content:
+> ```
+> Smith, J. (2023). "The Impact of Technology on Modern Publishing", Journal of Academic Publishing, 45(2), 123-145.
+>
+> Johnson, M., & Williams, K. (2022). Digital Transformation in Scholarly Communication. Academic Press.
+>
+> Brown, A. et al. (2021). "Open Access and the Future of Research Dissemination", International Journal of Scholarly Research, 12(4), 567-589.
+> ```
 
 #### Issues CSV Example
 
@@ -348,6 +365,18 @@ You can mix single-version and multi-version articles in the same CSV file. Take
      - Check for duplicate rows with the same versionIdentifier and version
      - Ensure each version number is unique within the same article
      - Remove duplicate entries from your CSV file
+
+11. **References File Issues**
+   - Error: `Invalid references file: [filename]`
+   - Solution:
+     - Verify the references file exists in the same directory as the CSV file
+     - Check file permissions (must be readable by the user running the CLI script)
+     - Ensure the filename is spelled correctly in the CSV
+
+   - Error: `Invalid references file extension`
+   - Solution:
+     - Ensure the references file has a .txt extension
+     - References files must be in plain text format
 
 #### General Troubleshooting Tips
 - Always back up your database before running imports

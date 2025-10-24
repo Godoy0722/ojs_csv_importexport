@@ -26,10 +26,11 @@ class PublicationProcessor
 	 * @param \Submission $submission
 	 * @param object $data
 	 * @param \Journal $journal
+	 * @param string $sourceDir
 	 *
 	 * @return \Publication
 	 */
-    public static function process($submission, $data, $journal)
+    public static function process($submission, $data, $journal, $sourceDir)
     {
 		$publicationDao = CachedDaos::getPublicationDao();
 		$sanitizedAbstract = \PKPString::stripUnsafeHtml($data->articleAbstract);
@@ -58,7 +59,20 @@ class PublicationProcessor
             $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
         }
 
+		if (!empty($data->references)) {
+            $referencesString = self::getReferencesContent($data->references, $sourceDir);
+
+            if (!empty($referencesString)) {
+                $publication->setData('citationsRaw', $referencesString);
+            }
+        }
+
         $publicationDao->insertObject($publication);
+
+		if ($publication->getData('citationsRaw')) {
+			$citationDao = CachedDaos::getCitationDAO();
+			$citationDao->importCitations($publication->getId(), $publication->getData('citationsRaw'));
+		}
 
 		self::setCopyrightFromSystem($submission, $publication, $data);
 		$publicationDao->updateObject($publication);
@@ -188,6 +202,12 @@ class PublicationProcessor
         $newPublication->setData('primaryContactId', null);
 		$publicationDao->updateObject($newPublication);
 
+		// Copy and import citations from base publication
+		if (!empty($basePublication->getData('citationsRaw'))) {
+			$citationDao = CachedDaos::getCitationDAO();
+			$citationDao->importCitations($newPublication->getId(), $basePublication->getData('citationsRaw'));
+		}
+
 		$newPublication = $publicationDao->getById($newPublicationId);
 
         return $newPublication;
@@ -201,10 +221,11 @@ class PublicationProcessor
 	 * @param \Publication $publication
 	 * @param object $data
 	 * @param \Publication $basePublication
+	 * @param string $sourceDir
 	 *
 	 * @return \Publication
      */
-    public static function processVersionedPublication($publication, $data, $basePublication)
+    public static function processVersionedPublication($publication, $data, $basePublication, $sourceDir)
     {
         self::updatePublicationAttribute($publication, 'version', (int)$data->version);
         self::updatePublicationAttribute($publication, 'status', STATUS_PUBLISHED);
@@ -212,38 +233,56 @@ class PublicationProcessor
         $datePublished = !empty($data->datePublished) ? $data->datePublished : $basePublication->getData('datePublished');
         self::updatePublicationAttribute($publication, 'datePublished', $datePublished);
 
-        $title = !empty($data->articleTitle) ? $data->articleTitle : $basePublication->getLocalizedData('title', $data->locale);
-        self::updatePublicationAttribute($publication, 'title', $title, $data->locale);
+		$localizedFields = [
+            'title' => 'articleTitle',
+            'subtitle' => 'articleSubtitle',
+            'abstract' => 'articleAbstract',
+            'prefix' => 'articlePrefix',
+            'coverage' => 'coverage',
+            'copyrightHolder' => 'copyrightHolder',
+        ];
 
-        if (!empty($data->articleSubtitle)) {
-            self::updatePublicationAttribute($publication, 'subtitle', $data->articleSubtitle, $data->locale);
-        } elseif ($basePublication->getLocalizedData('subtitle', $data->locale)) {
-            self::updatePublicationAttribute($publication, 'subtitle', $basePublication->getLocalizedData('subtitle', $data->locale), $data->locale);
+		foreach ($localizedFields as $field => $csvField) {
+            if (!empty($data->{$csvField})) {
+                self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
+            } elseif ($basePublication->getLocalizedData($field, $data->locale)) {
+                self::updatePublicationAttribute($publication, $field, $basePublication->getLocalizedData($field, $data->locale), $data->locale);
+            }
         }
 
-        if (!empty($data->articleAbstract)) {
-            self::updatePublicationAttribute($publication, 'abstract', $data->articleAbstract, $data->locale);
-        } elseif ($basePublication->getLocalizedData('abstract', $data->locale)) {
-            self::updatePublicationAttribute($publication, 'abstract', $basePublication->getLocalizedData('abstract', $data->locale), $data->locale);
-        }
+		$nonLocalizedFields = ['copyrightYear', 'licenseUrl'];
 
-        if (!empty($data->articlePrefix)) {
-            self::updatePublicationAttribute($publication, 'prefix', $data->articlePrefix, $data->locale);
-        } elseif ($basePublication->getLocalizedData('prefix', $data->locale)) {
-            self::updatePublicationAttribute($publication, 'prefix', $basePublication->getLocalizedData('prefix', $data->locale), $data->locale);
+        foreach ($nonLocalizedFields as $nonLocaleField) {
+            if (!empty($data->{$nonLocaleField})) {
+                self::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
+            } elseif ($basePublication->getData($nonLocaleField)) {
+                self::updatePublicationAttribute($publication, $nonLocaleField, $basePublication->getData($nonLocaleField));
+            }
         }
 
         if (!empty($data->doi)) {
             self::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
         }
 
-        if (!empty($data->coverage)) {
-            self::updatePublicationAttribute($publication, 'coverage', $data->coverage, $data->locale);
-        } elseif ($basePublication->getLocalizedData('coverage', $data->locale)) {
-            self::updatePublicationAttribute($publication, 'coverage', $basePublication->getLocalizedData('coverage', $data->locale), $data->locale);
+		$citationsToImport = null;
+
+		if (!empty($data->references)) {
+            $referencesString = self::getReferencesContent($data->references, $sourceDir);
+
+            if (!empty($referencesString)) {
+                $publication->setData('citationsRaw', $referencesString);
+				$citationsToImport = $referencesString;
+            }
+        } elseif (!empty($basePublication->getData('citationsRaw'))) {
+            $citationsRaw = (string)$basePublication->getData('citationsRaw');
+            $publication->setData('citationsRaw', $citationsRaw);
+			$citationsToImport = $citationsRaw;
         }
 
-        self::setCopyrightFromSystemForVersion($publication, $data, $basePublication);
+		if ($citationsToImport) {
+			$citationDao = CachedDaos::getCitationDAO();
+			$citationDao->importCitations($publication->getId(), $citationsToImport);
+		}
 
         return $publication;
     }
@@ -282,37 +321,6 @@ class PublicationProcessor
         $publication->setData('licenseUrl', $licenseUrl);
     }
 
-	/**
-     * Set copyright information for versioned publications
-     * Clone from base version if CSV fields are empty
-	 *
-	 * @param \Publication $publication
-	 * @param object $data
-	 * @param \Publication $basePublication
-	 *
-	 * @return void
-     */
-    private static function setCopyrightFromSystemForVersion(&$publication, $data, $basePublication)
-    {
-        if (!empty($data->copyrightHolder)) {
-            self::updatePublicationAttribute($publication, 'copyrightHolder', $data->copyrightHolder, $data->locale);
-        } elseif ($basePublication->getLocalizedData('copyrightHolder', $data->locale)) {
-            self::updatePublicationAttribute($publication, 'copyrightHolder', $basePublication->getLocalizedData('copyrightHolder', $data->locale), $data->locale);
-        }
-
-        if (!empty($data->copyrightYear)) {
-            self::updatePublicationAttribute($publication, 'copyrightYear', $data->copyrightYear);
-        } elseif ($basePublication->getData('copyrightYear')) {
-            self::updatePublicationAttribute($publication, 'copyrightYear', $basePublication->getData('copyrightYear'));
-        }
-
-        if (!empty($data->licenseUrl)) {
-            self::updatePublicationAttribute($publication, 'licenseUrl', $data->licenseUrl);
-        } elseif ($basePublication->getData('licenseUrl')) {
-            self::updatePublicationAttribute($publication, 'licenseUrl', $basePublication->getData('licenseUrl'));
-        }
-    }
-
     /**
      * Copy galleys from a base publication to a new publication version
      * This mimics the behavior of OJS native versioning when creating new versions
@@ -345,5 +353,19 @@ class PublicationProcessor
         $publicationDao = CachedDaos::getPublicationDao();
         $refreshedPublication = $publicationDao->getById($newPublication->getId());
         $newPublication->setData('galleys', $refreshedPublication->getData('galleys'));
+    }
+
+	/**
+     * Process references from a file and add them to the publication
+	 *
+	 * @param string $referencesFilename
+	 * @param string $sourceDir
+	 *
+	 * @return string|false
+     */
+    public static function getReferencesContent($referencesFilename, $sourceDir)
+    {
+        $referencesFilePath = "{$sourceDir}/{$referencesFilename}";
+        return file_get_contents($referencesFilePath);
     }
 }
