@@ -141,3 +141,9 @@ msgstr "Version must be a positive integer greater than 0."
 
 msgid "plugins.importexport.csv.duplicateArticleVersionFound"
 msgstr "An article with identifier \"{$identifier}\" and version \"{$version}\" already exists in this import. Please check the article's version."
+
+msgid "plugins.importexport.csv.invalidReferencesFile"
+msgstr "Invalid references file: \"{$filename}\". Please verify the file exists and is readable."
+
+msgid "plugins.importexport.csv.invalidReferencesFileExtension"
+msgstr "References file must have a .txt extension."
