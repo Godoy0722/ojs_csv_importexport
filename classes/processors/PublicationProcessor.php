@@ -18,6 +18,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
 use APP\journal\Journal;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\publication\Publication;
 use APP\submission\Submission;
 
@@ -264,6 +265,46 @@ class PublicationProcessor
         Repo::publication()->dao->update($publication, $oldPublication);
 
         $publication = Repo::publication()->get($publication->getId());
+
+        return $publication;
+    }
+
+    /**
+     * Process multi-locale publication data (adds new locale to existing publication)
+     * This method updates an existing publication with data in a new locale
+     */
+    public static function processMultiLocalePublication(Publication $publication, object $data): Publication
+    {
+        $localizedFields = [
+            'title' => 'articleTitle',
+            'subtitle' => 'articleSubtitle',
+            'abstract' => 'articleAbstract',
+            'prefix' => 'articlePrefix',
+            'coverage' => 'coverage',
+            'copyrightHolder' => 'copyrightHolder',
+        ];
+
+        foreach ($localizedFields as $field => $csvField) {
+            if (!empty($data->{$csvField})) {
+                self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
+            }
+        }
+
+        // Handle non-localized fields (only update if provided in CSV)
+        $nonLocalizedFields = ['copyrightYear', 'licenseUrl'];
+
+        foreach ($nonLocalizedFields as $nonLocaleField) {
+            if (!empty($data->{$nonLocaleField})) {
+                self::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
+            }
+        }
+
+        $submission = Repo::submission()->get($publication->getData('submissionId'));
+        $journal = CachedDaos::getJournalDao()->getById($submission->getData('contextId'));
+        if ($journal) {
+            $publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $data->locale));
+            Repo::publication()->dao->update($publication);
+        }
 
         return $publication;
     }

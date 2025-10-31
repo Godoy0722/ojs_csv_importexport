@@ -51,4 +51,26 @@ class KeywordsProcessor
 
         Repo::publication()->edit($publication, ['keywords' => $keywordsList]);
 	}
+
+    /**
+     * Process keywords for multi-locale import (adds keywords in new locale)
+     */
+    public static function processMultiLocale(object $data, int $publicationId): void
+    {
+        if (empty($data->keywords)) {
+            return; // No new keywords to add
+        }
+
+        $publication = Repo::publication()->get($publicationId);
+        if (!$publication) {
+            return;
+        }
+
+        $existingKeywords = $publication->getData('keywords') ?? [];
+
+        $newKeywords = array_map('trim', explode(';', $data->keywords));
+        $existingKeywords[$data->locale] = $newKeywords;
+
+        Repo::publication()->edit($publication, ['keywords' => $existingKeywords]);
+    }
 }

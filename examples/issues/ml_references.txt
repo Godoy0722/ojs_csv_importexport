@@ -1,0 +1,9 @@
+Goodfellow, I., Bengio, Y., & Courville, A. (2016). Deep Learning. MIT Press.
+
+LeCun, Y., Bengio, Y., & Hinton, G. (2015). "Deep learning", Nature, 521(7553), 436-444.
+
+Vaswani, A., et al. (2017). "Attention is all you need", Advances in Neural Information Processing Systems, 30.
+
+Silver, D., et al. (2016). "Mastering the game of Go with deep neural networks and tree search", Nature, 529(7587), 484-489.
+
+Hinton, G., et al. (2012). "Deep neural networks for acoustic modeling in speech recognition", IEEE Signal Processing Magazine, 29(6), 82-97.

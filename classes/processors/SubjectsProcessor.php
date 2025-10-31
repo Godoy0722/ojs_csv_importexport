@@ -51,4 +51,26 @@ class SubjectsProcessor
 
         Repo::publication()->edit($publication, ['subjects' => $subjectsList]);
 	}
+
+    /**
+     * Process subjects for multi-locale import (adds subjects in new locale)
+     */
+    public static function processMultiLocale(object $data, int $publicationId): void
+    {
+        if (empty($data->subjects)) {
+            return; // No new subjects to add
+        }
+
+        $publication = Repo::publication()->get($publicationId);
+        if (!$publication) {
+            return;
+        }
+
+        $existingSubjects = $publication->getData('subjects') ?? [];
+
+        $newSubjects = array_map('trim', explode(';', $data->subjects));
+        $existingSubjects[$data->locale] = $newSubjects;
+
+        Repo::publication()->edit($publication, ['subjects' => $existingSubjects]);
+    }
 }

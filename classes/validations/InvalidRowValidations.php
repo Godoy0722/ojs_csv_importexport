@@ -249,22 +249,36 @@ class InvalidRowValidations
     }
 
     /**
-     * Validates that no duplicate version exists for the same article identifier
-     * in the current import session
+     * Validates that no duplicate version exists for the same article identifier,
+     * version, and locale combination in the current import session
      */
     public static function validateNoDuplicateVersion(object $data, array $processedArticles): ?string
     {
         $identifier = $data->versionIdentifier;
         $version = (int)$data->version;
+        $locale = $data->locale;
 
-        if (isset($processedArticles[$identifier][$version])) {
-            return __('plugins.importexport.csv.duplicateArticleVersionFound', [
+        if (isset($processedArticles[$identifier][$version][$locale])) {
+            return __('plugins.importexport.csv.duplicateArticleVersionLocaleFound', [
                 'identifier' => $identifier,
-                'version' => $version
+                'version' => $version,
+                'locale' => $locale
             ]);
         }
 
         return null;
+    }
+
+    /**
+     * Checks if a version exists in any locale (used for multi-locale imports)
+     */
+    public static function versionExistsInAnyLocale(object $data, array $processedArticles): bool
+    {
+        $identifier = $data->versionIdentifier;
+        $version = (int)$data->version;
+
+        return isset($processedArticles[$identifier][$version]) &&
+               !empty($processedArticles[$identifier][$version]);
     }
 
     /**
