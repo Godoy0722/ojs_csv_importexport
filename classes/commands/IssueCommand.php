@@ -457,7 +457,6 @@ class IssueCommand
                 PublicationProcessor::updateSectionId($publication, $section->getId());
 
                 $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
-
                 if ($isMultiLocaleImport) {
                     $issue = IssueProcessor::processMultiLocale($issue, $data);
                 }
@@ -581,7 +580,7 @@ class IssueCommand
         $version = (int)$data->version;
         $locale = $data->locale;
 
-        if (!isset($this->processedPreprints[$identifier])) {
+        if (!isset($this->processedArticles[$identifier])) {
             $this->processedArticles[$identifier] = [];
         }
 
@@ -637,9 +636,22 @@ class IssueCommand
                     continue;
                 }
 
-                $sourceCoverImage = isset($coverImagesByLocale[$defaultLocale])
-                    ? $coverImagesByLocale[$defaultLocale]
-                    : reset($coverImagesByLocale);
+                $sourceCoverImage = null;
+
+                if (isset($coverImagesByLocale[$defaultLocale])) {
+                    $sourceCoverImage = $coverImagesByLocale[$defaultLocale];
+                } else {
+                    foreach ($coverImagesByLocale as $locale => $coverImageData) {
+                        if (!empty($coverImageData) && isset($coverImageData['uploadName'])) {
+                            $sourceCoverImage = $coverImageData;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$sourceCoverImage) {
+                    continue;
+                }
 
                 $allPublicationLocales = DB::table('publication_settings')
                     ->where('publication_id', $publicationId)
@@ -650,7 +662,7 @@ class IssueCommand
                     ->toArray();
 
                 foreach ($allPublicationLocales as $locale) {
-                    if (!(!isset($coverImagesByLocale[$locale]) && $sourceCoverImage)) {
+                    if (isset($coverImagesByLocale[$locale])) {
                         continue;
                     }
 
@@ -676,11 +688,13 @@ class IssueCommand
             $highestVersion = 0;
             $currentVersionData = null;
 
-            foreach ($versions as $versionKey => $versionData) {
-                $versionNumber = (int)$versionData['data']->version;
-                if ($versionNumber > $highestVersion) {
-                    $highestVersion = $versionNumber;
-                    $currentVersionData = $versionData;
+            foreach ($versions as $versionKey => $locales) {
+                foreach($locales as $locale => $localeData) {
+                    $versionNumber = (int)$localeData['data']->version;
+                    if ($versionNumber > $highestVersion) {
+                        $highestVersion = $versionNumber;
+                        $currentVersionData = $localeData;
+                    }
                 }
             }
 
