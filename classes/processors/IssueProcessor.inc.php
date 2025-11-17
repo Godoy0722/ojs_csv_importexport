@@ -95,15 +95,39 @@ class IssueProcessor
 	}
 
 	/**
-     * Reorder all imported issues according to the specified criteria:
+     * Process multi-locale issue data (adds new locale to existing issue)
+     * This method updates an existing issue with data in a new locale
+	 *
+	 * @param \Issue $issue
+	 * @param object $data
+	 *
+	 * @return \Issue
+     */
+    public static function processMultiLocale($issue, $data)
+    {
+        if (!empty($data->issueTitle)) {
+            $issue->setTitle($data->issueTitle, $data->locale);
+        }
+
+        if (!empty($data->issueDescription)) {
+            $sanitizedIssueDescription = \PKPString::stripUnsafeHtml($data->issueDescription);
+            $issue->setDescription($sanitizedIssueDescription, $data->locale);
+        }
+
+		CachedDaos::getIssueDao()->updateObject($issue);
+        return CachedDaos::getIssueDao()->getById($issue->getId());
+    }
+
+	/**
+     * Reorder all issues in each journal according to specified criteria:
      * 1. Year (most recent to oldest)
      * 2. Volume (biggest to lowest)
      * 3. Number (biggest to lowest)
      * 4. Fallback to datePublished (most recent to oldest) if issue info is missing
 	 *
 	 * @param array $processedIssues
-     *
-     * @return void
+	 *
+	 * @return void
      */
     public static function reorderImportedIssues($processedIssues)
     {
@@ -111,45 +135,46 @@ class IssueProcessor
             return;
         }
 
-        $issuesByJournal = [];
+        // Get all unique journal IDs from the processed issues
+        $journalIds = [];
         foreach ($processedIssues as $processedIssue) {
             $journalId = $processedIssue['journalId'];
-            if (!isset($issuesByJournal[$journalId])) {
-                $issuesByJournal[$journalId] = [];
-            }
-            $issuesByJournal[$journalId][] = $processedIssue;
+            $journalIds[$journalId] = $journalId;
         }
 
-        foreach ($issuesByJournal as $journalId => $issues) {
-            self::reorderIssuesForJournal($journalId, $issues);
+        // Reorder all issues for each journal that had imported issues
+        foreach ($journalIds as $journalId) {
+            self::reorderAllIssuesForJournal($journalId);
         }
     }
 
     /**
-     * Reorder issues for a specific journal
-     *
-     * @param int $journalId
-     * @param array $issues
-     *
-     * @return void
+     * Reorder all issues for a specific journal (not just imported ones)
+	 *
+	 * @param int $journalId
+	 *
+	 * @return void
      */
-    public static function reorderIssuesForJournal($journalId, $issues)
+    public static function reorderAllIssuesForJournal($journalId)
     {
         $issueDao = CachedDaos::getIssueDao();
 
-        usort($issues, function($a, $b) {
-            $dataA = $a['data'];
-            $dataB = $b['data'];
-            $issueA = $a['issue'];
-            $issueB = $b['issue'];
+        $publishedIssues = $issueDao->getPublishedIssues($journalId);
+        $allIssues = $publishedIssues->toArray();
 
-            // Extract sorting criteria
-            $yearA = self::extractNumericValue($dataA->issueYear);
-            $yearB = self::extractNumericValue($dataB->issueYear);
-            $volumeA = self::extractNumericValue($dataA->issueVolume);
-            $volumeB = self::extractNumericValue($dataB->issueVolume);
-            $numberA = self::extractNumericValue($dataA->issueNumber);
-            $numberB = self::extractNumericValue($dataB->issueNumber);
+        if (empty($allIssues)) {
+            return;
+        }
+
+        // Sort all issues according to the same criteria as imported issues
+        usort($allIssues, function($a, $b) {
+            // Extract sorting criteria from issue objects
+            $yearA = self::extractNumericValue($a->getYear());
+            $yearB = self::extractNumericValue($b->getYear());
+            $volumeA = self::extractNumericValue($a->getVolume());
+            $volumeB = self::extractNumericValue($b->getVolume());
+            $numberA = self::extractNumericValue($a->getNumber());
+            $numberB = self::extractNumericValue($b->getNumber());
 
             // Primary sort: Year (most recent to oldest - descending)
             if ($yearA !== null && $yearB !== null) {
@@ -185,8 +210,8 @@ class IssueProcessor
             }
 
             // Fallback: datePublished (most recent to oldest - descending)
-            $dateA = self::extractDateValue($dataA->datePublished, $issueA->getDatePublished());
-            $dateB = self::extractDateValue($dataB->datePublished, $issueB->getDatePublished());
+            $dateA = $a->getDatePublished();
+            $dateB = $b->getDatePublished();
 
             if ($dateA && $dateB) {
                 return strcmp($dateB, $dateA); // Descending order (string comparison)
@@ -200,10 +225,9 @@ class IssueProcessor
             return 0;
         });
 
-        // Apply custom ordering
-		$sequence = self::getCurrentMaxSequence($journalId) + 1;
-        foreach ($issues as $issueData) {
-            $issue = $issueData['issue'];
+        // Apply custom ordering to all issues
+        $sequence = 1;
+        foreach ($allIssues as $issue) {
             $issueDao->moveCustomIssueOrder($journalId, $issue->getId(), $sequence);
             $sequence++;
         }

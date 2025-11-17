@@ -3,24 +3,37 @@
 This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.5.X. This plugin operates exclusively via command-line interface (CLI).
 
 ## Table of Contents
-- [CLI Usage](#cli-usage)
-  - [Importing Users](#importing-users)
-  - [Importing Issues](#importing-issues)
-- [CSV General Rules](#csv-general-rules)
-  - [Users CSV Format](#users-csv-format)
-    - [CSV Example](#users-csv-example)
-  - [Issues CSV Format](#issues-csv-format)
-    - [CSV Example](#issues-csv-example)
-    - [Import File Structure](#import-file-structure)
-- [Article Versions](#article-versions)
-  - [How It Works](#how-it-works)
-  - [Version Management Rules](#version-management-rules)
-  - [Practical Examples](#practical-examples)
-    - [Single Version Articles](#example-1-single-article-without-versions)
-    - [Multi Version Articles](#example-2-multi-version-articles)
-    - [Mixed Articles](#example-3-mixed-articles)
-  - [Important Notes](#important-notes)
-- [Troubleshooting](#troubleshooting)
+- [OJS CSV Import Plugin (CLI)](#ojs-csv-import-plugin-cli)
+	- [Table of Contents](#table-of-contents)
+	- [CLI Usage](#cli-usage)
+		- [Importing Users](#importing-users)
+		- [Importing Issues](#importing-issues)
+	- [CSV General Rules](#csv-general-rules)
+		- [Users CSV Format](#users-csv-format)
+			- [Users CSV Example](#users-csv-example)
+		- [Issues CSV Format](#issues-csv-format)
+			- [Issues CSV Example](#issues-csv-example)
+			- [Import File Structure](#import-file-structure)
+	- [Multi-Locale Support](#multi-locale-support)
+		- [How Multi-Locale Works](#how-multi-locale-works)
+		- [Multi-Locale Management Rules](#multi-locale-management-rules)
+		- [Multi-Locale Best Practices](#multi-locale-best-practices)
+		- [Important Multi-Locale Notes](#important-multi-locale-notes)
+	- [Article Versions](#article-versions)
+		- [How It Works](#how-it-works)
+		- [Version Management Rules](#version-management-rules)
+		- [Practical Examples](#practical-examples)
+			- [Example 1: Single Article Without Versions](#example-1-single-article-without-versions)
+			- [Example 2: Multi Version Articles](#example-2-multi-version-articles)
+			- [Example 3: Mixed Articles](#example-3-mixed-articles)
+		- [Important Notes](#important-notes)
+	- [Troubleshooting](#troubleshooting)
+		- [Common Issues and Solutions](#common-issues-and-solutions)
+			- [File and Path Issues](#file-and-path-issues)
+			- [CSV Format Issues](#csv-format-issues)
+			- [User Import Issues](#user-import-issues)
+			- [Issue Import Issues](#issue-import-issues)
+			- [General Troubleshooting Tips](#general-troubleshooting-tips)
 
 
 ## CLI Usage
@@ -210,6 +223,106 @@ import_directory/
 ├── supplementary_data.csv
 ├── cover.jpg
 ```
+
+## Multi-Locale Support
+
+The CSV import plugin supports importing articles in multiple languages, allowing journals to publish content for international audiences. This feature enables you to create articles with content in different locales while maintaining proper relationships between translations.
+
+### How Multi-Locale Works
+
+The multi-locale system uses three key fields to manage article translations:
+
+- **versionIdentifier**: Links all versions of an article together
+- **version**: Indicates the version number
+- **locale**: Specifies the language/locale of the content (e.g., `en`, `pt_BR`, `fr_CA`)
+
+When you provide multiple CSV rows with:
+- Same `versionIdentifier`
+- Same `version`
+- Different `locale`
+
+The system will:
+1. Detect that you're adding a translation to an existing publication
+2. Update the existing publication with the new locale data
+3. Preserve all existing data in other locales
+
+### Multi-Locale Management Rules
+
+1. **Locale Codes**:
+   - Must match locales enabled in your journal settings
+   - Common examples: `en` (English), `pt_BR` (Brazilian Portuguese), `fr_CA` (Canadian French)
+   - Must be validated by the server before import
+
+2. **Required Fields for Multi-Locale**:
+   - First locale import (base): Requires ALL mandatory fields (`journalPath`, `locale`, `articleTitle`, `authors`, `datePublished`)
+   - Additional locale imports: Only require `versionIdentifier`, `version`, and `locale` (you can include other fields you want to translate)
+   - Fields not provided will remain empty for that locale (they won't inherit from other locales), with the exception of the coverImage, which if not passed on a second locale but present on the first one, will inherit it from the first one.
+
+3. **Localized Fields**:
+   The following fields support multi-locale data:
+   - `articleTitle`
+   - `articleSubtitle`
+   - `articleAbstract`
+   - `articlePrefix`
+   - `coverage`
+   - `copyrightHolder`
+   - `keywords`
+   - `subjects`
+   - `categories` (category titles)
+   - Author names (`givenName`, `familyName`)
+   - Author affiliations
+   - `issueTitle`
+   - `issueDescription`
+
+4. **Non-Localized Fields**:
+   These fields are shared across all locales:
+   - `copyrightYear`
+   - `licenseUrl`
+   - `doi`
+   - `datePublished`
+   - `startPage` and `endPage`
+   - File attachments (galleys and supplementary files)
+
+1. **Import Order**:
+   - Always import the primary/default locale first
+   - Then add additional locales in subsequent rows
+   - You can import all locales in a single CSV file
+
+2. **Consistency**:
+   - Keep `versionIdentifier` and `version` consistent across locales
+
+4. **Validation**:
+   - The system validates that `identifier` + `version` + `locale` is unique
+   - Duplicate combinations will be rejected with error message
+   - Check the `invalid_[filename].csv` file for any failed rows
+
+### Multi-Locale Best Practices
+
+1. **Import Order**:
+   - Always import the primary/default locale first
+   - Then add additional locales in subsequent rows
+   - You can import all locales in a single CSV file
+
+2. **Consistency**:
+   - Keep `versionIdentifier` and `version` consistent across locales
+
+4. **Validation**:
+   - The system validates that `identifier` + `version` + `locale` is unique
+   - Duplicate combinations will be rejected with error message
+   - Check the `invalid_[filename].csv` file for any failed rows
+
+### Important Multi-Locale Notes
+
+- All locales for a version share the same publication ID
+- Readers can switch between available locales in the frontend
+- Categories can have different titles per locale
+- Author names and affiliations can be provided in multiple locales
+- Keywords and subjects are stored per locale
+- Non-localized fields (DOI, dates, etc.) remain the same across all locales
+- Files (galleys, supplementary) are shared across all locales
+
+
+For a comprehensive example of multi-locale articles with versions, see the [comprehensive locale version CSV file](./examples/issues/comprehensive_locale_version.csv).
 
 ## Article Versions
 

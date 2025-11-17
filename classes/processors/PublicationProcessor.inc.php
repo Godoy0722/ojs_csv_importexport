@@ -368,4 +368,41 @@ class PublicationProcessor
         $referencesFilePath = "{$sourceDir}/{$referencesFilename}";
         return file_get_contents($referencesFilePath);
     }
+
+	/**
+     * Process multi-locale publication data (adds new locale to existing publication)
+     * This method updates an existing publication with data in a new locale
+	 *
+	 * @param \Publication $publication
+	 * @param object $data
+	 *
+	 * @return \Publication
+     */
+    public static function processMultiLocalePublication($publication, $data)
+    {
+        $localizedFields = [
+            'title' => 'articleTitle',
+            'subtitle' => 'articleSubtitle',
+            'abstract' => 'articleAbstract',
+            'prefix' => 'articlePrefix',
+            'coverage' => 'coverage',
+            'copyrightHolder' => 'copyrightHolder',
+        ];
+
+        foreach ($localizedFields as $field => $csvField) {
+            if (!empty($data->{$csvField})) {
+                self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
+            }
+        }
+
+		$submission = CachedDaos::getSubmissionDao()->getById($publication->getData('submissionId'));
+
+        $server = CachedDaos::getJournalDao()->getById($submission->getData('contextId'));
+        if ($server) {
+            $publication->setData('copyrightNotice', $server->getLocalizedData('copyrightNotice', $data->locale));
+			CachedDaos::getPublicationDao()->updateObject($publication);
+        }
+
+        return $publication;
+    }
 }

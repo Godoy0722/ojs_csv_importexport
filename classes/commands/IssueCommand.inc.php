@@ -34,6 +34,7 @@ use PKP\Plugins\ImportExport\CSV\Classes\Processors\SubmissionFileProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\SubmissionProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Validations\InvalidRowValidations;
 use PKP\Plugins\ImportExport\CSV\Classes\Validations\RequiredIssueHeaders;
+use Illuminate\Database\Capsule\Manager as Capsule;
 
 class IssueCommand
 {
@@ -83,18 +84,27 @@ class IssueCommand
     private $_processedIssues;
 
     /**
-     * Array to track processed articles by identifier
+     * Array to track processed preprints by identifier, version, and locale
      * Structure: [
      *     'identifier' => [
      *         'version1' => [
-     *             'data' => csv_row,
-     *             'publication' => Publication,
-     *             'submission' => Submission
+     *             'locale1' => [
+     *                 'data' => csv_row,
+     *                 'publication' => Publication,
+     *                 'submission' => Submission
+     *             ],
+     *             'locale2' => [
+     *                 'data' => csv_row,
+     *                 'publication' => Publication,
+     *                 'submission' => Submission
+     *             ]
      *         ],
      *         'version2' => [
-     *             'data' => csv_row,
-     *             'publication' => Publication,
-     *             'submission' => Submission
+     *             'locale1' => [
+     *                 'data' => csv_row,
+     *                 'publication' => Publication,
+     *                 'submission' => Submission
+     *             ]
      *         ]
      *     ]
      * ]
@@ -161,8 +171,9 @@ class IssueCommand
                     array_pad(array_map('trim', $fields), $this->_expectedRowSize, null)
                 );
 
-                $reason = InvalidRowValidations::validateRowHasAllRequiredFields($data, [RequiredIssueHeaders::class, 'validateRowHasAllRequiredFields']);
-
+                $reason = InvalidRowValidations::validateRowHasAllRequiredFields($data, function($row) {
+                    return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->_processedPublications);
+                });
                 if (!is_null($reason)) {
                     CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
                     continue;
@@ -290,30 +301,52 @@ class IssueCommand
                     }
                 }
 
-                // All requirements passed. Start processing from here.
-                /** @var null|\Submission */
-                $existingSubmission = null;
-                /** @var null|\Publication */
-                $basePublication = null;
-                if (!empty($data->versionIdentifier) && isset($this->_processedPublications[$data->versionIdentifier])) {
-                    $firstVersionData = reset($this->_processedPublications[$data->versionIdentifier]);
-                    $existingSubmission = $firstVersionData['submission'];
-                    $basePublication = $firstVersionData['publication'];
+				import('plugins.importexport.csv.classes.processors.SubmissionProcessor');
+				import('plugins.importexport.csv.classes.processors.PublicationProcessor');
+
+				$existingSubmission = null; /** @var null|\Submission */
+                $basePublication = null; /** @var null|\Publication */
+                $isMultiLocaleImport = false;
+
+                if (
+                    !empty($data->versionIdentifier)
+                    && InvalidRowValidations::versionExistsInAnyLocale($data, $this->_processedPublications)
+                ) {
+                    $version = (int)$data->version;
+                    $versionData = $this->_processedPublications[$data->versionIdentifier][$version];
+
+                    $firstLocaleData = reset($versionData);
+                    $existingSubmission = $firstLocaleData['submission'];
+                    $basePublication = $firstLocaleData['publication'];
+
+                    if (!isset($versionData[$data->locale])) {
+                        $isMultiLocaleImport = true;
+                    }
+                } elseif (!empty($data->versionIdentifier) && isset($this->_processedPublications[$data->versionIdentifier])) {
+                    // Handle new version (not multi-locale)
+                    $versions = $this->_processedPublications[$data->versionIdentifier];
+                    $lastVersion = end($versions);
+                    $lastVersionData = reset($lastVersion);
+                    $existingSubmission = $lastVersionData['submission'];
+                    $basePublication = $lastVersionData['publication'];
                 }
 
-                import('plugins.importexport.csv.classes.processors.SubmissionProcessor');
-                import('plugins.importexport.csv.classes.processors.PublicationProcessor');
-                if ($existingSubmission && $basePublication) {
+				if ($isMultiLocaleImport) {
+                    $submission = $existingSubmission;
+                    $publication = $basePublication;
+
+                    $publication = PublicationProcessor::processMultiLocalePublication($publication, $data);
+                } elseif ($existingSubmission && $basePublication) {
+                    // New version import
                     $submission = $existingSubmission;
                     $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
 
                     $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication, $this->_sourceDir);
-
-                    $hasGalleyData = !empty($data->galleyFilenames) || !empty($data->suppFilenames);
-                    if (!$hasGalleyData) {
+                    if (empty($data->galleyFilenames)) {
                         PublicationProcessor::copyGalleysFromBasePublication($publication, $basePublication);
                     }
                 } else {
+                    // New submission import
                     $submission = SubmissionProcessor::process($journal->getId(), $data);
                     $publication = PublicationProcessor::process($submission, $data, $journal, $this->_sourceDir);
                 }
@@ -344,8 +377,8 @@ class IssueCommand
 
                     // Now, process the submission file for all article galleys
                     $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
-
-                    for($i = 0; $i < count($galleyLabelsArray); $i++) {
+                    $count = min(count($galleyIds), count($galleyLabelsArray));
+                    for($i = 0; $i < $count; $i++) {
                         $galleyItem = $galleyIds[$i];
                         $galleyLabel = $galleyLabelsArray[$i];
 
@@ -411,14 +444,19 @@ class IssueCommand
                 }
 
                 import('plugins.importexport.csv.classes.processors.AuthorsProcessor');
-                AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
-
-                // Process submission file data into the database
-                import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
-                KeywordsProcessor::process($data, $publication->getId(), $basePublication);
-
-                import('plugins.importexport.csv.classes.processors.SubjectsProcessor');
-                SubjectsProcessor::process($data, $publication->getId(), $basePublication);
+				import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
+				import('plugins.importexport.csv.classes.processors.SubjectsProcessor');
+				if ($isMultiLocaleImport) {
+                    // For multi-locale imports, update existing publication with new locale data
+                    AuthorsProcessor::processMultiLocale($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
+                    KeywordsProcessor::processMultiLocale($data, $publication->getId());
+                    SubjectsProcessor::processMultiLocale($data, $publication->getId());
+                } else {
+                    // For new submissions or versions, use the regular process
+                    AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
+                    KeywordsProcessor::process($data, $publication->getId(), $basePublication);
+                    SubjectsProcessor::process($data, $publication->getId(), $basePublication);
+                }
 
                 if ($data->coverage || ($basePublication && !$data->coverage)) {
                     if (!empty($data->coverage)) {
@@ -434,6 +472,10 @@ class IssueCommand
 
                 import('plugins.importexport.csv.classes.processors.IssueProcessor');
                 $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
+				if ($isMultiLocaleImport) {
+                    $issue = IssueProcessor::processMultiLocale($issue, $data);
+                }
+
                 PublicationProcessor::updateIssueId($publication, $issue->getId());
 
                 if ($data->coverImageFilename) {
@@ -444,13 +486,17 @@ class IssueCommand
 
                 import('plugins.importexport.csv.classes.processors.CategoriesProcessor');
                 if ($data->categories || $basePublication) {
-                    ($existingSubmission && $basePublication)
-                        ? CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication)
-                        : CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                    if ($isMultiLocaleImport) {
+                        CategoriesProcessor::processMultiLocale($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                    } elseif ($existingSubmission && $basePublication) {
+                        CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication);
+                    } else {
+                        CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                    }
                 }
 
 				if (!empty($data->versionIdentifier)) {
-                    $this->_trackProcessedPreprint($data, $submission, $publication);
+                    $this->_trackProcessedArticle($data, $submission, $publication);
                 }
 
                 $issueKey = $journal->getId() . '_' . $issue->getId();
@@ -474,7 +520,8 @@ class IssueCommand
             }
         }
 
-		$this->_setCurrentVersionsForProcessedPreprints();
+		$this->_syncCoverImagesForProcessedArticles();
+        $this->_setCurrentVersionsForProcessedArticles();
 
         import('plugins.importexport.csv.classes.processors.IssueProcessor');
         IssueProcessor::reorderImportedIssues($this->_processedIssues);
@@ -565,20 +612,110 @@ class IssueCommand
 	 *
 	 * @return void
      */
-    private function _trackProcessedPreprint($data, $submission, $publication)
+    private function _trackProcessedArticle($data, $submission, $publication)
     {
         $identifier = $data->versionIdentifier;
         $version = (int)$data->version;
+        $locale = $data->locale;
 
         if (!isset($this->_processedPublications[$identifier])) {
             $this->_processedPublications[$identifier] = [];
         }
 
-        $this->_processedPublications[$identifier][$version] = [
+        if (!isset($this->_processedPublications[$identifier][$version])) {
+            $this->_processedPublications[$identifier][$version] = [];
+        }
+
+        $this->_processedPublications[$identifier][$version][$locale] = [
             'data' => $data,
             'submission' => $submission,
             'publication' => $publication
         ];
+    }
+
+	private function _syncCoverImagesForProcessedArticles()
+    {
+        foreach ($this->_processedPublications as $identifier => $versions) {
+            foreach ($versions as $versionNumber => $localeData) {
+                $firstLocaleData = reset($localeData);
+                $publication = $firstLocaleData['publication'];
+                $publicationId = $publication->getId();
+
+                $submissionDao = CachedDaos::getSubmissionDao();
+                $submission = $submissionDao->getById($publication->getData('submissionId'));
+                if (!$submission) {
+                    continue;
+                }
+                $serverId = $submission->getData('contextId');
+                $serverDao = CachedDaos::getJournalDao();
+                $server = $serverDao->getById($serverId);
+                if (!$server) {
+                    continue;
+                }
+                $defaultLocale = $server->getData('primaryLocale');
+
+                $coverImageSettings = Capsule::table('publication_settings')
+                    ->where('publication_id', $publicationId)
+                    ->where('setting_name', 'coverImage')
+                    ->get();
+
+                if ($coverImageSettings->isEmpty()) {
+                    continue;
+                }
+
+                $coverImagesByLocale = [];
+                foreach ($coverImageSettings as $setting) {
+                    if (empty($setting->setting_value)) {
+                        continue;
+                    }
+
+                    $coverImageData = json_decode($setting->setting_value, true);
+                    if (!empty($coverImageData)) {
+                        $coverImagesByLocale[$setting->locale] = $coverImageData;
+                    }
+                }
+
+                if (empty($coverImagesByLocale)) {
+                    continue;
+                }
+
+                $sourceCoverImage = null;
+
+                if (isset($coverImagesByLocale[$defaultLocale])) {
+                    $sourceCoverImage = $coverImagesByLocale[$defaultLocale];
+                } else {
+                    foreach ($coverImagesByLocale as $locale => $coverImageData) {
+                        if (!empty($coverImageData) && isset($coverImageData['uploadName'])) {
+                            $sourceCoverImage = $coverImageData;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$sourceCoverImage) {
+                    continue;
+                }
+
+                $allPublicationLocales = Capsule::table('publication_settings')
+                    ->where('publication_id', $publicationId)
+                    ->whereNotNull('locale')
+                    ->where('locale', '!=', '')
+                    ->distinct()
+                    ->pluck('locale')
+                    ->toArray();
+
+                foreach ($allPublicationLocales as $locale) {
+                    if (isset($coverImagesByLocale[$locale])) {
+                        continue;
+                    }
+
+                    $reloadedPublication = CachedDaos::getPublicationDao()->getById($publicationId);
+                    if ($reloadedPublication) {
+                        PublicationProcessor::updatePublicationAttribute($reloadedPublication, 'coverImage', $sourceCoverImage, $locale);
+                    }
+                }
+            }
+        }
     }
 
 	/**
@@ -586,7 +723,7 @@ class IssueCommand
 	 *
 	 * @return void
      */
-    private function _setCurrentVersionsForProcessedPreprints()
+    private function _setCurrentVersionsForProcessedArticles()
     {
         foreach ($this->_processedPublications as $identifier => $versions) {
             if (count($versions) <= 1) {
@@ -597,17 +734,19 @@ class IssueCommand
             $currentVersionData = null;
 
             foreach ($versions as $versionKey => $versionData) {
-                $versionNumber = (int)$versionData['data']->version;
+                $firstLocaleData = reset($versionData);
+                if (!$firstLocaleData || !isset($firstLocaleData['data'])) {
+                    continue;
+                }
+                $versionNumber = (int)$firstLocaleData['data']->version;
                 if ($versionNumber > $highestVersion) {
                     $highestVersion = $versionNumber;
-                    $currentVersionData = $versionData;
+                    $currentVersionData = $firstLocaleData;
                 }
             }
 
             if ($currentVersionData) {
-                /** @var Submission */
                 $submission = $currentVersionData['submission'];
-                /** @var Publication */
                 $publication = $currentVersionData['publication'];
 
                 SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());

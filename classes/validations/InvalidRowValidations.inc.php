@@ -47,10 +47,14 @@ class InvalidRowValidations
 	 * @param object $data
 	 * @param callable $requiredFieldsValidation
 	 *
-	 * @return string|null
+	 * @return ?string
      */
     public static function validateRowHasAllRequiredFields($data, $requiredFieldsValidation)
     {
+        if (!empty($data->version) && !empty($data->versionIdentifier) && (int)$data->version > 1) {
+			return null;
+		}
+
         return !$requiredFieldsValidation($data)
             ? __('plugins.importexport.csv.verifyRequiredFieldsForThisRow')
             : null;
@@ -276,16 +280,23 @@ class InvalidRowValidations
 	/**
      * Validates that no duplicate version exists for the same preprint identifier
      * in the current import session
+	 *
+	 * @param object $data
+	 * @param array $processedPreprints
+	 *
+	 * @return ?string
      */
-    public static function validateNoDuplicateVersion(object $data, array $processedPreprints): ?string
+    public static function validateNoDuplicateVersion($data, $processedPreprints): ?string
     {
         $identifier = $data->versionIdentifier;
         $version = (int)$data->version;
+        $locale = $data->locale;
 
-        if (isset($processedPreprints[$identifier][$version])) {
-            return __('plugins.importexport.csv.duplicateArticleVersionFound', [
+        if (isset($processedPreprints[$identifier][$version][$locale])) {
+            return __('plugins.importexport.csv.duplicateArticleVersionLocaleFound', [
                 'identifier' => $identifier,
-                'version' => $version
+                'version' => $version,
+                'locale' => $locale
             ]);
         }
 
@@ -336,6 +347,43 @@ class InvalidRowValidations
 		return !$subscriptionType
 			? __('plugins.importexport.csv.subscriptionTypeDoesntExist', ['subscriptionTypeId' => $subscriptionTypeId])
 			: null;
+    }
+
+	/**
+	 * @param object $data
+	 *
+	 * @return ?string
+	 */
+	public static function validateArticleVersioningFields($data)
+    {
+        if (!empty($data->versionIdentifier) && empty($data->version)) {
+            return __('plugins.importexport.csv.versionRequiredWhenIdentifierProvided');
+        }
+
+        if (!empty($data->version)) {
+            if (!is_numeric($data->version) || (int)$data->version < 1) {
+                return __('plugins.importexport.csv.versionMustBePositiveInteger');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks if a version exists in any locale (used for multi-locale imports)
+	 *
+	 * @param object $data
+	 * @param array $proceedArticles
+	 *
+	 * @return bool
+     */
+    public static function versionExistsInAnyLocale($data, $processedArticles)
+    {
+        $identifier = $data->versionIdentifier;
+        $version = (int)$data->version;
+
+        return isset($processedArticles[$identifier][$version]) &&
+               !empty($processedArticles[$identifier][$version]);
     }
 
 	/**

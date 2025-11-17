@@ -89,4 +89,75 @@ class CategoriesProcessor
 
         self::process($categories, $locale, $journalId, $publicationId);
     }
+
+	/**
+     * Process categories for multi-locale import
+     * This handles adding locale-specific data to existing categories
+	 *
+	 * @param string $categories
+	 * @param string $locale
+	 * @param int $journalId
+	 * @param int $publicaitonId
+	 *
+	 * @return void
+     */
+    public static function processMultiLocale($categories, $locale, $journalId, $publicationId)
+    {
+        if (empty(trim($categories))) {
+            return;
+        }
+
+		/** @var \Category[] */
+        $existingCategoryies = CachedDaos::getCategoryDao()->getByPublicationId($publicationId)->toArray();
+
+		$existingCategoryIds = [];
+
+		foreach ($existingCategoryies as $category) {
+			$existingCategoryIds[] = $category->getId();
+		}
+
+        $categoriesArray = explode(';', $categories);
+
+        foreach ($categoriesArray as $categoryPath) {
+            $categoryPath = trim($categoryPath);
+
+            if (empty($categoryPath)) {
+                continue;
+            }
+
+            $lowerCategoryPath = mb_strtolower($categoryPath);
+            $category = CachedEntities::getCachedCategory($lowerCategoryPath, $journalId);
+
+            if (!is_null($category)) {
+                $existingTitle = $category->getLocalizedData('title', $locale);
+
+                if (empty($existingTitle) || $existingTitle !== $categoryPath) {
+                    $category->setTitle($categoryPath, $locale);
+					CachedDaos::getCategoryDao()->updateObject($category);
+                }
+
+                if (!in_array($category->getId(), $existingCategoryIds)) {
+                    CachedDaos::getCategoryDao()->insertPublicationAssignment($category->getId(), $publicationId);
+                }
+
+                continue;
+            }
+
+			$categoryDao = CachedDaos::getCategoryDao();
+
+			/** @var \Category */
+            $category = $categoryDao->newDataObject();
+            $category->setContextId($journalId);
+            $category->setTitle($categoryPath, $locale);
+            $category->setData('locale', $locale);
+            $category->setParentId(null);
+            $category->setSequence(REALLY_BIG_NUMBER);
+            $category->setPath($lowerCategoryPath);
+
+			$categoryDao->insertObject($category);
+            CachedEntities::$categories[$lowerCategoryPath] = $category;
+
+			$categoryDao->insertPublicationAssignment($category->getId(), $publicationId);
+        }
+    }
 }

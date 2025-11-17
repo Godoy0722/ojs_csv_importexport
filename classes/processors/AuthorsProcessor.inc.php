@@ -115,4 +115,79 @@ class AuthorsProcessor
             }
         }
     }
+
+	/**
+     * Process authors for multi-locale import (adds locale data to existing authors)
+	 *
+	 * @param object $data
+	 * @param string $contactEmail
+	 * @param int $submissionId
+	 * @param \Publication $publication
+	 * @param int $userGrouppId
+	 *
+	 * @return void
+     */
+    public static function processMultiLocale($data, $contactEmail, $submissionId, $publication, $userGroupId)
+	{
+        if (empty($data->authors)) {
+            return; // No new author data to add
+        }
+
+        $authorsString = array_map('trim', explode(';', $data->authors));
+        /** @var Author[] */
+        $existingAuthors = $publication->getData('authors');
+
+        foreach ($authorsString as $index => $authorString) {
+            $givenName = $familyName = $emailAddress = $affiliation = null;
+            $authorParts = array_map('trim', explode(',', $authorString));
+            $givenName = $authorParts[0] ?? '';
+            $familyName = $authorParts[1] ?? '';
+            $emailAddress = $authorParts[2] ?? '';
+            $affiliation = $authorParts[3] ?? '';
+
+            if (empty($emailAddress)) {
+                $emailAddress = $contactEmail;
+            }
+
+            $existingAuthor = null;
+            if (!empty($existingAuthors)) {
+                foreach ($existingAuthors as $author) {
+                    if ($author->getEmail() === $emailAddress) {
+                        $existingAuthor = $author;
+                        break;
+                    }
+                }
+            }
+
+            if ($existingAuthor) {
+                $existingAuthor->setGivenName($givenName, $data->locale);
+                $existingAuthor->setFamilyName($familyName, $data->locale);
+
+                if ($affiliation) {
+                    $existingAuthor->setAffiliation($affiliation, $data->locale);
+                }
+
+				CachedDaos::getAuthorDao()->updateObject($existingAuthor);
+
+                continue;
+            }
+
+			$authorDao = CachedDaos::getAuthorDao();
+
+			/** @var \Author $author */
+            $author = $authorDao->newDataObject();
+            $author->setSubmissionId($submissionId);
+            $author->setUserGroupId($userGroupId);
+            $author->setGivenName($givenName, $data->locale);
+            $author->setFamilyName($familyName, $data->locale);
+            $author->setEmail($emailAddress);
+            $author->setData('publicationId', $publication->getId());
+
+            if ($affiliation) {
+                $author->setAffiliation($affiliation, $data->locale);
+            }
+
+			$authorDao->insertObject($author);
+        }
+    }
 }

@@ -56,4 +56,28 @@ class SubjectsProcessor
 			$submissionSubjectDao->insertSubjects($subjectsList, $publicationId);
 		}
 	}
+
+	/**
+     * Process subjects for multi-locale import (adds subjects in new locale)
+	 *
+	 * @param object $data
+	 * @param int $publicaitonId
+	 *
+	 * @return void
+     */
+    public static function processMultiLocale($data, $publicationId)
+    {
+        if (empty($data->subjects)) {
+            return; // No new subjects to add
+        }
+
+        if (!CachedDaos::getPublicationDao()->getById($publicationId)) {
+            return;
+        }
+
+        $newSubjects = [$data->locale => array_map('trim', explode(';', $data->subjects))];
+
+        $submissionSubjectDao = CachedDaos::getSubmissionSubjectDao();
+        $submissionSubjectDao->insertSubjects($newSubjects, $publicationId, false);
+    }
 }
