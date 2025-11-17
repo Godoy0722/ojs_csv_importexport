@@ -16,6 +16,7 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
+use APP\author\Author;
 use APP\facades\Repo;
 use APP\publication\Publication;
 use Illuminate\Support\LazyCollection;
@@ -106,5 +107,97 @@ class AuthorsProcessor
                 PublicationProcessor::updatePrimaryContactId($newPublication, $newAuthorId);
             }
         }
+    }
+
+    /**
+     * Process authors for multi-locale import (adds locale data to existing authors)
+     */
+    public static function processMultiLocale(
+        object $data,
+        string $contactEmail,
+        int $submissionId,
+        Publication $publication,
+        int $userGroupId
+    ): void {
+        if (empty($data->authors)) {
+            return; // No new author data to add
+        }
+
+        $authorsString = array_map('trim', explode(';', $data->authors));
+        $existingAuthors = $publication->getData('authors');
+
+        foreach ($authorsString as $index => $authorString) {
+            $givenName = $familyName = $emailAddress = $affiliation = null;
+            $authorParts = array_map('trim', explode(',', $authorString));
+            $givenName = $authorParts[0] ?? '';
+            $familyName = $authorParts[1] ?? '';
+            $emailAddress = $authorParts[2] ?? '';
+            $affiliation = $authorParts[3] ?? '';
+
+            if (empty($emailAddress)) {
+                $emailAddress = $contactEmail;
+            }
+
+            $existingAuthor = null;
+            if (!empty($existingAuthors)) {
+                foreach ($existingAuthors as $author) {
+                    if ($author->getEmail() === $emailAddress) {
+                        $existingAuthor = $author;
+                        break;
+                    }
+                }
+            }
+
+            if ($existingAuthor) {
+                $existingAuthor->setGivenName($givenName, $data->locale);
+                $existingAuthor->setFamilyName($familyName, $data->locale);
+
+                if ($affiliation) {
+                    // Set the affiliation for the current locale
+                    $existingAuthor->setAffiliation($affiliation, $data->locale);
+                }
+
+                Repo::author()->dao->update($existingAuthor);
+            } else {
+                // Create new author if not found (shouldn't happen often in multi-locale imports)
+                $author = self::addNewAuthor(
+                    $submissionId,
+                    $userGroupId,
+                    $publication->getId(),
+                    $givenName,
+                    $familyName,
+                    $emailAddress,
+                    $affiliation,
+                    $data
+                );
+
+                Repo::author()->add($author);
+            }
+        }
+    }
+
+    private static function addNewAuthor(
+        int $submissionId,
+        int $userGroupId,
+        int $publicationId,
+        string $givenName,
+        string $familyName,
+        string $emailAddress,
+        ?string $affiliation,
+        object $data
+    ): Author {
+        $author = Repo::author()->newDataObject();
+        $author->setSubmissionId($submissionId);
+        $author->setUserGroupId($userGroupId);
+        $author->setGivenName($givenName, $data->locale);
+        $author->setFamilyName($familyName, $data->locale);
+        $author->setEmail($emailAddress);
+        $author->setData('publicationId', $publicationId);
+
+        if ($affiliation) {
+            $author->setAffiliation($affiliation, $data->locale);
+        }
+
+        return $author;
     }
 }
