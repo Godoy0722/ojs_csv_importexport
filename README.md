@@ -4,36 +4,36 @@ This plugin allows administrators to import users and issues with their associat
 
 ## Table of Contents
 - [OJS CSV Import Plugin (CLI)](#ojs-csv-import-plugin-cli)
-	- [Table of Contents](#table-of-contents)
-	- [CLI Usage](#cli-usage)
-		- [Importing Users](#importing-users)
-		- [Importing Issues](#importing-issues)
-	- [CSV General Rules](#csv-general-rules)
-		- [Users CSV Format](#users-csv-format)
-			- [Users CSV Example](#users-csv-example)
-		- [Issues CSV Format](#issues-csv-format)
-			- [Issues CSV Example](#issues-csv-example)
-			- [Import File Structure](#import-file-structure)
-	- [Multi-Locale Support](#multi-locale-support)
-		- [How Multi-Locale Works](#how-multi-locale-works)
-		- [Multi-Locale Management Rules](#multi-locale-management-rules)
-		- [Multi-Locale Best Practices](#multi-locale-best-practices)
-		- [Important Multi-Locale Notes](#important-multi-locale-notes)
-	- [Article Versions](#article-versions)
-		- [How It Works](#how-it-works)
-		- [Version Management Rules](#version-management-rules)
-		- [Practical Examples](#practical-examples)
-			- [Example 1: Single Article Without Versions](#example-1-single-article-without-versions)
-			- [Example 2: Multi Version Articles](#example-2-multi-version-articles)
-			- [Example 3: Mixed Articles](#example-3-mixed-articles)
-		- [Important Notes](#important-notes)
-	- [Troubleshooting](#troubleshooting)
-		- [Common Issues and Solutions](#common-issues-and-solutions)
-			- [File and Path Issues](#file-and-path-issues)
-			- [CSV Format Issues](#csv-format-issues)
-			- [User Import Issues](#user-import-issues)
-			- [Issue Import Issues](#issue-import-issues)
-			- [General Troubleshooting Tips](#general-troubleshooting-tips)
+  - [Table of Contents](#table-of-contents)
+  - [CLI Usage](#cli-usage)
+    - [Importing Users](#importing-users)
+    - [Importing Issues](#importing-issues)
+  - [CSV General Rules](#csv-general-rules)
+    - [Users CSV Format](#users-csv-format)
+      - [Users CSV Example](#users-csv-example)
+    - [Issues CSV Format](#issues-csv-format)
+      - [Issues CSV Example](#issues-csv-example)
+      - [Import File Structure](#import-file-structure)
+  - [Multi-Locale Support](#multi-locale-support)
+    - [How Multi-Locale Works](#how-multi-locale-works)
+    - [Multi-Locale Management Rules](#multi-locale-management-rules)
+    - [Multi-Locale Best Practices](#multi-locale-best-practices)
+    - [Important Multi-Locale Notes](#important-multi-locale-notes)
+  - [Article Versions](#article-versions)
+    - [How It Works](#how-it-works)
+    - [Version Management Rules](#version-management-rules)
+    - [Practical Examples](#practical-examples)
+      - [Example 1: Single Article Without Versions](#example-1-single-article-without-versions)
+      - [Example 2: Multi Version Articles](#example-2-multi-version-articles)
+      - [Example 3: Mixed Articles](#example-3-mixed-articles)
+    - [Important Notes](#important-notes)
+  - [Troubleshooting](#troubleshooting)
+    - [Common Issues and Solutions](#common-issues-and-solutions)
+      - [File and Path Issues](#file-and-path-issues)
+      - [CSV Format Issues](#csv-format-issues)
+      - [User Import Issues](#user-import-issues)
+      - [Issue Import Issues](#issue-import-issues)
+      - [General Troubleshooting Tips](#general-troubleshooting-tips)
 
 
 ## CLI Usage
@@ -101,6 +101,7 @@ php tools/importExport.php CSVImportExportPlugin issues admin /path/to/folder_wi
 | subscriptionType | No | Subscription type ID | 1 |
 | start_date | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
 | end_date | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
+| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
 
 > **User Interests:** User interests in the users CSV use a semicolon-separated format:
 >
@@ -112,6 +113,27 @@ php tools/importExport.php CSVImportExportPlugin issues admin /path/to/folder_wi
 >  - Empty values are ignored
 >  - Each interest will be associated with the created user's profile
 >
+
+> **ORCID:** The ORCID field accepts multiple formats and will be automatically normalized to the standard URL format:
+>
+> Accepted formats:
+>  - **Full URL**: `https://orcid.org/0000-0002-1825-0097` or `https://sandbox.orcid.org/0000-0002-1825-0097`
+>  - **Dashed format**: `0000-0002-1825-0097`
+>  - **Numeric format**: `0000000218250097`
+>
+> Notes:
+>  - The last character can be a digit (0-9) or the letter X (checksum character)
+>  - The ORCID checksum is validated during import
+>  - Invalid ORCIDs will cause the row to be rejected
+>  - Leave empty if the user doesn't have an ORCID
+>
+> Examples:
+>
+> ```
+> https://orcid.org/0000-0002-1825-0097
+> 0000-0001-5109-3700
+> 0000000256781235
+> ```
 
 #### Users CSV Example
 
@@ -439,15 +461,28 @@ You can mix single-version and multi-version articles in the same CSV file. Take
      - Check that subscription type IDs exist in the database
      - Ensure required subscription fields (start_date, end_date) are provided
 
+7. **ORCID Issues**
+   - Error: `Invalid ORCID format: [orcid]`
+   - Solution:
+     - Ensure the ORCID uses one of the accepted formats: full URL, dashed, or numeric
+     - Check that the ORCID has exactly 16 digits (plus dashes or URL prefix)
+     - Verify there are no extra spaces or characters
+
+   - Error: `Invalid ORCID checksum for: [orcid]`
+   - Solution:
+     - The ORCID checksum validation failed, meaning the ORCID is malformed
+     - Double-check the ORCID against the official ORCID record
+     - Ensure you copied the complete ORCID without typos
+
 #### Issue Import Issues
-7. **Journal or Locale Issues**
+8. **Journal or Locale Issues**
    - Error: `Unknown journal with path [path]` or `Unknown locale [locale]`
    - Solution:
      - Verify the journal path in the CSV matches exactly
      - Check that the specified locale is enabled in the journal
      - Ensure the journal exists and is accessible to the importing user
 
-8. **File Validation Errors**
+9. **File Validation Errors**
    - Error: `Invalid [article/cover/galley] file for this submission`
    - Solution:
      - Verify all referenced files exist in the specified location
@@ -455,14 +490,14 @@ You can mix single-version and multi-version articles in the same CSV file. Take
      - Ensure cover images are in a supported format (JPG, PNG)
      - Verify galley files match the specified labels
 
-9. **Author and Metadata Issues**
+10. **Author and Metadata Issues**
    - Error: `There is no default author group in the journal`
    - Solution:
      - Ensure the journal has at least one author group configured
      - Verify author information follows the required format
      - Check that required author fields (first name) are provided
 
-10. **Version Import Issues**
+11. **Version Import Issues**
    - Error: `Version is required when versionIdentifier is provided`
    - Solution:
      - Always provide the `version` field when using `versionIdentifier`
@@ -479,7 +514,7 @@ You can mix single-version and multi-version articles in the same CSV file. Take
      - Ensure each version number is unique within the same article
      - Remove duplicate entries from your CSV file
 
-11. **References File Issues**
+12. **References File Issues**
    - Error: `Invalid references file: [filename]`
    - Solution:
      - Verify the references file exists in the same directory as the CSV file

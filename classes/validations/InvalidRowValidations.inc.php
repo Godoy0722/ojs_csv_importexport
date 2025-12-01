@@ -414,4 +414,95 @@ class InvalidRowValidations
 
         return null;
     }
+
+	/**
+     * Validates the ORCID value. Returns the reason if an error occurred,
+     * or null if everything is correct.
+     *
+     * Accepts the following formats:
+     * - Full URL: https://orcid.org/0000-0002-1825-0097 or https://sandbox.orcid.org/0000-0002-1825-0097
+     * - Dashed format: 0000-0002-1825-0097
+     * - Numeric format: 0000000218250097
+     * - Can end with X (checksum character)
+	 *
+	 * @param string|null $orcid
+	 * @return string|null
+     */
+    public static function validateOrcid($orcid)
+    {
+        if (empty($orcid)) {
+            return null;
+        }
+
+        $normalizedOrcid = self::normalizeOrcid($orcid);
+
+        if ($normalizedOrcid === null) {
+            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
+        }
+
+        $digits = preg_replace('/[^0-9X]/', '', $normalizedOrcid);
+
+        if (strlen($digits) !== 16) {
+            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
+        }
+
+        if (!self::validateOrcidChecksum($digits)) {
+            return __('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalizes an ORCID value to the full URL format.
+	 *
+	 * @param string $orcid
+	 * @return string|null
+     */
+    public static function normalizeOrcid($orcid)
+    {
+        $orcid = trim($orcid);
+
+        if (empty($orcid)) {
+            return null;
+        }
+
+        if (preg_match('/^https:\/\/(sandbox\.)?orcid\.org\/(\d{4})-(\d{4})-(\d{4})-(\d{3}[0-9X])$/', $orcid)) {
+            return $orcid;
+        }
+
+        if (preg_match('/^(\d{4})-(\d{4})-(\d{4})-(\d{3}[0-9X])$/', $orcid)) {
+            return 'https://orcid.org/' . $orcid;
+        }
+
+        if (preg_match('/^(\d{15}[0-9X])$/', $orcid)) {
+            $formatted = substr($orcid, 0, 4) . '-' .
+                         substr($orcid, 4, 4) . '-' .
+                         substr($orcid, 8, 4) . '-' .
+                         substr($orcid, 12, 4);
+            return 'https://orcid.org/' . $formatted;
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates the ORCID checksum using ISNI algorithm.
+	 *
+	 * @param string $digits
+	 * @return bool
+     */
+    private static function validateOrcidChecksum($digits)
+    {
+        $total = 0;
+        for ($i = 0; $i < 15; $i++) {
+            $total = ($total + (int) $digits[$i]) * 2;
+        }
+
+        $remainder = $total % 11;
+        $result = (12 - $remainder) % 11;
+        $expectedCheckDigit = ($result === 10) ? 'X' : (string) $result;
+
+        return $digits[15] === $expectedCheckDigit;
+    }
 }

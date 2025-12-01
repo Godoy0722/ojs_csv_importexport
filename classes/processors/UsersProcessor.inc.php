@@ -18,6 +18,7 @@ namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
+use PKP\Plugins\ImportExport\CSV\Classes\Validations\InvalidRowValidations;
 
 class UsersProcessor
 {
@@ -43,6 +44,13 @@ class UsersProcessor
         $user->setMustChangePassword(true);
         $user->setDateRegistered(\Core::getCurrentDate());
         $user->setPassword(\Validation::encryptCredentials($data->username, $data->tempPassword));
+
+		if (!empty($data->orcid)) {
+            $normalizedOrcid = InvalidRowValidations::normalizeOrcid($data->orcid);
+            if ($normalizedOrcid !== null) {
+                $user->setOrcid($normalizedOrcid);
+            }
+        }
 
         $userDao->insertObject($user);
 

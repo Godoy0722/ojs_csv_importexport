@@ -31,7 +31,8 @@ class RequiredUserHeaders
         'reviewInterests',
         'subscriptionType',
         'startDate',
-        'endDate'
+        'endDate',
+		'orcid',
     ];
 
     static $userRequiredHeaders = [
