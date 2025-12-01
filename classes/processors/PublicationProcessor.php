@@ -203,8 +203,8 @@ class PublicationProcessor
 
     /**
      * Process a versioned publication with CSV data
-     * This method processes a publication that was created through OPS versioning mechanism
-     * OPS versioning already copied all data from base version, we only update what changed
+     * This method processes a publication that was created through OJS versioning mechanism
+     * OJS versioning already copied all data from base version, we only update what changed
      */
     public static function processVersionedPublication(
         Publication $publication,

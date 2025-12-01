@@ -152,6 +152,14 @@ class UserCommand
 					}
                 }
 
+                if (!empty($data->orcid)) {
+                    $reason = InvalidRowValidations::validateOrcid($data->orcid);
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
+                }
+
                 if (is_null($data->tempPassword)) {
                     $data->tempPassword = Validation::generatePassword();
                 }

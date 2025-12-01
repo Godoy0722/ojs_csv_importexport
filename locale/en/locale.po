@@ -255,3 +255,9 @@ msgstr "Invalid references file: \"{$filename}\". Please verify the file exists 
 
 msgid "plugins.importexport.csv.invalidReferencesFileExtension"
 msgstr "References file must have a .txt extension."
+
+msgid "plugins.importexport.csv.invalidOrcidFormat"
+msgstr "Invalid ORCID format: \"{$orcid}\". Accepted formats: URL (https://orcid.org/0000-0000-0000-0000), dashed (0000-0000-0000-0000), or numeric (0000000000000000)."
+
+msgid "plugins.importexport.csv.invalidOrcidChecksum"
+msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."

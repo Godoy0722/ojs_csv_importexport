@@ -17,6 +17,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use PKP\core\Core;
 use PKP\security\Validation;
 use PKP\user\User;
@@ -36,6 +37,13 @@ class UsersProcessor
         $user->setPassword(Validation::encryptCredentials($data->username, $data->tempPassword));
         $user->setMustChangePassword(true);
         $user->setDateRegistered(Core::getCurrentDate());
+
+        if (!empty($data->orcid)) {
+            $normalizedOrcid = InvalidRowValidations::normalizeOrcid($data->orcid);
+            if ($normalizedOrcid !== null) {
+                $user->setOrcid($normalizedOrcid);
+            }
+        }
 
         $userId = Repo::user()->add($user);
 
