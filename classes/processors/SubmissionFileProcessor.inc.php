@@ -29,10 +29,11 @@ class SubmissionFileProcessor
 	 * @param string $filePath
 	 * @param int $genreId
 	 * @param int $fileId
+	 * @param ?string $description
 	 *
 	 * @return \SubmissionFile
 	 */
-	public static function process($locale, $userId, $submissionId, $filePath, $genreId, $fileId)
+	public static function process($locale, $userId, $submissionId, $filePath, $genreId, $fileId, $description = null)
     {
 		$mimeType = \PKPString::mime_content_type($filePath);
 		$submissionFileDao = CachedDaos::getSubmissionFileDao();
@@ -53,6 +54,10 @@ class SubmissionFileProcessor
 		// Assume open access, no price.
 		$submissionFile->setDirectSalesPrice(0);
 		$submissionFile->setSalesType('openAccess');
+
+		if (!is_null($description)) {
+            $submissionFile->setData('description', $description, $locale);
+        }
 
 		$submissionFileDao->insertObject($submissionFile);
         return $submissionFile;

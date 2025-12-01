@@ -17,6 +17,7 @@
 namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
+use PKP\Plugins\ImportExport\CSV\Classes\Handlers\OrcidHandler;
 
 class AuthorsProcessor
 {
@@ -54,12 +55,13 @@ class AuthorsProcessor
              *
              * By default, if an author doesn't have an email, the primary contact email will be used in its place.
              */
-			$givenName = $familyName = $emailAddress = $affiliation = null;
+			$givenName = $familyName = $emailAddress = $orcid = $affiliation = null;
 			$authorParts = array_map('trim', explode(',', $authorString));
-			$givenName = $authorParts[0] ?? '';
-			$familyName = $authorParts[1] ?? '';
-			$emailAddress = $authorParts[2] ?? '';
-			$affiliation = $authorParts[3] ?? '';
+            $givenName = $authorParts[0] ?? '';
+            $familyName = $authorParts[1] ?? '';
+            $emailAddress = $authorParts[2] ?? '';
+            $orcid = $authorParts[3] ?? '';
+            $affiliation = $authorParts[4] ?? '';
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
@@ -74,6 +76,13 @@ class AuthorsProcessor
 			$author->setEmail($emailAddress);
             $author->setAffiliation($affiliation, $data->locale);
 			$author->setData('publicationId', $publication->getId());
+
+			import('plugins.importexport.csv.classes.handlers.OrcidHandler');
+			$normalizedOrcid = OrcidHandler::normalize($orcid);
+            if (!empty($normalizedOrcid)) {
+                $author->setOrcid($normalizedOrcid);
+            }
+
 			$authorDao->insertObject($author);
 
 			if (!$index) {

@@ -20,6 +20,7 @@ import('plugins.importexport.csv.classes.validations.RequiredUserHeaders');
 
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\CSVFileHandler;
+use PKP\Plugins\ImportExport\CSV\Classes\Handlers\OrcidHandler;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\WelcomeEmailHandler;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\UserGroupsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\UserInterestsProcessor;
@@ -179,7 +180,8 @@ class UserCommand
                 }
 
 				if (!empty($data->orcid)) {
-                    $reason = InvalidRowValidations::validateOrcid($data->orcid);
+					import('plugins.importexport.csv.classes.handlers.OrcidHandler');
+                    $reason = OrcidHandler::validate($data->orcid);
                     if (!is_null($reason)) {
                         CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->_expectedRowSize, $reason, $this->_failedRows);
                         continue;

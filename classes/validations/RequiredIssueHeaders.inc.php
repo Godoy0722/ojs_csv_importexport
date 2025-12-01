@@ -39,6 +39,7 @@ class RequiredIssueHeaders
         'galleyLabels',
         'suppFilenames',
         'suppLabels',
+		'suppDescriptions',
         'sectionTitle',
         'sectionAbbrev',
         'issueTitle',

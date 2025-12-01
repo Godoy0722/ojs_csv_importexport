@@ -19,6 +19,7 @@ This plugin allows administrators to import users and issues with their associat
     - [Multi-Locale Management Rules](#multi-locale-management-rules)
     - [Multi-Locale Best Practices](#multi-locale-best-practices)
     - [Important Multi-Locale Notes](#important-multi-locale-notes)
+	 - [ORCiD in Multi-Locale and Multi-Version](#orcid-in-multi-locale-and-multi-version)
   - [Article Versions](#article-versions)
     - [How It Works](#how-it-works)
     - [Version Management Rules](#version-management-rules)
@@ -27,6 +28,7 @@ This plugin allows administrators to import users and issues with their associat
       - [Example 2: Multi Version Articles](#example-2-multi-version-articles)
       - [Example 3: Mixed Articles](#example-3-mixed-articles)
     - [Important Notes](#important-notes)
+  - [Supplementary Files Descriptions](#supplementary-files-descriptions)
   - [Troubleshooting](#troubleshooting)
     - [Common Issues and Solutions](#common-issues-and-solutions)
       - [File and Path Issues](#file-and-path-issues)
@@ -163,6 +165,7 @@ You can take a look at the example we provide on the [User CSV file](./examples/
 | galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
+| suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
 | sectionTitle | No | Section name | Articles | Will be created if needed |
 | sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
 | issueTitle | No | Issue title | Vol 1, No 1 (2024) | |
@@ -179,51 +182,36 @@ You can take a look at the example we provide on the [User CSV file](./examples/
 | references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
 
 > **Authors Format**
-> The `authors` field in the issues CSV must contain author information in the following format:
+> The `authors` field in the articles CSV must contain author information in the following format:
 >
 > ```
-> GivenName,FamilyName,Email,Affiliation;GivenName2,FamilyName2,Email2,Affiliation2
+> GivenName,FamilyName,Email,ORCiD,Affiliation;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2
 > ```
 >
 >  - Fields are separated by commas within each author
 >  - Multiple authors are separated by semicolons
->  - All fields except GivenName are optional and can be left empty
->  - If email is empty, the primary contact email will be used
+>  - All fields except `GivenName` are optional and can be left empty
+>  - If `Email` is empty, the primary contact email of the server will be used
+>  - `ORCiD` must be the author identifier and is optional; see input options below
 >
 > Examples:
 >
 > ```
-> "John,Doe,john@example.com,University of Example; Jane,Smith,,Another University"
-> "Maria,Silva,maria@example.com,"
-> "Carlos,,carlos@example.com,Example Corp"
+> "John,Doe,john@example.com,0000-0002-1825-0097,University of Example; Jane,Smith,,https://orcid.org/0000-0002-1694-233X,Another University"
+> "Maria,Silva,maria@example.com,0000000218250097,"
+> "Carlos,,carlos@example.com,,Example Corp"
 > ```
 
-> **Keywords, Subjects, and Categories**
-> These fields use a simple semicolon-separated format:
->  - **Keywords**: `keyword1; keyword two; another keyword`
->  - **Subjects**: `subject1; subject two; another subject`
->  - **Categories**: `Category1; Category Two; Another Category`
+> **ORCiD Input Options**
+> You may provide the ORCiD in any of the following forms:
+>  - Full URL: `https://orcid.org/0000-0002-1825-0097`
+>  - Hyphenated ID: `0000-0002-1825-0097`
+>  - Digits only: `0000000218250097`
 >
 > Notes:
->  - Leading/trailing spaces are automatically trimmed
->  - Empty values are ignored
->  - Categories will be created if they don't exist
-
-> **References File**
-> The `references` field in the issues CSV can contain the path to a TXT file with article references:
->  - The file must be in TXT format
->  - The file must be located in the same directory as the CSV file
->  - Each reference should be on a separate line or separated by a blank line
->  - The content of the file will be imported as the publication's citations
->
-> Example references.txt content:
-> ```
-> Smith, J. (2023). "The Impact of Technology on Modern Publishing", Journal of Academic Publishing, 45(2), 123-145.
->
-> Johnson, M., & Williams, K. (2022). Digital Transformation in Scholarly Communication. Academic Press.
->
-> Brown, A. et al. (2021). "Open Access and the Future of Research Dissemination", International Journal of Scholarly Research, 12(4), 567-589.
-> ```
+>  - The system normalizes the value to the canonical URL form `https://orcid.org/0000-0000-0000-0000`
+>  - The last character may be `X` (checksum), e.g., `0000-0002-1694-233X`
+>  - Invalid formats are ignored without blocking the import
 
 #### Issues CSV Example
 
@@ -346,6 +334,11 @@ The system will:
 
 For a comprehensive example of multi-locale articles with versions, see the [comprehensive locale version CSV file](./examples/issues/comprehensive_locale_version.csv).
 
+### ORCiD in Multi-Locale and Multi-Version
+
+- Multi-Locale: ORCiD is non-localized. When importing another locale for the same version, if an ORCiD is provided in that row, it updates the existing author matched by email. If omitted, the existing value is preserved.
+- Multi-Version: If the `authors` field is empty for a new version, authors (including ORCiD) are cloned from the previous version. If authors are provided, the ORCiD is read per author (as above) and saved for that version.
+
 ## Article Versions
 
 The CSV import plugin supports creating multiple versions of the same article in a single import operation. This feature allows you to track revisions, corrections, and updates to published articles while maintaining a complete version history.
@@ -408,6 +401,22 @@ You can mix single-version and multi-version articles in the same CSV file. Take
 - Readers can access previous versions through the article's version history
 - The import process validates that no duplicate versions exist (same identifier + version number)
 - Versions must be imported in sequence within a single CSV file (version 1 before version 2, etc.)
+
+## Supplementary Files Descriptions
+
+You may optionally include a `suppDescriptions` column to provide a short description for each supplementary file. Use a semicolon-separated list matching the order of `suppFilenames` and `suppLabels`.
+
+Example:
+
+```
+suppFilenames:      supplement_v2.pdf;data_v2.csv
+suppLabels:         Supplementary Analysis;Dataset
+suppDescriptions:   Extended methods;Raw experimental results (CSV)
+```
+
+Rules:
+- The number of descriptions must match both `suppFilenames` and `suppLabels` when provided.
+- Descriptions are stored per locale and can be provided again in multi-locale rows to set localized text.
 
 ## Troubleshooting
 
