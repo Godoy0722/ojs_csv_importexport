@@ -1,3 +1,5 @@
-journalPath,firstname,lastname,email,affiliation,country,username,tempPassword,roles,reviewInterests,subscriptionType,start_date,end_date
-liv,Homer2,Simpson,homer2@example.com,UBC,CA,hsimpson2,temppassword123,"Reader;Author","interest one; interest two",,,
-liv,Bart2,Simpson,bart2@example.com,UBC,CA,bsimpson2,temppassword123,"Reader","interest two; interest three",,,
+journalPath,firstname,lastname,email,affiliation,country,username,tempPassword,roles,reviewInterests,subscriptionType,startDate,endDate,orcid
+liv,Homer2,Simpson,homer2@example.com,UBC,CA,hsimpson2,temppassword123,"Reader;Author","interest one; interest two",,,,https://orcid.org/0000-0002-1825-0097
+liv,Bart2,Simpson,bart2@example.com,UBC,CA,bsimpson2,temppassword123,"Reader","interest two; interest three",,,,0000-0001-5109-3700
+liv,Lisa,Simpson,lisa@example.com,UBC,CA,lsimpson,temppassword123,"Author","science; research",,,,0000000256781235
+liv,Marge,Simpson,marge@example.com,UBC,CA,msimpson,temppassword123,"Reader",,,,,
