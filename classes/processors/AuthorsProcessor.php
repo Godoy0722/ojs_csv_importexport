@@ -18,6 +18,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\author\Author;
 use APP\facades\Repo;
+use APP\plugins\importexport\csv\classes\handlers\OrcidHandler;
 use APP\publication\Publication;
 use Illuminate\Support\LazyCollection;
 
@@ -50,12 +51,13 @@ class AuthorsProcessor
              *
              * By default, if an author doesn't have an email, the primary contact email will be used in its place.
              */
-			$givenName = $familyName = $emailAddress = $affiliation = null;
+			$givenName = $familyName = $emailAddress = $orcid = $affiliation = null;
 			$authorParts = array_map('trim', explode(',', $authorString));
 			$givenName = $authorParts[0] ?? '';
-			$familyName = $authorParts[1] ?? '';
-			$emailAddress = $authorParts[2] ?? '';
-			$affiliation = $authorParts[3] ?? '';
+            $familyName = $authorParts[1] ?? '';
+            $emailAddress = $authorParts[2] ?? '';
+            $orcid = $authorParts[3] ?? '';
+            $affiliation = $authorParts[4] ?? '';
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
@@ -70,6 +72,11 @@ class AuthorsProcessor
             $author->setEmail($emailAddress);
             $author->setAffiliation($affiliation, $data->locale);
             $author->setData('publicationId', $publication->getId());
+
+            $normalizedOrcid = OrcidHandler::normalize($orcid);
+            if (!empty($normalizedOrcid)) {
+                $author->setOrcid($normalizedOrcid);
+            }
 
             $authorId = Repo::author()->add($author);
 

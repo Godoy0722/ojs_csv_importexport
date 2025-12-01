@@ -218,6 +218,18 @@ class IssueCommand
                     }
                 }
 
+                if ($data->suppFilenames && !empty($data->suppDescriptions)) {
+                    $reason = InvalidRowValidations::validateSupplementaryDescriptions(
+                        $data->suppFilenames,
+                        $data->suppLabels,
+                        $data->suppDescriptions
+                    );
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
+                }
+
                 if ($data->references) {
                     $reason = InvalidRowValidations::validateReferencesFile($data->references, $this->sourceDir);
                     if (!is_null($reason)) {
@@ -387,6 +399,9 @@ class IssueCommand
                     $genreDao = CachedDaos::getGenreDao();
                     $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
                     $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
+                    $suppDescriptionsArray = !empty($data->suppDescriptions)
+                        ? array_map('trim', explode(';', $data->suppDescriptions))
+                        : [];
                     $suppIds = [];
 
                     foreach (array_map('trim', explode(';', $data->suppFilenames)) as $suppFile) {
@@ -418,6 +433,7 @@ class IssueCommand
                     for($i = 0; $i < count($suppLabelsArray); $i++) {
                         $suppItem = $suppIds[$i];
                         $suppLabel = $suppLabelsArray[$i];
+                        $suppDescription = $suppDescriptionsArray[$i] ?? null;
 
                         $this->handleGalley(
                             $suppItem,
@@ -425,7 +441,8 @@ class IssueCommand
                             $submission->getId(),
                             $suppGenreId,
                             $suppLabel,
-                            $publication->getId()
+                            $publication->getId(),
+                            $suppDescription
                         );
                     }
                 }
@@ -549,7 +566,8 @@ class IssueCommand
         int $submissionId,
         int $genreId,
         string $label,
-        int $publicationId
+        int $publicationId,
+        ?string $description = null
     ): void
     {
         $galleyCompletePath = "{$this->sourceDir}/{$item['file']}";
@@ -562,6 +580,7 @@ class IssueCommand
             $galleyCompletePath,
             $genreId,
             $item['id'],
+            $description
         );
 
         // Now that we have the submission file ID, it's time to process the galley itself.

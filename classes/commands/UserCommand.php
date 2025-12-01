@@ -25,6 +25,7 @@ use APP\plugins\importexport\csv\classes\processors\UsersProcessor;
 use APP\plugins\importexport\csv\classes\processors\UserSubscriptionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
+use APP\plugins\importexport\csv\classes\handlers\OrcidHandler;
 use PKP\security\Validation;
 use PKP\user\User;
 
@@ -153,7 +154,7 @@ class UserCommand
                 }
 
                 if (!empty($data->orcid)) {
-                    $reason = InvalidRowValidations::validateOrcid($data->orcid);
+                    $reason = OrcidHandler::validate($data->orcid);
                     if (!is_null($reason)) {
                         CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                         continue;
