@@ -18,6 +18,7 @@ namespace APP\plugins\importexport\csv\classes\commands;
 
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\plugins\importexport\csv\classes\handlers\CSVFileHandler;
+use APP\plugins\importexport\csv\classes\handlers\OrcidHandler;
 use APP\plugins\importexport\csv\classes\handlers\WelcomeEmailHandler;
 use APP\plugins\importexport\csv\classes\processors\UserGroupsProcessor;
 use APP\plugins\importexport\csv\classes\processors\UserInterestsProcessor;
@@ -153,7 +154,7 @@ class UserCommand
                 }
 
                 if (!empty($data->orcid)) {
-                    $reason = InvalidRowValidations::validateOrcid($data->orcid);
+                    $reason = OrcidHandler::validate($data->orcid);
                     if (!is_null($reason)) {
                         CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
                         continue;

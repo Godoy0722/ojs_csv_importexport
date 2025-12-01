@@ -30,7 +30,8 @@ class SubmissionFileProcessor
         int $submissionId,
         string $filePath,
         int $genreId,
-        int $fileId
+        int $fileId,
+        ?string $description = null
     ): SubmissionFile
     {
         $submissionFile = Repo::submissionFile()->newDataObject();
@@ -47,6 +48,10 @@ class SubmissionFileProcessor
         $submissionFile->setData('name', pathinfo($filePath, PATHINFO_FILENAME), $locale);
         $submissionFile->setDirectSalesPrice(0);
         $submissionFile->setSalesType('openAccess');
+
+        if (!is_null($description)) {
+            $submissionFile->setData('description', $description, $locale);
+        }
 
         $submissionFileId = Repo::submissionFile()->add($submissionFile);
 

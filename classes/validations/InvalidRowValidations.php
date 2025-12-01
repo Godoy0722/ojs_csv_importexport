@@ -306,84 +306,26 @@ class InvalidRowValidations
     }
 
     /**
-     * Validates the ORCID value. Returns the reason if an error occurred,
+     * Validates the supplementary descriptions count. Returns the reason if an error occurred,
      * or null if everything is correct.
-     *
-     * Accepts the following formats:
-     * - Full URL: https://orcid.org/0000-0002-1825-0097 or https://sandbox.orcid.org/0000-0002-1825-0097
-     * - Dashed format: 0000-0002-1825-0097
-     * - Numeric format: 0000000218250097
-     * - Can end with X (checksum character)
      */
-    public static function validateOrcid(?string $orcid): ?string
+    public static function validateSupplementaryDescriptions(string $suppFilenames, string $suppLabels, ?string $suppDescriptions): ?string
     {
-        if (empty($orcid)) {
-            return null;
+        if (empty($suppDescriptions)) {
+            return null; // descriptions are optional
         }
 
-        $normalizedOrcid = self::normalizeOrcid($orcid);
+        $suppFilenamesArray = array_map('trim', explode(';', $suppFilenames));
+        $suppLabelsArray = array_map('trim', explode(';', $suppLabels));
+        $suppDescriptionsArray = array_map('trim', explode(';', $suppDescriptions));
 
-        if ($normalizedOrcid === null) {
-            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
-        }
-
-        $digits = preg_replace('/[^0-9X]/', '', $normalizedOrcid);
-
-        if (strlen($digits) !== 16) {
-            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
-        }
-
-        if (!self::validateOrcidChecksum($digits)) {
-            return __('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]);
+        if (
+            count($suppDescriptionsArray) !== count($suppFilenamesArray) ||
+            count($suppDescriptionsArray) !== count($suppLabelsArray)
+        ) {
+            return __('plugins.importexport.csv.invalidNumberOfDescriptionsAndSupplementaryFiles');
         }
 
         return null;
-    }
-
-    /**
-     * Normalizes an ORCID value to the full URL format.
-     */
-    public static function normalizeOrcid(string $orcid): ?string
-    {
-        $orcid = trim($orcid);
-
-        if (empty($orcid)) {
-            return null;
-        }
-
-        if (preg_match('/^https:\/\/(sandbox\.)?orcid\.org\/(\d{4})-(\d{4})-(\d{4})-(\d{3}[0-9X])$/', $orcid)) {
-            return $orcid;
-        }
-
-        if (preg_match('/^(\d{4})-(\d{4})-(\d{4})-(\d{3}[0-9X])$/', $orcid)) {
-            return 'https://orcid.org/' . $orcid;
-        }
-
-        if (preg_match('/^(\d{15}[0-9X])$/', $orcid)) {
-            $formatted = substr($orcid, 0, 4) . '-' .
-                         substr($orcid, 4, 4) . '-' .
-                         substr($orcid, 8, 4) . '-' .
-                         substr($orcid, 12, 4);
-            return 'https://orcid.org/' . $formatted;
-        }
-
-        return null;
-    }
-
-    /**
-     * Validates the ORCID checksum using ISNI algorithm.
-     */
-    private static function validateOrcidChecksum(string $digits): bool
-    {
-        $total = 0;
-        for ($i = 0; $i < 15; $i++) {
-            $total = ($total + (int) $digits[$i]) * 2;
-        }
-
-        $remainder = $total % 11;
-        $result = (12 - $remainder) % 11;
-        $expectedCheckDigit = ($result === 10) ? 'X' : (string) $result;
-
-        return $digits[15] === $expectedCheckDigit;
     }
 }

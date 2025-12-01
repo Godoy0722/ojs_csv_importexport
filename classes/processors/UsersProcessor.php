@@ -17,7 +17,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
-use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
+use APP\plugins\importexport\csv\classes\handlers\OrcidHandler;
 use PKP\core\Core;
 use PKP\security\Validation;
 use PKP\user\User;
@@ -39,7 +39,7 @@ class UsersProcessor
         $user->setDateRegistered(Core::getCurrentDate());
 
         if (!empty($data->orcid)) {
-            $normalizedOrcid = InvalidRowValidations::normalizeOrcid($data->orcid);
+            $normalizedOrcid = OrcidHandler::normalize($data->orcid);
             if ($normalizedOrcid !== null) {
                 $user->setOrcid($normalizedOrcid);
             }
