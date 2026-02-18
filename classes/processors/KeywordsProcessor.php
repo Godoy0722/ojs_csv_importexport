@@ -23,6 +23,10 @@ class KeywordsProcessor
 {
     public static function process(object $data, int $publicationId, ?Publication $basePublication = null)
     {
+        if (empty($data->keywords) && is_null($basePublication)) {
+            return;
+        }
+
         if (empty($data->keywords) && !is_null($basePublication)) {
             $baseKeywords = $basePublication->getData('keywords');
             if (empty($baseKeywords)) {

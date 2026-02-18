@@ -22,8 +22,6 @@ use APP\template\TemplateManager;
 use Exception;
 use PKP\config\Config;
 use PKP\core\JSONMessage;
-use PKP\core\PKPRequest;
-use PKP\core\Registry;
 use PKP\file\TemporaryFileManager;
 use PKP\plugins\Hook;
 use PKP\plugins\ImportExportPlugin;

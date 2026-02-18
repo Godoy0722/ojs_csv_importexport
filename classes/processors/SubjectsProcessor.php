@@ -23,6 +23,10 @@ class SubjectsProcessor
 {
 	public static function process(object $data, int $publicationId, ?Publication $basePublication = null)
     {
+        if (empty($data->subjects) && is_null($basePublication)) {
+            return;
+        }
+
         if (empty($data->subjects) && !is_null($basePublication)) {
             $baseSubjects = $basePublication->getData('subjects');
             if (empty($baseSubjects)) {
