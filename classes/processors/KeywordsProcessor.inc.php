@@ -49,6 +49,10 @@ class KeywordsProcessor
             return;
         }
 
+		if (empty($data->keywords)) {
+			return;
+		}
+
 		$keywordsList = [$data->locale => array_map('trim', explode(';', $data->keywords))];
 
 		if (count($keywordsList[$data->locale]) > 0) {

@@ -175,10 +175,10 @@ class CachedEntities
 
 		self::$issues[$customIssueDescription] = CachedDaos::getIssueDao()->getIssuesByIdentification(
 			$journalId,
-			$data->issueVolume,
-			$data->issueNumber,
-			$data->issueYear,
-			[$data->issueTitle]
+			!empty($data->issueVolume) ? $data->issueVolume : null,
+			!empty($data->issueNumber) ? $data->issueNumber : null,
+			!empty($data->issueYear) ? $data->issueYear : null,
+			!empty($data->issueTitle) ? [$data->issueTitle] : []
 		)->toArray()[0] ?? null;
 
 		return self::$issues[$customIssueDescription];

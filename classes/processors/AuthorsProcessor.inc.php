@@ -41,22 +41,25 @@ class AuthorsProcessor
         }
 
 		$authorDao = CachedDaos::getAuthorDao();
-		$authorsString = array_map('trim', explode(';', $data->authors));
+		$authorsString = self::splitRespectingQuotes($data->authors, ';');
 
         foreach ($authorsString as $index => $authorString) {
             /**
-             * Examine the author string. The pattern is: "GivenName,FamilyName,email@email.com,affiliation".
+             * Examine the author string. The pattern is: "GivenName,FamilyName,email@email.com,orcid,affiliation".
              *
              * If the article has more than one author, it must separate the authors by a semicolon (;). Example:
              * "<AUTHOR_1_INFORMATION>;<AUTHOR_2_INFORMATION>".
              *
-             * Fields familyName, email, and affiliation are optional and can be left as empty fields. E.g.:
-             * "GivenName,,,".
+             * Fields familyName, email, orcid, and affiliation are optional and can be left as empty fields. E.g.:
+             * "GivenName,,,,".
+             *
+             * Affiliations containing commas or semicolons must be wrapped in double quotes. E.g.:
+             * "GivenName,FamilyName,email@email.com,,"Dept of Medicine, University of Example, City, Country"".
              *
              * By default, if an author doesn't have an email, the primary contact email will be used in its place.
              */
 			$givenName = $familyName = $emailAddress = $orcid = $affiliation = null;
-			$authorParts = array_map('trim', explode(',', $authorString));
+			$authorParts = self::splitRespectingQuotes($authorString, ',', true);
             $givenName = $authorParts[0] ?? '';
             $familyName = $authorParts[1] ?? '';
             $emailAddress = $authorParts[2] ?? '';
@@ -126,6 +129,47 @@ class AuthorsProcessor
     }
 
 	/**
+	 * Split a string by a delimiter while respecting double-quoted regions.
+	 * Unlike str_getcsv, this handles quotes that appear mid-field (e.g., after
+	 * preceding unquoted content), which is needed for the authors format where
+	 * affiliations are quoted within a comma/semicolon-delimited author entry.
+	 *
+	 * @param string $input
+	 * @param string $delimiter
+	 *
+	 * @return string[]
+	 */
+	private static function splitRespectingQuotes($input, $delimiter, $stripQuotes = false)
+	{
+		$parts = [];
+		$current = '';
+		$inQuotes = false;
+		$len = strlen($input);
+
+		for ($i = 0; $i < $len; $i++) {
+			if ($input[$i] === '"') {
+				$inQuotes = !$inQuotes;
+				if (!$stripQuotes) {
+					$current .= $input[$i];
+				}
+				continue;
+			}
+
+			if (!$inQuotes && $input[$i] === $delimiter) {
+				$parts[] = trim($current);
+				$current = '';
+				continue;
+			}
+
+			$current .= $input[$i];
+		}
+
+		$parts[] = trim($current);
+
+		return $parts;
+	}
+
+	/**
      * Process authors for multi-locale import (adds locale data to existing authors)
 	 *
 	 * @param object $data
@@ -142,13 +186,13 @@ class AuthorsProcessor
             return; // No new author data to add
         }
 
-        $authorsString = array_map('trim', explode(';', $data->authors));
+        $authorsString = self::splitRespectingQuotes($data->authors, ';');
         /** @var Author[] */
         $existingAuthors = $publication->getData('authors');
 
         foreach ($authorsString as $index => $authorString) {
             $givenName = $familyName = $emailAddress = $affiliation = null;
-            $authorParts = array_map('trim', explode(',', $authorString));
+            $authorParts = self::splitRespectingQuotes($authorString, ',', true);
             $givenName = $authorParts[0] ?? '';
             $familyName = $authorParts[1] ?? '';
             $emailAddress = $authorParts[2] ?? '';

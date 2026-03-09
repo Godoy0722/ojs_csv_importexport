@@ -49,6 +49,10 @@ class SubjectsProcessor
             return;
         }
 
+		if (empty($data->subjects)) {
+			return;
+		}
+
 		$subjectsList = [$data->locale => array_map('trim', explode(';', $data->subjects))];
 
 		if (count($subjectsList[$data->locale]) > 0) {
