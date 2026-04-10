@@ -23,7 +23,9 @@ use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
 use APP\plugins\importexport\csv\shared\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\shared\handlers\CSVFileHandler;
+use APP\plugins\importexport\csv\shared\handlers\DryModeReporter;
 use APP\plugins\importexport\csv\shared\handlers\WelcomeEmailHandler;
+use Illuminate\Support\Facades\DB;
 use APP\plugins\importexport\csv\shared\processors\UserGroupsProcessor;
 use APP\plugins\importexport\csv\shared\processors\UserInterestsProcessor;
 use APP\plugins\importexport\csv\shared\processors\UsersProcessor;
@@ -46,16 +48,23 @@ class UserCommand
 
     private User $senderEmailUser;
 
-    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail)
+    private bool $dryMode;
+
+    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail, bool $dryMode = false)
     {
         $this->expectedRowSize = count(RequiredUserHeaders::$userHeaders);
         $this->sourceDir = $sourceDir;
         $this->senderEmailUser = $user;
         $this->sendWelcomeEmail = $sendWelcomeEmail;
+        $this->dryMode = $dryMode;
     }
 
     public function run(): void
     {
+        $totalFiles = 0;
+        $totalPassed = 0;
+        $totalFailed = 0;
+
         foreach (new \DirectoryIterator($this->sourceDir) as $fileInfo) {
             if (!$fileInfo->isFile() || $fileInfo->getExtension() !== 'csv') {
                 continue;
@@ -75,6 +84,12 @@ class UserCommand
 
             $this->processedRows = 0;
             $this->failedRows = 0;
+            $fileFailedRows = [];
+
+            if ($this->dryMode) {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0');
+                DB::beginTransaction();
+            }
 
             foreach ($file as $index => $fields) {
                 if (!$index || empty(array_filter($fields))) {
@@ -139,7 +154,7 @@ class UserCommand
                         UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
                     }
 
-                    if ($this->sendWelcomeEmail) {
+                    if ($this->sendWelcomeEmail && !$this->dryMode) {
                         WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
                     }
                 } catch (RowValidationException $e) {
@@ -161,9 +176,31 @@ class UserCommand
                         $e->getMessage(),
                         $this->failedRows
                     );
+                    if ($this->dryMode) {
+                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
+                    }
 
                     continue;
                 }
+            }
+
+            if ($this->dryMode) {
+                $passed = $this->processedRows - $this->failedRows;
+                DryModeReporter::printFileHeader($basename);
+                if (!empty($fileFailedRows)) {
+                    DryModeReporter::printTableHeader();
+                    foreach ($fileFailedRows as $failedRow) {
+                        DryModeReporter::printFailedRow($failedRow['row'], $failedRow['reason']);
+                    }
+                }
+                DryModeReporter::printFileSummary($passed, $this->failedRows, $this->processedRows);
+                $totalFiles++;
+                $totalPassed += $passed;
+                $totalFailed += $this->failedRows;
+
+                DB::rollBack();
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                CachedEntities::reset();
             }
 
             echo __('plugins.importexpot.csv.fileProcessFinished', [
@@ -171,6 +208,10 @@ class UserCommand
                 'processedRows' => $this->processedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
+        }
+
+        if ($this->dryMode) {
+            DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
         }
     }
 }

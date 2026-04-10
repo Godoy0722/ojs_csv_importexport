@@ -30,6 +30,7 @@ use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredIssueHeaders;
 use APP\plugins\importexport\csv\shared\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\shared\handlers\CSVFileHandler;
+use APP\plugins\importexport\csv\shared\handlers\DryModeReporter;
 use APP\plugins\importexport\csv\shared\processors\AuthorsProcessor;
 use APP\plugins\importexport\csv\shared\processors\CategoriesProcessor;
 use APP\plugins\importexport\csv\shared\processors\FundersProcessor;
@@ -108,11 +109,14 @@ class IssueCommand
     /** @var array Track failed identifiers for cascaded failure detection */
     private array $failedIdentifiers;
 
-    public function __construct(string $sourceDir, User $user)
+    private bool $dryMode;
+
+    public function __construct(string $sourceDir, User $user, bool $dryMode = false)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->sourceDir = $sourceDir;
         $this->user = $user;
+        $this->dryMode = $dryMode;
         $this->processedIssues = [];
         $this->processedArticles = [];
         $this->failedIdentifiers = [];
@@ -120,6 +124,10 @@ class IssueCommand
 
     public function run()
     {
+        $totalFiles = 0;
+        $totalPassed = 0;
+        $totalFailed = 0;
+
         foreach (new \DirectoryIterator($this->sourceDir) as $fileInfo) {
             if (!$fileInfo->isFile() || $fileInfo->getExtension() !== 'csv') {
                 continue;
@@ -142,6 +150,12 @@ class IssueCommand
 
             $this->processedRows = 0;
             $this->failedRows = 0;
+            $fileFailedRows = [];
+
+            if ($this->dryMode) {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0');
+                DB::beginTransaction();
+            }
 
             foreach ($file as $index => $fields) {
                 if (!$index || empty(array_filter($fields))) {
@@ -260,7 +274,7 @@ class IssueCommand
                     $this->initializeStaticVariables();
 
                     $coverImageUploadName = null;
-                    if ($data->coverImageFilename) {
+                    if (!$this->dryMode && $data->coverImageFilename) {
                         InvalidRowValidations::validateCoverImageIsValid($data->coverImageFilename, $this->sourceDir);
 
                         $sanitizedCoverImageName = str_replace([' ', '_', ':'], '-', mb_strtolower($data->coverImageFilename));
@@ -323,11 +337,11 @@ class IssueCommand
                         throw new RowValidationException(__('plugins.importexport.csv.errorWhileCreatingPublication'));
                     }
 
-                    if ($data->coverImageFilename) {
+                    if (!$this->dryMode && $data->coverImageFilename) {
                         PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
                     }
 
-                    if ($existingSubmission && $basePublication && !$data->galleyFilenames) {
+                    if (!$this->dryMode && $existingSubmission && $basePublication && !$data->galleyFilenames) {
                         GalleyProcessor::copyGalleysFromBasePublication(
                             $basePublication,
                             $publication,
@@ -340,7 +354,7 @@ class IssueCommand
                     // Array to store each galley ID to its respective galley file
                     $galleyIds = [];
                     $galleyMetadata = [];
-                    if ($data->galleyFilenames) {
+                    if (!$this->dryMode && $data->galleyFilenames) {
                         foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
                             $galleyFileId = $this->saveSubmissionFile(
                                 $galleyFile,
@@ -378,7 +392,7 @@ class IssueCommand
                     }
 
                     // Process supplementary files
-                    if ($data->suppFilenames) {
+                    if (!$this->dryMode && $data->suppFilenames) {
                         // Get supplementary genre for supplementary files
                         $genreDao = CachedDaos::getGenreDao();
                         $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
@@ -438,7 +452,7 @@ class IssueCommand
                         );
                     }
 
-                    if (!empty($data->galleyViews) && !empty($galleyMetadata)) {
+                    if (!$this->dryMode && !empty($data->galleyViews) && !empty($galleyMetadata)) {
                         $galleyViewsArray = explode(';', $data->galleyViews);
                         foreach ($galleyViewsArray as $idx => $views) {
                             $views = trim($views);
@@ -549,9 +563,33 @@ class IssueCommand
                         $e->getMessage(),
                         $this->failedRows
                     );
+                    if ($this->dryMode) {
+                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
+                    }
 
                     continue;
                 }
+            }
+
+            if ($this->dryMode) {
+                $passed = $this->processedRows - $this->failedRows;
+                DryModeReporter::printFileHeader($basename);
+                if (!empty($fileFailedRows)) {
+                    DryModeReporter::printTableHeader();
+                    foreach ($fileFailedRows as $failedRow) {
+                        DryModeReporter::printFailedRow($failedRow['row'], $failedRow['reason']);
+                    }
+                }
+                DryModeReporter::printFileSummary($passed, $this->failedRows, $this->processedRows);
+                $totalFiles++;
+                $totalPassed += $passed;
+                $totalFailed += $this->failedRows;
+
+                DB::rollBack();
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                CachedEntities::reset();
+                $this->processedArticles = [];
+                $this->failedIdentifiers = [];
             }
 
             echo __('plugins.importexpot.csv.fileProcessFinished', [
@@ -559,6 +597,11 @@ class IssueCommand
                 'processedRows' => $this->processedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
+        }
+
+        if ($this->dryMode) {
+            DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
+            return;
         }
 
         $this->syncCoverImagesForProcessedArticles();

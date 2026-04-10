@@ -74,8 +74,16 @@ class RequiredIssueHeaders
         return count($row) === count(self::$issueHeaders);
     }
 
-    public static function validateRowHasAllRequiredFields(object $row): bool
+    public static function validateRowHasAllRequiredFields(object $row, array $processedArticles = []): bool
     {
+        $isMultiVersionOrLocale = !empty($row->versionIdentifier)
+            && !empty($row->version)
+            && isset($processedArticles[$row->versionIdentifier]);
+
+        if ($isMultiVersionOrLocale) {
+            return true;
+        }
+
         foreach (self::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
                 return false;

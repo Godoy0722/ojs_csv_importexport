@@ -45,6 +45,9 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /** @var bool Whether to send welcome email */
     private bool $sendWelcomeEmail = false;
 
+    /** @var bool Whether to run in dry mode (validate without persisting) */
+    private bool $dryMode = false;
+
     /** @copydoc Plugin::register() */
     public function register($category, $path, $mainContextId = null)
     {
@@ -141,6 +144,14 @@ class CSVImportExportPlugin extends ImportExportPlugin
     public function executeCLI($scriptName, &$args)
     {
         $startTime = microtime(true);
+
+        $dryModeKey = array_search('--dry-mode', $args);
+        if ($dryModeKey !== false) {
+            $this->dryMode = true;
+            unset($args[$dryModeKey]);
+            $args = array_values($args);
+        }
+
         $this->command = array_shift($args);
 		$this->username = array_shift($args);
         $this->sourceDir = array_shift($args);
@@ -160,10 +171,10 @@ class CSVImportExportPlugin extends ImportExportPlugin
 
         switch ($this->command) {
             case 'issues':
-				(new IssueCommand($this->sourceDir, $this->user))->run();
+				(new IssueCommand($this->sourceDir, $this->user, $this->dryMode))->run();
                 break;
             case 'users':
-                (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run();
+                (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail, $this->dryMode))->run();
                 break;
             default:
                 throw new \InvalidArgumentException("Comando inválido: {$this->command}");
@@ -276,14 +287,16 @@ class CSVImportExportPlugin extends ImportExportPlugin
             $csvFilePath = $tempDir . '/' . $temporaryFile->getOriginalFileName();
             copy($temporaryFile->getFilePath(), $csvFilePath);
 
+            $dryMode = (bool) $request->getUserVar('dryMode');
+
             // Execute the import command
             switch ($importType) {
                 case 'issues':
-                    $command = new IssueCommand($tempDir, $user);
+                    $command = new IssueCommand($tempDir, $user, $dryMode);
                     break;
                 case 'users':
                     $sendWelcomeEmail = (bool) $request->getUserVar('sendWelcomeEmail');
-                    $command = new UserCommand($tempDir, $user, $sendWelcomeEmail);
+                    $command = new UserCommand($tempDir, $user, $sendWelcomeEmail, $dryMode);
                     break;
             }
 
