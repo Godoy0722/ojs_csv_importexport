@@ -37,6 +37,7 @@ class RequiredIssueHeaders
         'coverImageAltText',
         'galleyFilenames',
         'galleyLabels',
+        'galleyViews',
         'suppFilenames',
         'suppLabels',
         'suppDescriptions',
@@ -54,6 +55,10 @@ class RequiredIssueHeaders
 		'copyrightHolder',
 		'licenseUrl',
 		'references',
+		'username',
+		'funders',
+		'supportingAgencies',
+		'articleViews',
     ];
 
     static $issueRequiredHeaders = [

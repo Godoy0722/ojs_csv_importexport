@@ -22,6 +22,7 @@ use APP\template\TemplateManager;
 use Exception;
 use PKP\config\Config;
 use PKP\core\JSONMessage;
+use PKP\facades\Locale;
 use PKP\file\TemporaryFileManager;
 use PKP\plugins\Hook;
 use PKP\plugins\ImportExportPlugin;
@@ -63,6 +64,17 @@ class CSVImportExportPlugin extends ImportExportPlugin
         }
 
         return $success;
+    }
+
+    /** @copydoc Plugin::addLocaleData() */
+    public function addLocaleData(): void
+    {
+        parent::addLocaleData();
+
+        $sharedLocalePath = $this->getPluginPath() . '/shared/locale';
+        if (is_dir($sharedLocalePath)) {
+            Locale::registerPath($sharedLocalePath);
+        }
     }
 
     /**

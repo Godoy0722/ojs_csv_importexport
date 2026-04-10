@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/SubmissionProcessor.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class SubmissionProcessor
@@ -16,30 +16,15 @@
 
 namespace APP\plugins\importexport\csv\classes\processors;
 
-use APP\facades\Repo;
+use APP\journal\Journal;
 use APP\publication\Publication;
 use APP\submission\Submission;
-use PKP\context\Context;
-
-class SubmissionProcessor
+use APP\plugins\importexport\csv\shared\processors\SubmissionProcessor as SharedSubmissionProcessor;
+class SubmissionProcessor extends SharedSubmissionProcessor
 {
-    public static function process(object $data, Publication $publication, Context $journal): Submission
+    public static function process(object $data, Publication $publication, Journal $journal): Submission
     {
-        $submission = Repo::submission()->newDataObject();
-
-        $submission->setData('contextId', $journal->getId());
-        $submission->setData('status', Submission::STATUS_PUBLISHED);
-        $submission->setData('locale', $data->locale);
-        $submission->setData('stageId', WORKFLOW_STAGE_ID_PRODUCTION);
-        $submission->setData('submissionProgress', '');
-        $submission->setData('abstract', $data->articleAbstract, $data->locale);
-
-        $submissionId = Repo::submission()->add($submission, $publication, $journal);
-        return Repo::submission()->get($submissionId);
-    }
-
-    public static function setCurrentPublicationId(Submission $submission, int $publicationId): void
-    {
-        Repo::submission()->edit($submission, ['currentPublicationId' => $publicationId]);
+        $normalizedAbstract = PublicationProcessor::normalizeAbstractToHtml($data->articleAbstract);
+        return parent::processCommons($data->locale, $publication, $journal, $normalizedAbstract, $data->datePublished);
     }
 }

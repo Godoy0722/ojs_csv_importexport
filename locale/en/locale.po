@@ -43,44 +43,11 @@ msgstr "Unknown User: \"{$username}\". Exiting."
 msgid "plugins.importexport.csv.unknownSourceDir"
 msgstr "Invalid source dir: \"{$sourceDir}\". Please verify this param on CLI. Exiting."
 
-msgid "plugins.importexport.csv.couldNotOpenFile"
-msgstr "Could not read file: \"{$filePath}\". Error: \"{$errorMessage}\"."
-
 msgid "plugins.importexport.csv.couldNotCreateFile"
 msgstr "Could not create the file \"{$filename}\"."
 
-msgid "plugins.importexport.csv.rowDoesntContainAllFields"
-msgstr "Row doesn't contain all fields."
-
-msgid "plugins.importexport.csv.verifyRequiredFieldsForThisRow"
-msgstr "Verify the required fields for this row."
-
-msgid "plugins.importexport.csv.unknownJournal"
-msgstr "Unknown journal with path \"{$journalPath}\"."
-
-msgid "plugins.importexport.csv.unknownLocale"
-msgstr "Unknown locale or locale not supported by this journal: \"{$locale}\""
-
 msgid "plugins.importexport.csv.invalidArticleFile"
 msgstr "Invalid article file for this submission."
-
-msgid "plugins.importexport.csv.invalidCoverImage"
-msgstr "Invalid cover image for this submission."
-
-msgid "plugins.importexport.csv.invalidGalleyFile"
-msgstr "Invalid galley file \"{$filename}\" for this submission."
-
-msgid "plugins.importexport.csv.invalidNumberOfLabelsAndGalleys"
-msgstr "Galley files don't have the same amount as the labels. Please verify it for this row."
-
-msgid "plugins.importexport.csv.invalidSupplementaryFile"
-msgstr "Invalid supplementary file \"{$filename}\" for this submission."
-
-msgid "plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles"
-msgstr "Supplementary files don't have the same amount as the labels. Please verify it for this row."
-
-msgid "plugins.importexport.csv.noAuthorGroup"
-msgstr "There is no default author group in the journal {$journal}."
 
 msgid "plugins.importexpot.csv.fileProcessFinished"
 msgstr "Process for file \"{$filename}\" finished. {$processedRows} rows processed. {$failedRows} rows with error."
@@ -91,9 +58,6 @@ msgstr "The cover image has an invalid format for this row."
 msgid "plugins.importexport.csv.erroWhileSavingBookCoverImage"
 msgstr "An error occurred while saving the book cover image."
 
-msgid "plugins.importexport.csv.noGenre"
-msgstr "There is no {$genreName} genre."
-
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionFile"
 msgstr "An error occurred while saving the Submission file."
 
@@ -103,23 +67,11 @@ msgstr "An error occurred while saving the supplementary file {$file}."
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
 msgstr "An error occurred while saving the galley {$galley}."
 
-msgid "plugins.importexport.csv.errorWhileCreatingPublication"
-msgstr "An error occurred while creating the publication."
-
 msgid "plugins.importexport.csv.abstractRequiredBySection"
 msgstr "Abstract is required for this section but not provided."
 
 msgid "plugins.importexport.csv.atLeastOneIssueFieldRequired"
 msgstr "At least one issue field (issueTitle, issueVolume, issueNumber, or issueYear) must be provided."
-
-msgid "plugins.importexport.csv.userAlreadyExistsWithEmail"
-msgstr "User already exists with email \"{$email}\"."
-
-msgid "plugins.importexport.csv.userAlreadyExistsWithUsername"
-msgstr "User already exists with username \"{$username}\"."
-
-msgid "plugins.importexport.csv.roleDoesntExist"
-msgstr "Role \"{$role}\" doesn't exist."
 
 msgid "plugins.importexport.csv.invalidStartDate"
 msgstr "The subscription start date \"{$date}\" is not valid. Format required: YYYY-MM-DD."
@@ -241,26 +193,8 @@ msgstr "Important: File Structure Requirements"
 msgid "plugins.importexport.csv.help.structure"
 msgstr "Your CSV file must contain exactly the same column headers and structure as the example files. Download the example files above to see the required format. Any missing or incorrectly named columns will cause import errors."
 
-msgid "plugins.importexport.csv.versionRequiredWhenIdentifierProvided"
-msgstr "Version is required when versionIdentifier is provided."
-
-msgid "plugins.importexport.csv.versionMustBePositiveInteger"
-msgstr "Version must be a positive integer greater than 0."
-
 msgid "plugins.importexport.csv.duplicateArticleVersionLocaleFound"
 msgstr "An article with identifier \"{$identifier}\", version \"{$version}\", and locale \"{$locale}\" already exists in this import. Please check the article's version and locale combination."
-
-msgid "plugins.importexport.csv.invalidReferencesFile"
-msgstr "Invalid references file: \"{$filename}\". Please verify the file exists and is readable."
-
-msgid "plugins.importexport.csv.invalidReferencesFileExtension"
-msgstr "References file must have a .txt extension."
-
-msgid "plugins.importexport.csv.invalidNumberOfDescriptionsAndSupplementaryFiles"
-msgstr "Supplementary files don't have the same amount as the descriptions. Please verify it for this row."
-
-msgid "plugins.importexport.csv.invalidOrcidFormat"
-msgstr "Invalid ORCID format: \"{$orcid}\". Accepted formats: URL (https://orcid.org/0000-0000-0000-0000), dashed (0000-0000-0000-0000), or numeric (0000000000000000)."
 
 msgid "plugins.importexport.csv.invalidOrcidChecksum"
 msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."

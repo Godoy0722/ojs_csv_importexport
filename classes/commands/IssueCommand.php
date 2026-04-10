@@ -21,25 +21,27 @@ use APP\facades\Repo;
 use APP\file\PublicFileManager;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
-use APP\plugins\importexport\csv\classes\handlers\CSVFileHandler;
-use APP\plugins\importexport\csv\classes\processors\AuthorsProcessor;
-use APP\plugins\importexport\csv\classes\processors\CategoriesProcessor;
 use APP\plugins\importexport\csv\classes\processors\GalleyProcessor;
 use APP\plugins\importexport\csv\classes\processors\IssueProcessor;
-use APP\plugins\importexport\csv\classes\processors\KeywordsProcessor;
 use APP\plugins\importexport\csv\classes\processors\PublicationProcessor;
 use APP\plugins\importexport\csv\classes\processors\SectionsProcessor;
-use APP\plugins\importexport\csv\classes\processors\SubjectsProcessor;
-use APP\plugins\importexport\csv\classes\processors\SubmissionFileProcessor;
 use APP\plugins\importexport\csv\classes\processors\SubmissionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredIssueHeaders;
+use APP\plugins\importexport\csv\shared\exceptions\RowValidationException;
+use APP\plugins\importexport\csv\shared\handlers\CSVFileHandler;
+use APP\plugins\importexport\csv\shared\processors\AuthorsProcessor;
+use APP\plugins\importexport\csv\shared\processors\CategoriesProcessor;
+use APP\plugins\importexport\csv\shared\processors\FundersProcessor;
+use APP\plugins\importexport\csv\shared\processors\KeywordsProcessor;
+use APP\plugins\importexport\csv\shared\processors\StatisticsProcessor;
+use APP\plugins\importexport\csv\shared\processors\SubjectsProcessor;
+use APP\plugins\importexport\csv\shared\processors\SubmissionFileProcessor;
 use APP\publication\Publication;
 use APP\submission\Submission;
 use Illuminate\Support\Facades\DB;
 use PKP\file\FileManager;
 use PKP\services\PKPFileService;
-use PKP\submissionFile\SubmissionFile;
 use PKP\user\User;
 
 class IssueCommand
@@ -103,6 +105,9 @@ class IssueCommand
      */
     private array $processedArticles;
 
+    /** @var array Track failed identifiers for cascaded failure detection */
+    private array $failedIdentifiers;
+
     public function __construct(string $sourceDir, User $user)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
@@ -110,6 +115,7 @@ class IssueCommand
         $this->user = $user;
         $this->processedIssues = [];
         $this->processedArticles = [];
+        $this->failedIdentifiers = [];
     }
 
     public function run()
@@ -119,19 +125,20 @@ class IssueCommand
                 continue;
             }
 
+            $basename = $fileInfo->getBasename();
+
+            // Skip invalid_*.csv files created by previous failed imports
+            if (str_starts_with($basename, 'invalid_')) {
+                continue;
+            }
+
             $filePath = $fileInfo->getPathname();
             $file = CSVFileHandler::createReadableCSVFile($filePath);
 
             if (is_null($file)) {
                 continue;
             }
-
-            $basename = $fileInfo->getBasename();
-            $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}", RequiredIssueHeaders::$issueHeaders);
-
-            if (is_null($invalidCsvFile)) {
-                continue;
-            }
+            $invalidCsvFile = null;
 
             $this->processedRows = 0;
             $this->failedRows = 0;
@@ -143,367 +150,407 @@ class IssueCommand
 
                 ++$this->processedRows;
 
-                $reason = InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
+                try {
+                    InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
 
-                $data = (object) array_combine(
-                    RequiredIssueHeaders::$issueHeaders,
-                    array_pad(array_map('trim', $fields), $this->expectedRowSize, null)
-                );
-
-                $reason = InvalidRowValidations::validateRowHasAllRequiredFields($data, function($row) {
-                    return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->processedArticles);
-                });
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                $reason = InvalidRowValidations::validateArticleVersioningFields($data);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                if (!empty($data->versionIdentifier)) {
-                    $reason = InvalidRowValidations::validateNoDuplicateVersion($data, $this->processedArticles);
-                    if (!is_null($reason)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-                }
-
-                $fieldsList = array_pad($fields, $this->expectedRowSize, null);
-
-                $hasIssueData = !empty(trim($data->issueTitle))
-                                || !empty(trim($data->issueVolume))
-                                || !empty(trim($data->issueNumber))
-                                || !empty(trim($data->issueYear));
-
-                if (empty($data->version) || (!empty($data->version) && (int)$data->version === 1)) {
-                    if (!$hasIssueData) {
-                        $reason = __('plugins.importexport.csv.atLeastOneIssueFieldRequired');
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-                }
-
-                if ($data->galleyFilenames) {
-                    $reason = InvalidRowValidations::validateArticleGalleys(
-                        $data->galleyFilenames,
-                        $data->galleyLabels,
-                        $this->sourceDir
+                    $data = (object) array_combine(
+                        RequiredIssueHeaders::$issueHeaders,
+                        array_pad(array_map('trim', $fields), $this->expectedRowSize, null)
                     );
 
-                    if (!is_null($reason)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-                }
-
-                if ($data->suppFilenames) {
-                    $reason = InvalidRowValidations::validateSupplementaryFiles(
-                        $data->suppFilenames,
-                        $data->suppLabels,
-                        $this->sourceDir
-                    );
-
-                    if (!is_null($reason)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-                }
-
-                if ($data->suppFilenames && !empty($data->suppDescriptions)) {
-                    $reason = InvalidRowValidations::validateSupplementaryDescriptions(
-                        $data->suppFilenames,
-                        $data->suppLabels,
-                        $data->suppDescriptions
-                    );
-                    if (!is_null($reason)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-                }
-
-                if ($data->references) {
-                    $reason = InvalidRowValidations::validateReferencesFile($data->references, $this->sourceDir);
-                    if (!is_null($reason)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-                }
-
-                $journal = CachedEntities::getCachedJournal($data->journalPath);
-
-                $reason = InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                $reason = InvalidRowValidations::validateJournalLocale($journal, $data->locale);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                $genreName = 'SUBMISSION';
-                $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
-
-                $reason = InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                $userGroupId = CachedEntities::getCachedUserGroupId($data->journalPath, $journal->getId());
-
-                $reason = InvalidRowValidations::validateUserGroupId($userGroupId, $data->journalPath);
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                $this->initializeStaticVariables();
-
-                $coverImageUploadName = null;
-                if ($data->coverImageFilename) {
-                    $reason = InvalidRowValidations::validateCoverImageIsValid($data->coverImageFilename, $this->sourceDir);
-                    if (!is_null($reason)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                        continue;
-                    }
-
-                    $sanitizedCoverImageName = str_replace([' ', '_', ':'], '-', mb_strtolower($data->coverImageFilename));
-                    $sanitizedCoverImageName = preg_replace('/[^a-z0-9\.\-]+/', '', $sanitizedCoverImageName);
-                    $coverImageUploadName = uniqid() . '-' . basename($sanitizedCoverImageName);
-
-                    $destFilePath = $this->publicFileManager->getContextFilesPath($journal->getId()) . '/' . $coverImageUploadName;
-                    $srcFilePath = "{$this->sourceDir}/{$data->coverImageFilename}";
-                    $bookCoverImageSaved = $this->fileManager->copyFile($srcFilePath, $destFilePath);
-
-                    if (!$bookCoverImageSaved) {
-                        $reason = __('plugin.importexport.csv.erroWhileSavingBookCoverImage');
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-
-                        continue;
-                    }
-                }
-
-                $existingSubmission = null; /** @var null|Submission */
-                $basePublication = null; /** @var null|Publication */
-                $isMultiLocaleImport = false;
-
-                if (!empty($data->versionIdentifier) &&
-                    InvalidRowValidations::versionExistsInAnyLocale($data, $this->processedArticles)) {
-                    $version = (int)$data->version;
-                    $versionData = $this->processedArticles[$data->versionIdentifier][$version];
-
-                    $firstLocaleData = reset($versionData);
-                    $existingSubmission = $firstLocaleData['submission'];
-                    $basePublication = $firstLocaleData['publication'];
-
-                    if (!isset($versionData[$data->locale])) {
-                        $isMultiLocaleImport = true;
-                    }
-                } elseif (!empty($data->versionIdentifier) && isset($this->processedArticles[$data->versionIdentifier])) {
-                    // Handle new version (not multi-locale)
-                    $versions = $this->processedArticles[$data->versionIdentifier];
-                    $lastVersion = end($versions);
-                    $lastVersionData = reset($lastVersion);
-                    $existingSubmission = $lastVersionData['submission'];
-                    $basePublication = $lastVersionData['publication'];
-                }
-
-                if ($isMultiLocaleImport) {
-                    $submission = $existingSubmission;
-                    $publication = $basePublication;
-
-                    $publication = PublicationProcessor::processMultiLocalePublication($publication, $data);
-                } elseif ($existingSubmission && $basePublication) {
-                    // New version import
-                    $submission = $existingSubmission;
-                    $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
-
-                    $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication, $this->sourceDir);
-                } else {
-                    // New submission import
-                    $initialPublication = PublicationProcessor::createInitialPublication($data);
-                    $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
-                    $publication = PublicationProcessor::process($submission, $data, $journal, $this->sourceDir);
-                }
-
-                if (!$publication) {
-                    $reason = __('plugins.importexport.csv.errorWhileCreatingPublication');
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fieldsList, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
-                }
-
-                if ($data->coverImageFilename) {
-                    $publication = PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
-                }
-
-                if ($existingSubmission && $basePublication && !$data->galleyFilenames) {
-                    GalleyProcessor::copyGalleysFromBasePublication(
-                        $basePublication,
-                        $publication,
-                        $this->fileManager,
-                        $this->format,
-                        $this->fileService
-                    );
-                }
-
-                // Array to store each galley ID to its respective galley file
-                $galleyIds = [];
-                if ($data->galleyFilenames) {
-                    foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
-                        $galleyFileId = $this->saveSubmissionFile(
-                            $galleyFile,
-                            $journal->getId(),
-                            $submission,
-                            $invalidCsvFile,
-                            __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile]),
-                            $fieldsList
+                    // Check for cascaded multi-locale/version failure
+                    if (
+                        !empty($data->versionIdentifier)
+                        && !empty($data->version)
+                        && !isset($this->processedArticles[$data->versionIdentifier])
+                        && isset($this->failedIdentifiers[$data->versionIdentifier])
+                    ) {
+                        throw new RowValidationException(
+                            __('plugins.importexport.csv.baseRowFailedForIdentifier', [
+                                'identifier' => $data->versionIdentifier,
+                            ])
                         );
+                    }
 
-                        if (is_null($galleyFileId)) {
-                            foreach($galleyIds as $galleyItem) {
-                                $this->fileService->delete($galleyItem['id']);
-                            }
+                    InvalidRowValidations::validateRowHasAllRequiredFieldsCommons($data, function($row) {
+                        return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->processedArticles);
+                    });
 
-                            continue;
+                    InvalidRowValidations::validateContextVersioningFields($data);
+
+                    if (!empty($data->versionIdentifier)) {
+                        InvalidRowValidations::validateNoDuplicateVersion($data, $this->processedArticles);
+                    }
+
+                    $hasIssueData = !empty(trim($data->issueTitle))
+                                    || !empty(trim($data->issueVolume))
+                                    || !empty(trim($data->issueNumber))
+                                    || !empty(trim($data->issueYear));
+
+                    if (empty($data->version) || (!empty($data->version) && (int)$data->version === 1)) {
+                        if (!$hasIssueData) {
+                            throw new RowValidationException(__('plugins.importexport.csv.atLeastOneIssueFieldRequired'));
                         }
-
-                        $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
                     }
 
-                    $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
-                    for($i = 0; $i < count($galleyLabelsArray); $i++) {
-                        $galleyItem = $galleyIds[$i];
-                        $galleyLabel = $galleyLabelsArray[$i];
-
-                        $this->handleGalley(
-                            $galleyItem,
-                            $data,
-                            $submission->getId(),
-                            $genreId,
-                            $galleyLabel,
-                            $publication->getId()
+                    if ($data->galleyFilenames) {
+                        InvalidRowValidations::validatePublicationGalleys(
+                            $data->galleyFilenames,
+                            $data->galleyLabels,
+                            $this->sourceDir
                         );
                     }
-                }
 
-                // Process supplementary files
-                if ($data->suppFilenames) {
-                    // Get supplementary genre for supplementary files
-                    $genreDao = CachedDaos::getGenreDao();
-                    $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
-                    $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
-                    $suppIds = [];
+                    InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
+                    InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
 
-                    foreach (array_map('trim', explode(';', $data->suppFilenames)) as $suppFile) {
-                        $suppFileId = $this->saveSubmissionFile(
-                            $suppFile,
-                            $journal->getId(),
-                            $submission,
-                            $invalidCsvFile,
-                            __('plugins.importexport.csv.errorWhileSavingSupplementaryFile', ['file' => $suppFile]),
-                            $fieldsList
+                    if ($data->suppFilenames) {
+                        InvalidRowValidations::validateSupplementaryFiles(
+                            $data->suppFilenames,
+                            $data->suppLabels,
+                            $this->sourceDir
                         );
+                    }
 
-                        if (is_null($suppFileId)) {
-                            foreach($galleyIds as $galleyItem) {
-                                $this->fileService->delete($galleyItem['id']);
-                            }
+                    if ($data->suppFilenames && !empty($data->suppDescriptions)) {
+                        InvalidRowValidations::validateSupplementaryDescriptions(
+                            $data->suppFilenames,
+                            $data->suppLabels,
+                            $data->suppDescriptions
+                        );
+                    }
 
-                            foreach($suppIds as $suppItem) {
-                                $this->fileService->delete($suppItem['id']);
-                            }
+                    if ($data->references) {
+                        InvalidRowValidations::validateReferencesFile($data->references, $this->sourceDir);
+                    }
 
-                            continue;
+                    if ($data->funders) {
+                        InvalidRowValidations::validateFunders($data->funders);
+                    }
+
+                    $fileUploadUser = $this->user;
+                    $csvUser = null;
+                    $usedDefaultUser = false;
+                    if (!empty($data->username)) {
+                        $csvUser = CachedEntities::getCachedUserByUsername($data->username, true);
+                        $csvUser ? $fileUploadUser = $csvUser : $usedDefaultUser = true;
+                    }
+                    $hasValidCsvUser = !empty($data->username) && !$usedDefaultUser && isset($csvUser);
+
+                    $journal = CachedEntities::getCachedJournal($data->journalPath);
+
+                    InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, 'Journal');
+                    InvalidRowValidations::validateContextLocale($journal, $data->locale, 'Journal');
+
+                    $genreName = 'SUBMISSION';
+                    $genreId = CachedEntities::getCachedGenreId($genreName, $journal->getId());
+
+                    InvalidRowValidations::validateGenreIdValid($genreId, $genreName);
+
+                    $userGroupId = CachedEntities::getCachedAuthorUserGroupId($data->journalPath, $journal->getId());
+
+                    InvalidRowValidations::validateUserGroupId($userGroupId, $data->journalPath, 'Journal');
+
+                    // Validate Funding plugin is enabled if funders data is provided
+                    if ($data->funders) {
+                        InvalidRowValidations::validateFundingPluginEnabled($data->funders, $journal->getId(), 'Journal');
+                        InvalidRowValidations::validateFundersCrossrefRegistry($data->funders, $journal->getId());
+                    }
+
+                    $this->initializeStaticVariables();
+
+                    $coverImageUploadName = null;
+                    if ($data->coverImageFilename) {
+                        InvalidRowValidations::validateCoverImageIsValid($data->coverImageFilename, $this->sourceDir);
+
+                        $sanitizedCoverImageName = str_replace([' ', '_', ':'], '-', mb_strtolower($data->coverImageFilename));
+                        $sanitizedCoverImageName = preg_replace('/[^a-z0-9\.\-]+/', '', $sanitizedCoverImageName);
+                        $coverImageUploadName = uniqid() . '-' . basename($sanitizedCoverImageName);
+
+                        $destFilePath = $this->publicFileManager->getContextFilesPath($journal->getId()) . '/' . $coverImageUploadName;
+                        $srcFilePath = "{$this->sourceDir}/{$data->coverImageFilename}";
+                        $bookCoverImageSaved = $this->fileManager->copyFile($srcFilePath, $destFilePath);
+
+                        if (!$bookCoverImageSaved) {
+                            throw new RowValidationException(__('plugin.importexport.csv.erroWhileSavingBookCoverImage'));
                         }
-
-                        $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
                     }
 
-                    $suppDescriptionsArray = !empty($data->suppDescriptions)
-                        ? array_map('trim', explode(';', $data->suppDescriptions))
-                        : [];
-                    $suppLabelsArray = array_map('trim', explode(';', $data->suppLabels));
-                    for($i = 0; $i < count($suppLabelsArray); $i++) {
-                        $suppItem = $suppIds[$i];
-                        $suppLabel = $suppLabelsArray[$i];
-                        $suppDescription = $suppDescriptionsArray[$i] ?? null;
+                    $existingSubmission = null; /** @var null|Submission */
+                    $basePublication = null; /** @var null|Publication */
+                    $isMultiLocaleImport = false;
 
-                        $this->handleGalley(
-                            $suppItem,
-                            $data,
-                            $submission->getId(),
-                            $suppGenreId,
-                            $suppLabel,
-                            $publication->getId(),
-                            $suppDescription
-                        );
+                    if (!empty($data->versionIdentifier) &&
+                        InvalidRowValidations::versionExistsInAnyLocale($data, $this->processedArticles)) {
+                        $version = (int)$data->version;
+                        $versionData = $this->processedArticles[$data->versionIdentifier][$version];
+
+                        $firstLocaleData = reset($versionData);
+                        $existingSubmission = $firstLocaleData['submission'];
+                        $basePublication = $firstLocaleData['publication'];
+
+                        if (!isset($versionData[$data->locale])) {
+                            $isMultiLocaleImport = true;
+                        }
+                    } elseif (!empty($data->versionIdentifier) && isset($this->processedArticles[$data->versionIdentifier])) {
+                        // Handle new version (not multi-locale)
+                        $versions = $this->processedArticles[$data->versionIdentifier];
+                        $lastVersion = end($versions);
+                        $lastVersionData = reset($lastVersion);
+                        $existingSubmission = $lastVersionData['submission'];
+                        $basePublication = $lastVersionData['publication'];
                     }
-                }
 
-                if ($isMultiLocaleImport) {
-                    // For multi-locale imports, update existing publication with new locale data
-                    AuthorsProcessor::processMultiLocale($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
-                    KeywordsProcessor::processMultiLocale($data, $publication->getId());
-                    SubjectsProcessor::processMultiLocale($data, $publication->getId());
-                } else {
-                    // For new submissions or versions, use the regular process
-                    AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
-                    KeywordsProcessor::process($data, $publication->getId(), $basePublication);
-                    SubjectsProcessor::process($data, $publication->getId(), $basePublication);
-                }
-
-                if (
-                    ((!empty($data->version) && (int) $data->version === 1) || empty($data->version))
-                    && $data->coverage
-                ) {
-                    PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
-                }
-
-                $section = SectionsProcessor::process($data, $journal->getId(), $basePublication);
-                PublicationProcessor::updateSectionId($publication, $section->getId());
-
-                $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
-                if ($isMultiLocaleImport) {
-                    $issue = IssueProcessor::processMultiLocale($issue, $data);
-                }
-
-                PublicationProcessor::updateIssueId($publication, $issue->getId());
-
-                if ($data->categories || $basePublication) {
                     if ($isMultiLocaleImport) {
-                        CategoriesProcessor::processMultiLocale($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                        $submission = $existingSubmission;
+                        $publication = $basePublication;
+
+                        $publication = PublicationProcessor::processMultiLocalePublication($publication, $data, $journal);
                     } elseif ($existingSubmission && $basePublication) {
-                        CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication);
+                        // New version import
+                        $submission = $existingSubmission;
+                        $publication = PublicationProcessor::createPublicationVersion($basePublication, $data, $journal);
+
+                        $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication, $this->sourceDir);
                     } else {
-                        CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                        // New submission import
+                        $initialPublication = PublicationProcessor::createInitialPublication($data);
+                        $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
+                        $publication = PublicationProcessor::process($submission, $data, $journal, $this->sourceDir);
                     }
-                }
 
-                $issueKey = $journal->getId() . '_' . $issue->getId();
-                if (!isset($this->processedIssues[$issueKey])) {
-                    $this->processedIssues[$issueKey] = [
-                        'issue' => $issue,
-                        'journalId' => $journal->getId(),
-                        'data' => $data
-                    ];
-                }
+                    if (!$publication) {
+                        throw new RowValidationException(__('plugins.importexport.csv.errorWhileCreatingPublication'));
+                    }
 
-                // Refresh publication to retrieve all its data correctly
-                $publication = Repo::publication()->get($publication->getId());
+                    if ($data->coverImageFilename) {
+                        PublicationProcessor::updateCoverImage($publication, $data, $coverImageUploadName);
+                    }
 
-                if (!empty($data->versionIdentifier)) {
-                    $this->trackProcessedArticle($data, $submission, $publication);
+                    if ($existingSubmission && $basePublication && !$data->galleyFilenames) {
+                        GalleyProcessor::copyGalleysFromBasePublication(
+                            $basePublication,
+                            $publication,
+                            $this->fileManager,
+                            $this->format,
+                            $this->fileService
+                        );
+                    }
+
+                    // Array to store each galley ID to its respective galley file
+                    $galleyIds = [];
+                    $galleyMetadata = [];
+                    if ($data->galleyFilenames) {
+                        foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
+                            $galleyFileId = $this->saveSubmissionFile(
+                                $galleyFile,
+                                $journal->getId(),
+                                $submission,
+                                __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile]),
+                            );
+
+                            if (is_null($galleyFileId)) {
+                                foreach($galleyIds as $galleyItem) {
+                                    $this->fileService->delete($galleyItem['id']);
+                                }
+
+                                continue;
+                            }
+
+                            $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
+                        }
+
+                        $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
+                        for($i = 0; $i < count($galleyLabelsArray); $i++) {
+                            $galleyItem = $galleyIds[$i];
+                            $galleyLabel = $galleyLabelsArray[$i];
+
+                            $galleyMetadata[] = $this->handleGalley(
+                                $galleyItem,
+                                $data,
+                                $submission->getId(),
+                                $genreId,
+                                $galleyLabel,
+                                $publication->getId(),
+                                $fileUploadUser
+                            );
+                        }
+                    }
+
+                    // Process supplementary files
+                    if ($data->suppFilenames) {
+                        // Get supplementary genre for supplementary files
+                        $genreDao = CachedDaos::getGenreDao();
+                        $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
+                        $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
+                        $suppIds = [];
+
+                        foreach (array_map('trim', explode(';', $data->suppFilenames)) as $suppFile) {
+                            $suppFileId = $this->saveSubmissionFile(
+                                $suppFile,
+                                $journal->getId(),
+                                $submission,
+                                __('plugins.importexport.csv.errorWhileSavingSupplementaryFile', ['file' => $suppFile]),
+                            );
+
+                            if (is_null($suppFileId)) {
+                                foreach($galleyIds as $galleyItem) {
+                                    $this->fileService->delete($galleyItem['id']);
+                                }
+
+                                foreach($suppIds as $suppItem) {
+                                    $this->fileService->delete($suppItem['id']);
+                                }
+
+                                continue;
+                            }
+
+                            $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
+                        }
+
+                        $suppDescriptionsArray = !empty($data->suppDescriptions)
+                            ? array_map('trim', explode(';', $data->suppDescriptions))
+                            : [];
+                        $suppLabelsArray = array_map('trim', explode(';', $data->suppLabels));
+                        for($i = 0; $i < count($suppLabelsArray); $i++) {
+                            $suppItem = $suppIds[$i];
+                            $suppLabel = $suppLabelsArray[$i];
+                            $suppDescription = $suppDescriptionsArray[$i] ?? null;
+
+                            $this->handleGalley(
+                                $suppItem,
+                                $data,
+                                $submission->getId(),
+                                $suppGenreId,
+                                $suppLabel,
+                                $publication->getId(),
+                                $fileUploadUser,
+                                $suppDescription
+                            );
+                        }
+                    }
+
+                    if (!empty($data->articleViews) && (int)$data->articleViews > 0) {
+                        StatisticsProcessor::insertSubmissionViews(
+                            $submission->getId(),
+                            $journal->getId(),
+                            (int)$data->articleViews
+                        );
+                    }
+
+                    if (!empty($data->galleyViews) && !empty($galleyMetadata)) {
+                        $galleyViewsArray = explode(';', $data->galleyViews);
+                        foreach ($galleyViewsArray as $idx => $views) {
+                            $views = trim($views);
+                            if ($views === '' || (int)$views === 0) {
+                                continue;
+                            }
+                            if (isset($galleyMetadata[$idx])) {
+                                $meta = $galleyMetadata[$idx];
+                                StatisticsProcessor::insertGalleyViews(
+                                    $submission->getId(),
+                                    $journal->getId(),
+                                    $meta['galleyId'],
+                                    $meta['submissionFileId'],
+                                    StatisticsProcessor::resolveFileType($meta['filename']),
+                                    (int)$views
+                                );
+                            }
+                        }
+                    }
+
+                    if ($isMultiLocaleImport) {
+                        // For multi-locale imports, update existing publication with new locale data
+                        if ($hasValidCsvUser) {
+                            AuthorsProcessor::updateUsernameAuthorLocale($csvUser, $publication, $data->locale);
+                        }
+                        AuthorsProcessor::processMultiLocale($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
+                        KeywordsProcessor::processMultiLocale($data, $publication);
+                        SubjectsProcessor::processMultiLocale($data, $publication);
+                        FundersProcessor::processMultiLocale($data, $submission, $journal->getId());
+                        PublicationProcessor::processSupportingAgenciesMultiLocale($data, $publication);
+                    } else {
+                        $usernameAuthorAdded = false;
+                        if ($hasValidCsvUser && (!empty($data->authors) || is_null($basePublication))) {
+                            AuthorsProcessor::addAuthorFromUser($csvUser, $submission, $publication, $journal, $userGroupId);
+                            $usernameAuthorAdded = true;
+                        }
+
+                        // For new submissions or versions, use the regular process
+                        AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication, $usernameAuthorAdded ? $csvUser : null);
+                        KeywordsProcessor::process($data, $publication, $basePublication);
+                        SubjectsProcessor::process($data, $publication, $basePublication);
+                        FundersProcessor::process($data, $submission, $journal->getId(), $basePublication);
+                        PublicationProcessor::processSupportingAgencies($data, $publication, $basePublication);
+                    }
+
+                    if (
+                        ((!empty($data->version) && (int) $data->version === 1) || empty($data->version))
+                        && $data->coverage
+                    ) {
+                        PublicationProcessor::updateCoverage($publication, $data->coverage, $data->locale);
+                    }
+
+                    SectionsProcessor::process($data, $journal->getId(), $publication, $basePublication);
+
+                    $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
+                    if ($isMultiLocaleImport) {
+                        $issue = IssueProcessor::processMultiLocale($issue, $data);
+                    }
+
+                    PublicationProcessor::updateIssueId($publication, $issue->getId());
+
+                    if ($data->categories || $basePublication) {
+                        if ($isMultiLocaleImport) {
+                            CategoriesProcessor::processMultiLocale($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                        } elseif ($existingSubmission && $basePublication) {
+                            CategoriesProcessor::processForVersion($data->categories, $data->locale, $journal->getId(), $publication->getId(), $basePublication);
+                        } else {
+                            CategoriesProcessor::process($data->categories, $data->locale, $journal->getId(), $publication->getId());
+                        }
+                    }
+
+                    $issueKey = $journal->getId() . '_' . $issue->getId();
+                    if (!isset($this->processedIssues[$issueKey])) {
+                        $this->processedIssues[$issueKey] = [
+                            'issue' => $issue,
+                            'journalId' => $journal->getId(),
+                            'data' => $data
+                        ];
+                    }
+
+                    // Refresh publication to retrieve all its data correctly
+                    $publication = Repo::publication()->get($publication->getId());
+
+                    if (!empty($data->versionIdentifier)) {
+                        $this->trackProcessedArticle($data, $submission, $publication);
+                    }
+                } catch (RowValidationException $e) {
+                    $failedIdentifier = $fields[2] ?? null;
+                    if (!empty($failedIdentifier)) {
+                        $this->failedIdentifiers[$failedIdentifier] = true;
+                    }
+
+                    if (is_null($invalidCsvFile)) {
+                        $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
+                            $this->sourceDir,
+                            "invalid_{$basename}",
+                            RequiredIssueHeaders::$issueHeaders
+                        );
+                        if (is_null($invalidCsvFile)) {
+                            continue 2;
+                        }
+                    }
+
+                    CSVFileHandler::processFailedRow(
+                        $invalidCsvFile,
+                        $fields,
+                        $this->expectedRowSize,
+                        $e->getMessage(),
+                        $this->failedRows
+                    );
+
+                    continue;
                 }
             }
 
@@ -512,10 +559,6 @@ class IssueCommand
                 'processedRows' => $this->processedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
-
-            if (!$this->failedRows) {
-                unlink($this->sourceDir . '/' . "invalid_{$basename}");
-            }
         }
 
         $this->syncCoverImagesForProcessedArticles();
@@ -542,9 +585,7 @@ class IssueCommand
         string $filePath,
         int $journalId,
         Submission $submission,
-        \SplFileObject $invalidCsvFile,
         string $reason,
-        array $fieldsList
     ): ?int
     {
         try {
@@ -554,11 +595,9 @@ class IssueCommand
 
             return $this->fileService->add($completePath, $submissionDir . '/' . uniqid() . '.' . $extension);
         } catch (\Exception $e) {
-            CSVFileHandler::processFailedRow($invalidCsvFile, $fieldsList, $this->expectedRowSize, $reason, $this->failedRows);
-
             Repo::submission()->delete($submission);
 
-            return null;
+            throw new RowValidationException($reason);
         }
     }
 
@@ -570,15 +609,16 @@ class IssueCommand
         int $genreId,
         string $label,
         int $publicationId,
+        User $fileUploadUser,
         ?string $description = null
-    ): void
+    ): array
     {
         $galleyCompletePath = "{$this->sourceDir}/{$item['file']}";
         $galleyExtension = $this->fileManager->parseFileExtension($galleyCompletePath);
 
         $submissionFile = SubmissionFileProcessor::process(
             $data->locale,
-            $this->user->getId(),
+            $fileUploadUser->getId(),
             $submissionId,
             $galleyCompletePath,
             $genreId,
@@ -588,6 +628,12 @@ class IssueCommand
 
         $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $label, $publicationId, $galleyExtension);
         SubmissionFileProcessor::updateAssocInfo($submissionFile, $galleyId);
+
+        return [
+            'galleyId' => $galleyId,
+            'submissionFileId' => $submissionFile->getId(),
+            'filename' => $item['file'],
+        ];
     }
 
    /**

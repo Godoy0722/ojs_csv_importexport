@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/SectionsProcessor.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class SectionsProcessor
@@ -18,33 +18,45 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\plugins\importexport\csv\shared\processors\SectionsProcessor as SharedSectionsProcessor;
 use APP\publication\Publication;
-use APP\section\Section;
 
-class SectionsProcessor
+class SectionsProcessor extends SharedSectionsProcessor
 {
-	public static function process(object $data, int $journalId, ?Publication $basePublication = null): Section
+	public static function process(object $data, int $journalId, Publication $publication, ?Publication $basePublication = null): void
     {
         if (empty($data->sectionTitle) && empty($data->sectionAbbrev) && !is_null($basePublication)) {
             $baseSectionId = $basePublication->getData('sectionId');
             $locale = $basePublication->getData('locale');
 
-            $section = CachedEntities::getCachedSectionById($baseSectionId, $journalId, $locale);
+            if (!is_null($baseSectionId)) {
+                $section = CachedEntities::getCachedSectionById($baseSectionId, $journalId, $locale);
 
-            if (!is_null($section)) {
-                return $section;
+                if (!is_null($section)) {
+                    PublicationProcessor::updateSectionId($publication, $section->getId());
+                    return;
+                }
             }
         }
 
         $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journalId);
 
 		if (!is_null($section)) {
-			return $section;
+            PublicationProcessor::updateSectionId($publication, $section->getId());
+			return;
 		}
 
+        static::newSectionToPublication($data, $journalId, $publication);
+	}
+
+    /**
+     * Override shared method to skip setPath() which doesn't exist in OJS Section.
+     */
+    public static function newSectionToPublication(object $data, int $contextId, Publication $publication): void
+    {
         $section = Repo::section()->newDataObject();
 
-        $section->setContextId($journalId);
+        $section->setContextId($contextId);
         $section->setSequence(REALLY_BIG_NUMBER);
         $section->setEditorRestricted(false);
         $section->setMetaIndexed(true);
@@ -61,10 +73,10 @@ class SectionsProcessor
 
         $sectionId = Repo::section()->add($section);
 
-        $createdSection = Repo::section()->get($sectionId, $journalId);
+        $createdSection = Repo::section()->get($sectionId, $contextId);
         $customSectionKey = $data->sectionTitle . '_' . mb_strtoupper(trim($data->sectionAbbrev));
         CachedEntities::$sections[$customSectionKey] = $createdSection;
 
-        return $createdSection;
-	}
+        PublicationProcessor::updateSectionId($publication, $sectionId);
+    }
 }

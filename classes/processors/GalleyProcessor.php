@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/GalleyProcessor.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class GalleyProcessor
@@ -17,31 +17,14 @@
 namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
+use APP\plugins\importexport\csv\shared\processors\GalleyProcessor as SharedGalleyProcessor;
 use APP\publication\Publication;
 use PKP\config\Config;
 use PKP\file\FileManager;
 use PKP\services\PKPFileService;
 
-class GalleyProcessor
+class GalleyProcessor extends SharedGalleyProcessor
 {
-    public static function process(int $submissionFileId, object $data, string $label, int $publicationId, string $extension): int
-    {
-        $galley = Repo::galley()->newDataObject();
-        $galley->setLabel($label);
-        $galley->setLocale($data->locale);
-        $galley->setSequence(REALLY_BIG_NUMBER);
-        $galley->setIsApproved(true);
-        $galley->setData('submissionFileId', $submissionFileId);
-        $galley->setData('publicationId', $publicationId);
-        $galley->setName(mb_strtoupper($extension), $data->locale);
-
-        if (!empty($data->doi)) {
-            $galley->setStoredPubId('doi', $data->doi);
-        }
-
-        return Repo::galley()->add($galley);
-    }
-
     /**
     * Copy galleys from base publication to new versioned publication
     * This replicates the behavior in OJS core's Repository::version() method
