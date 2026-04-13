@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/commands/UserCommand.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class UserCommand
@@ -17,18 +17,18 @@
 namespace APP\plugins\importexport\csv\classes\commands;
 
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
-use APP\plugins\importexport\csv\shared\handlers\OrcidHandler;
 use APP\plugins\importexport\csv\classes\processors\UserSubscriptionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
 use APP\plugins\importexport\csv\shared\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\shared\handlers\CSVFileHandler;
 use APP\plugins\importexport\csv\shared\handlers\DryModeReporter;
+use APP\plugins\importexport\csv\shared\handlers\OrcidHandler;
 use APP\plugins\importexport\csv\shared\handlers\WelcomeEmailHandler;
-use Illuminate\Support\Facades\DB;
 use APP\plugins\importexport\csv\shared\processors\UserGroupsProcessor;
 use APP\plugins\importexport\csv\shared\processors\UserInterestsProcessor;
 use APP\plugins\importexport\csv\shared\processors\UsersProcessor;
+use Illuminate\Support\Facades\DB;
 use PKP\security\Validation;
 use PKP\user\User;
 

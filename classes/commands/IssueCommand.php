@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/commands/IssueCommand.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class IssueCommand
@@ -172,7 +172,6 @@ class IssueCommand
                         array_pad(array_map('trim', $fields), $this->expectedRowSize, null)
                     );
 
-                    // Check for cascaded multi-locale/version failure
                     if (
                         !empty($data->versionIdentifier)
                         && !empty($data->version)
@@ -265,7 +264,6 @@ class IssueCommand
 
                     InvalidRowValidations::validateUserGroupId($userGroupId, $data->journalPath, 'Journal');
 
-                    // Validate Funding plugin is enabled if funders data is provided
                     if ($data->funders) {
                         InvalidRowValidations::validateFundingPluginEnabled($data->funders, $journal->getId(), 'Journal');
                         InvalidRowValidations::validateFundersCrossrefRegistry($data->funders, $journal->getId());
@@ -391,9 +389,7 @@ class IssueCommand
                         }
                     }
 
-                    // Process supplementary files
                     if (!$this->dryMode && $data->suppFilenames) {
-                        // Get supplementary genre for supplementary files
                         $genreDao = CachedDaos::getGenreDao();
                         $supplementaryGenres = $genreDao->getBySupplementaryAndContextId(true, $journal->getId())->toArray();
                         $suppGenreId = !empty($supplementaryGenres) ? $supplementaryGenres[0]->getId() : $genreId;
@@ -490,7 +486,6 @@ class IssueCommand
                             $usernameAuthorAdded = true;
                         }
 
-                        // For new submissions or versions, use the regular process
                         AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication, $usernameAuthorAdded ? $csvUser : null);
                         KeywordsProcessor::process($data, $publication, $basePublication);
                         SubjectsProcessor::process($data, $publication, $basePublication);

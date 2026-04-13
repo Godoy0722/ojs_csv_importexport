@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/UserSubscriptionProcessor.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class UserSubscriptionProcessor
@@ -27,8 +27,7 @@ class UserSubscriptionProcessor
         int $journalId,
         \DateTime $startDate,
         \DateTime $endDate
-    )
-	{
+    ): void {
 		$individualSubscriptionDao = CachedDaos::getIndividualSubscriptionDao();
 
 		$subscription = $individualSubscriptionDao->getByUserIdForJournal($userId, $journalId);
