@@ -207,3 +207,6 @@ msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is cor
 
 msgid "plugins.importexport.csv.form.importType.issues"
 msgstr "Issues"
+
+msgid "plugins.importexport.csv.form.zipHelp"
+msgstr "<b>Issues:</b> When using a ZIP file, place your CSV files along with any referenced assets (cover images, galley PDFs, supplementary files) either at the root of the archive or inside a single folder. You may also organize assets into subfolders — as long as the file path in the corresponding CSV column matches the relative path inside the archive (e.g., <em>galleys/article.pdf</em>). If the ZIP contains exactly one folder and no CSV files at the root, that folder will be used automatically. All asset filenames referenced in the CSV must match the actual files in the archive. Files named <em>invalid_*.csv</em> are reserved for error output and will be skipped during import."
