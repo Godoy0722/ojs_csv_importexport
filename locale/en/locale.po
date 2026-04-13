@@ -204,3 +204,6 @@ msgstr "An article with identifier \"{$identifier}\", version \"{$version}\", an
 
 msgid "plugins.importexport.csv.invalidOrcidChecksum"
 msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."
+
+msgid "plugins.importexport.csv.form.importType.issues"
+msgstr "Issues"

@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/CSVImportExportPlugin.inc.php
  *
- * Copyright (c) 2025 Simon Fraser University
- * Copyright (c) 2025 John Willinsky
+ * Copyright (c) 2026 Simon Fraser University
+ * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CSVImportExportPlugin
@@ -15,18 +15,22 @@
 
 namespace APP\plugins\importexport\csv;
 
+use APP\core\Application;
 use APP\facades\Repo;
 use APP\plugins\importexport\csv\classes\commands\IssueCommand;
 use APP\plugins\importexport\csv\classes\commands\UserCommand;
-use APP\template\TemplateManager;
-use Exception;
-use PKP\config\Config;
-use PKP\core\JSONMessage;
-use PKP\facades\Locale;
+use APP\plugins\importexport\csv\classes\forms\CsvImportForm;
+use APP\plugins\importexport\csv\shared\exceptions\ImportLockException;
+use APP\plugins\importexport\csv\shared\exceptions\ZipExtractionException;
+use APP\plugins\importexport\csv\shared\handlers\ZipExtractor;
+use APP\plugins\importexport\csv\shared\store\ImportResultStore;
+use PKP\core\PKPApplication;
+use PKP\core\PKPRequest;
 use PKP\file\TemporaryFileManager;
-use PKP\plugins\Hook;
+use PKP\facades\Locale;
 use PKP\plugins\ImportExportPlugin;
 use PKP\user\User;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class CSVImportExportPlugin extends ImportExportPlugin
 {
@@ -45,28 +49,24 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /** @var bool Whether to send welcome email */
     private bool $sendWelcomeEmail = false;
 
-    /** @var bool Whether to run in dry mode (validate without persisting) */
-    private bool $dryMode = false;
+    /** @var bool Whether the result was handled by an operation handler */
+    public bool $isResultManaged = false;
+
+    /** @var string JSON result string from operation handlers */
+    public string $result = '';
 
     /** @copydoc Plugin::register() */
-    public function register($category, $path, $mainContextId = null)
+    public function register($category, $path, $mainContextId = null): bool
     {
-        $success = parent::register($category, $path, $mainContextId);
-		$isInstalled = !!Config::getVar('general', 'installed');
-		$isUpgrading = defined('RUNNING_UPGRADE');
-
-        if (!$isInstalled || $isUpgrading) {
-            return $success;
+        if (!parent::register($category, $path, $mainContextId)) {
+            return false;
         }
 
-        if ($success && $this->getEnabled()) {
+        if (!Application::isUnderMaintenance() && $this->getEnabled()) {
             $this->addLocaleData();
-
-            // Register the hook to add website settings tab
-            Hook::add('Template::Settings::website', $this->callbackShowWebsiteSettingsTabs(...));
         }
 
-        return $success;
+        return true;
     }
 
     /** @copydoc Plugin::addLocaleData() */
@@ -83,7 +83,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /**
      * @copydoc Plugin::getDisplayName()
      */
-    public function getDisplayName()
+    public function getDisplayName(): string
     {
         return __('plugins.importexport.csv.displayName');
     }
@@ -91,7 +91,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /**
      * @copydoc Plugin::getDescription()
      */
-    public function getDescription()
+    public function getDescription(): string
     {
         return __('plugins.importexport.csv.description');
     }
@@ -99,34 +99,15 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /**
      * @copydoc Plugin::getName()
      */
-    public function getName()
+    public function getName(): string
     {
         return 'CSVImportExportPlugin';
     }
 
     /**
-     * Extend the website settings tabs to include CSV import/export
-     *
-     * @param string $hookName The name of the invoked hook
-     * @param array $args Hook parameters
-     *
-     * @return bool Hook handling status
-     */
-    public function callbackShowWebsiteSettingsTabs($hookName, $args)
-    {
-        $templateMgr = $args[1];
-        $output = &$args[2];
-
-        $output .= $templateMgr->fetch($this->getTemplateResource('csvImportExportTab.tpl'));
-
-        // Permit other plugins to continue interacting with this hook
-        return false;
-    }
-
-    /**
      * @copydoc PKPImportExportPlugin::usage
      */
-    public function usage($scriptName)
+    public function usage($scriptName): void
     {
         echo __('plugins.importexport.csv.cliUsage', [
             'scriptName' => $scriptName,
@@ -139,225 +120,301 @@ class CSVImportExportPlugin extends ImportExportPlugin
     }
 
     /**
-     * @see PKPImportExportPlugin::executeCLI()
-     */
-    public function executeCLI($scriptName, &$args)
-    {
-        $startTime = microtime(true);
-
-        $dryModeKey = array_search('--dry-mode', $args);
-        if ($dryModeKey !== false) {
-            $this->dryMode = true;
-            unset($args[$dryModeKey]);
-            $args = array_values($args);
-        }
-
-        $this->command = array_shift($args);
-		$this->username = array_shift($args);
-        $this->sourceDir = array_shift($args);
-        $this->sendWelcomeEmail = array_shift($args) ?? false;
-
-        if (! in_array($this->command, ['issues', 'users']) || !$this->sourceDir || !$this->username) {
-			$this->usage($scriptName);
-			exit(1);
-		}
-
-        if (! is_dir($this->sourceDir)) {
-            echo __('plugins.importexport.csv.unknownSourceDir', ['sourceDir' => $this->sourceDir]) . "\n";
-            exit(1);
-        }
-
-		$this->validateUser();
-
-        switch ($this->command) {
-            case 'issues':
-				(new IssueCommand($this->sourceDir, $this->user, $this->dryMode))->run();
-                break;
-            case 'users':
-                (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail, $this->dryMode))->run();
-                break;
-            default:
-                throw new \InvalidArgumentException("Comando inválido: {$this->command}");
-        }
-
-		$endTime = microtime(true);
-		$executionTime = $endTime - $startTime;
-		echo "Executed in: " . number_format($executionTime, 2) . " seconds\n";
-    }
-
-	private function validateUser()
-    {
-		$this->user = Repo::user()->getByUsername($this->username);
-		if (!$this->user) {
-			echo __('plugins.importexport.csv.unknownUser', ['username' => $this->username]) . "\n";
-			exit(1);
-		}
-	}
-
-    /**
      * @copydoc ImportExportPlugin::display()
      */
     public function display($args, $request)
     {
         parent::display($args, $request);
 
-        $templateMgr = TemplateManager::getManager($request);
-        $context = $request->getContext();
+        $op = array_shift($args) ?? '';
 
-        switch (array_shift($args)) {
+        switch ($op) {
             case 'index':
             case '':
-                // This will be handled by the tab in website settings
+                $this->displayImportForm($request);
                 break;
-            case 'uploadImportCSV':
-                return $this->uploadImportCSV($request);
-            case 'importBounce':
-                return $this->importBounce($args, $request);
-            case 'downloadExample':
-                return $this->downloadExample($args, $request);
+            case 'import':
+                $this->handleImport($request);
+                break;
+            case 'downloadInvalidCsv':
+                $this->handleDownloadInvalidCsv($request);
+                break;
+            case 'cleanup':
+                $this->handleCleanup($request);
+                break;
             default:
-                break;
+                throw new NotFoundHttpException();
         }
     }
 
-    /**
-     * Handle file upload for CSV import
-     */
-    public function uploadImportCSV($request)
+    private function displayImportForm(PKPRequest $request): void
     {
-        $user = $request->getUser();
-        $temporaryFileManager = new TemporaryFileManager();
-        $temporaryFile = $temporaryFileManager->handleUpload('uploadedFile', $user->getId());
+        $templateMgr = \APP\template\TemplateManager::getManager($request);
 
-        if ($temporaryFile) {
-            // Validate that it's a CSV file
-            $fileName = $temporaryFile->getOriginalFileName();
-            $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-
-            if (strtolower($extension) !== 'csv') {
-                $json = new JSONMessage(false, __('plugins.importexport.csv.invalidFileType'));
-            } else {
-                $json = new JSONMessage(true);
-                $json->setAdditionalAttributes([
-                    'temporaryFileId' => $temporaryFile->getId()
-                ]);
-            }
-        } else {
-            $json = new JSONMessage(false, __('common.uploadFailed'));
-        }
-
-        header('Content-Type: application/json');
-        return $json->getString();
-    }
-
-    /**
-     * Handle CSV import form submission
-     */
-    public function importBounce($args, $request)
-    {
         $context = $request->getContext();
+        $form = new CsvImportForm(
+            $request->getDispatcher()->url($request, PKPApplication::ROUTE_PAGE, null, 'management', 'importexport', ['plugin', $this->getName(), 'import']),
+            $request->getBaseUrl() . '/index.php/' . $context->getPath() . '/api/v1/temporaryFiles'
+        );
+
+        $templateMgr->setState(['components' => [FORM_CSV_IMPORT => $form->getConfig()]]);
+
+        $downloadBaseUrl = $request->getDispatcher()->url(
+            $request,
+            PKPApplication::ROUTE_PAGE,
+            null,
+            'management',
+            'importexport',
+            ['plugin', $this->getName(), 'downloadInvalidCsv']
+        );
+        $cleanupUrl = $request->getDispatcher()->url(
+            $request,
+            PKPApplication::ROUTE_PAGE,
+            null,
+            'management',
+            'importexport',
+            ['plugin', $this->getName(), 'cleanup']
+        );
+
+        $scriptUrl = $request->getBaseUrl() . '/' . $this->getPluginPath() . '/shared/scripts/csvImportResults.js';
+        $templateMgr->addJavaScript('csvImportResults', $scriptUrl, [
+            'contexts' => ['backend'],
+            'priority' => $templateMgr::STYLE_SEQUENCE_LAST,
+        ]);
+
+        $templateMgr->assign('csvImportPluginConfig', json_encode([
+            'formId' => FORM_CSV_IMPORT,
+            'downloadBaseUrl' => $downloadBaseUrl,
+            'cleanupUrl' => $cleanupUrl,
+            'labels' => [
+                'dryModeTitle' => __('plugins.importexport.csv.results.dryModeTitle'),
+                'importCompleteTitle' => __('plugins.importexport.csv.results.importCompleteTitle'),
+                'importType' => __('plugins.importexport.csv.results.importType'),
+                'filesProcessed' => __('plugins.importexport.csv.results.filesProcessed'),
+                'totalRows' => __('plugins.importexport.csv.results.totalRows'),
+                'successfulRows' => __('plugins.importexport.csv.results.successfulRows'),
+                'failedRows' => __('plugins.importexport.csv.results.failedRows'),
+                'invalidFiles' => __('plugins.importexport.csv.results.invalidFiles'),
+                'importing' => __('plugins.importexport.csv.form.importing'),
+                'imported' => __('plugins.importexport.csv.form.imported'),
+            ],
+        ]));
+
+        $templateMgr->display($this->getTemplateResource('settingsForm.tpl'));
+    }
+
+    private function sendJsonResponse(array $data, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json');
+        $this->result = json_encode($data);
+        echo $this->result;
+        $this->isResultManaged = true;
+    }
+
+    private function handleImport(PKPRequest $request): void
+    {
         $user = $request->getUser();
-
         $importType = $request->getUserVar('importType');
-        $temporaryFileId = $request->getUserVar('temporaryFileId');
+        $dryMode = (bool) $request->getUserVar('dryMode');
+        $sendWelcomeEmail = (bool) $request->getUserVar('sendWelcomeEmail');
 
-        // Validate required fields
-        if (!$importType || !in_array($importType, ['users', 'issues'])) {
-            return new JSONMessage(false, __('plugins.importexport.csv.importTypeRequired'));
+        if (!in_array($importType, ['issues', 'users'])) {
+            $this->sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.invalidImportType', ['importType' => $importType])], 400);
+            return;
         }
 
-        if (!$temporaryFileId) {
-            return new JSONMessage(false, __('plugins.importexport.csv.fileRequired'));
-        }
-
-        // Get the temporary file
+        $importFile = $request->getUserVar('importFile');
+        $temporaryFileId = is_array($importFile) ? ($importFile['temporaryFileId'] ?? null) : $request->getUserVar('temporaryFileId');
         $temporaryFileManager = new TemporaryFileManager();
         $temporaryFile = $temporaryFileManager->getFile($temporaryFileId, $user->getId());
 
         if (!$temporaryFile) {
-            return new JSONMessage(false, __('plugins.importexport.csv.invalidFile'));
+            $this->sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.uploadFailed')], 400);
+            return;
         }
 
         try {
-            // Create a temporary directory for processing
-            $tempDir = sys_get_temp_dir() . '/csv_import_' . uniqid();
-            mkdir($tempDir);
+            set_time_limit(1200);
 
-            // Copy the uploaded file to temp directory
-            $csvFilePath = $tempDir . '/' . $temporaryFile->getOriginalFileName();
-            copy($temporaryFile->getFilePath(), $csvFilePath);
+            $filePath = $temporaryFile->getFilePath();
+            $extension = strtolower(pathinfo($temporaryFile->getOriginalFileName(), PATHINFO_EXTENSION));
 
-            $dryMode = (bool) $request->getUserVar('dryMode');
-
-            // Execute the import command
-            switch ($importType) {
-                case 'issues':
-                    $command = new IssueCommand($tempDir, $user, $dryMode);
-                    break;
-                case 'users':
-                    $sendWelcomeEmail = (bool) $request->getUserVar('sendWelcomeEmail');
-                    $command = new UserCommand($tempDir, $user, $sendWelcomeEmail, $dryMode);
-                    break;
+            if ($extension === 'zip') {
+                $extractor = new ZipExtractor();
+                $extractDir = $extractor->extract($filePath);
+                $sourceDir = ZipExtractor::resolveSourceDir($extractDir);
+            } else {
+                $sourceDir = sys_get_temp_dir() . '/csv_import_' . bin2hex(random_bytes(16));
+                mkdir($sourceDir, 0700, true);
+                copy($filePath, $sourceDir . '/' . $temporaryFile->getOriginalFileName());
             }
 
-            $command->run();
+            ob_start();
+            $result = match ($importType) {
+                'issues' => (new IssueCommand($sourceDir, $user, $dryMode))->run(),
+                'users' => (new UserCommand($sourceDir, $user, $sendWelcomeEmail, $dryMode))->run(),
+            };
+            $capturedOutput = ob_get_clean();
 
-            // Clean up temporary files
-            unlink($csvFilePath);
-            rmdir($tempDir);
+            $uuid = bin2hex(random_bytes(16));
+            $storeDir = sys_get_temp_dir() . '/csv_import_results';
+            $store = new ImportResultStore($storeDir);
 
-            return new JSONMessage(true, __('plugins.importexport.csv.importSuccess'));
-
-        } catch (Exception $e) {
-            // Clean up on error
-            if (file_exists($csvFilePath)) {
-                unlink($csvFilePath);
+            $invalidFiles = [];
+            foreach ($result['perFile'] as $fileResult) {
+                if ($fileResult['invalidFile'] !== null) {
+                    $invalidFiles[] = $fileResult['invalidFile'];
+                }
             }
-            if (is_dir($tempDir)) {
-                rmdir($tempDir);
-            }
 
-            return new JSONMessage(false, __('plugins.importexport.csv.importError', ['error' => $e->getMessage()]));
+            $store->save($uuid, [
+                'status' => $result['failedRows'] > 0 ? 'partial' : 'success',
+                'importType' => $importType,
+                'rowsProcessed' => $result['totalRows'],
+                'rowsFailed' => $result['failedRows'],
+                'capturedOutput' => $capturedOutput,
+                'perFileResults' => $invalidFiles,
+                'sourceDir' => $sourceDir,
+            ]);
+
+            $this->sendJsonResponse([
+                'uuid' => $uuid,
+                'resultImportType' => $importType,
+                'resultDryMode' => $dryMode,
+                'resultFilesProcessed' => $result['filesProcessed'],
+                'resultTotalRows' => $result['totalRows'],
+                'resultSuccessfulRows' => $result['successfulRows'],
+                'resultFailedRows' => $result['failedRows'],
+                'resultInvalidFiles' => $invalidFiles,
+                'resultPerFile' => $result['perFile'],
+            ]);
+
+        } catch (ImportLockException $e) {
+            $this->sendJsonResponse(['errorMessage' => $e->getMessage()], 403);
+        } catch (ZipExtractionException $e) {
+            $this->sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.zipExtractionFailed', ['reason' => $e->getMessage()])], 400);
         }
     }
 
-    /**
-     * Handle example file downloads
-     */
-    public function downloadExample($args, $request)
+    private function handleDownloadInvalidCsv(PKPRequest $request): void
     {
-        $exampleType = array_shift($args);
+        $uuid = $request->getUserVar('uuid');
+        $filename = basename($request->getUserVar('filename') ?? '');
 
-        if (!in_array($exampleType, ['users', 'issues'])) {
-            return new JSONMessage(false, __('plugins.importexport.csv.invalidExampleType'));
+        if (empty($filename) || empty($uuid)) {
+            throw new NotFoundHttpException();
         }
 
-        $fileName = $exampleType . '_example.csv';
-        $filePath = $this->getPluginPath() . '/examples/' . $exampleType . '/' . $fileName;
+        $storeDir = sys_get_temp_dir() . '/csv_import_results';
+        $store = new ImportResultStore($storeDir);
+        $result = $store->get($uuid);
 
-        if (!file_exists($filePath)) {
-            return new JSONMessage(false, __('plugins.importexport.csv.exampleFileNotFound'));
+        if ($result === null) {
+            throw new NotFoundHttpException();
         }
 
-        // Clear any previous output
-        if (ob_get_level()) {
-            ob_end_clean();
+        $invalidFiles = $result['perFileResults'] ?? [];
+        if (!in_array($filename, $invalidFiles)) {
+            throw new NotFoundHttpException();
         }
 
-        // Set headers for file download
-        header('Content-Type: application/octet-stream');
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        header('Content-Length: ' . filesize($filePath));
-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-        header('Pragma: public');
-        header('Expires: 0');
+        $sourceDir = $result['sourceDir'] ?? '';
+        $filePath = realpath($sourceDir . '/' . $filename);
 
-        // Prevent any additional output
-        header('Connection: close');
+        if (!$filePath || !str_starts_with($filePath, realpath(sys_get_temp_dir()) . '/')) {
+            throw new NotFoundHttpException();
+        }
 
-        // Output file contents and force download
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
         readfile($filePath);
-        die();
+        $this->isResultManaged = true;
+    }
+
+    private function handleCleanup(PKPRequest $request): void
+    {
+        $uuid = $request->getUserVar('uuid');
+        if (empty($uuid)) {
+            $this->sendJsonResponse(['cleaned' => false], 400);
+            return;
+        }
+
+        $storeDir = sys_get_temp_dir() . '/csv_import_results';
+        $store = new ImportResultStore($storeDir);
+        $result = $store->get($uuid);
+
+        if ($result !== null) {
+            $sourceDir = $result['sourceDir'] ?? '';
+            if ($sourceDir && is_dir($sourceDir) && str_starts_with(realpath($sourceDir), realpath(sys_get_temp_dir()) . '/')) {
+                ZipExtractor::deleteDirectory($sourceDir);
+            }
+
+            $store->delete($uuid);
+        }
+
+        $this->sendJsonResponse(['cleaned' => true]);
+    }
+
+    /**
+     * @see PKPImportExportPlugin::executeCLI()
+     */
+    public function executeCLI($scriptName, &$args): void
+    {
+        $startTime = microtime(true);
+        $this->sendWelcomeEmail = false;
+
+        $key = array_search('--sendWelcomeEmail', $args);
+        if ($key !== false) {
+            $this->sendWelcomeEmail = true;
+            unset($args[$key]);
+            $args = array_values($args);
+        }
+
+        $dryMode = false;
+        $key = array_search('--dry-mode', $args);
+        if ($key !== false) {
+            $dryMode = true;
+            unset($args[$key]);
+            $args = array_values($args);
+        }
+
+        $this->command = array_shift($args);
+        $this->username = array_shift($args);
+        $this->sourceDir = array_shift($args);
+
+        if (! in_array($this->command, ['issues', 'users']) || !$this->sourceDir || !$this->username) {
+            $this->usage($scriptName);
+            exit(1);
+        }
+
+        if (! is_dir($this->sourceDir)) {
+            echo __('plugins.importexport.csv.unknownSourceDir', ['sourceDir' => $this->sourceDir]) . "\n";
+            exit(1);
+        }
+
+        $this->validateUser();
+
+        $result = match ($this->command) {
+            'issues' => (new IssueCommand($this->sourceDir, $this->user, $dryMode))->run(),
+            'users' => (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail, $dryMode))->run(),
+            default => throw new \InvalidArgumentException(__('plugins.importexport.csv.invalidCommand', ['command' => $this->command])),
+        };
+        $exitCode = $result['exitCode'];
+
+        $endTime = microtime(true);
+        $executionTime = $endTime - $startTime;
+        echo __('plugins.importexport.csv.ExecutedInNSeconds', ['seconds' => number_format($executionTime, 2)]);
+
+        exit($exitCode);
+    }
+
+    private function validateUser(): void
+    {
+        $this->user = Repo::user()->getByUsername($this->username);
+        if (!$this->user) {
+            echo __('plugins.importexport.csv.unknownUser', ['username' => $this->username]) . "\n";
+            exit(1);
+        }
     }
 }

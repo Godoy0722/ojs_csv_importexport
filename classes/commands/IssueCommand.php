@@ -122,11 +122,18 @@ class IssueCommand
         $this->failedIdentifiers = [];
     }
 
-    public function run()
+    public function run(): array
     {
         $totalFiles = 0;
         $totalPassed = 0;
         $totalFailed = 0;
+        $results = [
+            'filesProcessed' => 0,
+            'totalRows' => 0,
+            'successfulRows' => 0,
+            'failedRows' => 0,
+            'perFile' => [],
+        ];
 
         foreach (new \DirectoryIterator($this->sourceDir) as $fileInfo) {
             if (!$fileInfo->isFile() || $fileInfo->getExtension() !== 'csv') {
@@ -592,17 +599,35 @@ class IssueCommand
                 'processedRows' => $this->processedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
+
+            $fileResult = [
+                'filename' => $basename,
+                'rows' => $this->processedRows,
+                'successful' => $this->processedRows - $this->failedRows,
+                'failed' => $this->failedRows,
+                'errors' => $fileFailedRows,
+                'invalidFile' => $this->failedRows > 0 ? "invalid_{$basename}" : null,
+            ];
+            $results['perFile'][] = $fileResult;
+            $results['filesProcessed']++;
+            $results['totalRows'] += $this->processedRows;
+            $results['successfulRows'] += $this->processedRows - $this->failedRows;
+            $results['failedRows'] += $this->failedRows;
         }
 
         if ($this->dryMode) {
             DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
-            return;
+            $results['exitCode'] = $totalFailed > 0 ? 1 : 0;
+            return $results;
         }
 
         $this->syncCoverImagesForProcessedArticles();
         $this->setCurrentVersionsForProcessedArticles();
 
         IssueProcessor::reorderImportedIssues($this->processedIssues);
+
+        $results['exitCode'] = $results['failedRows'] > 0 ? 1 : 0;
+        return $results;
     }
 
     /** Insert static data that will be used for the submission processing */
