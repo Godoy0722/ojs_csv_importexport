@@ -1,10 +1,11 @@
-# OJS CSV Import Plugin (CLI)
+# OJS CSV Import Plugin
 
-This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.5.X. This plugin operates exclusively via command-line interface (CLI).
+This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.5.X. This plugin supports both a web interface (GUI) and a command-line interface (CLI).
 
 ## Table of Contents
-- [OJS CSV Import Plugin (CLI)](#ojs-csv-import-plugin-cli)
+- [OJS CSV Import Plugin](#ojs-csv-import-plugin)
   - [Table of Contents](#table-of-contents)
+  - [Web Interface Usage](#web-interface-usage)
   - [CLI Usage](#cli-usage)
     - [Importing Users](#importing-users)
     - [Importing Issues](#importing-issues)
@@ -42,6 +43,27 @@ This plugin allows administrators to import users and issues with their associat
       - [Issue Import Issues](#issue-import-issues)
       - [General Troubleshooting Tips](#general-troubleshooting-tips)
 
+
+## Web Interface Usage
+
+The plugin also supports importing through the OJS web interface:
+
+1. Navigate to **Tools → Import/Export → CSV Import Export Plugin**
+2. Select the import type (**Issues** or **Users**)
+3. Upload your CSV file or a ZIP archive containing CSV files and associated assets
+4. Optionally enable **Dry Mode** to validate without persisting changes
+5. Optionally enable **Send Welcome Email** (visible only for user imports)
+6. Click **Import**
+
+When using a ZIP file for issue imports, place your CSV files along with any referenced assets (cover images, PDF files, supplementary files) either at the root of the archive or inside a single folder. If the ZIP contains exactly one folder and no CSV files at the root, that folder will be used automatically.
+
+After the import completes, the interface displays a summary with:
+- Import type and whether dry mode was used
+- Number of files processed
+- Total, successful, and failed row counts
+- Download links for any `invalid_*.csv` files containing rejected rows
+
+> **Note:** The same CSV format rules, multi-locale support, article versioning, and dry mode behavior described in the sections below apply equally to both the web interface and the CLI.
 
 ## CLI Usage
 
