@@ -7,17 +7,20 @@
 To import users from a CSV file, use the following command:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin users [username] [pathToFolderWithCsvFiles] [sendWelcomeEmail]
+php tools/importExport.php CSVImportExportPlugin [--sendWelcomeEmail] [--dry-mode] users [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
 - `username`: The username of a valid Journal manager. This username is used to validate that the command is running by a valid user as a security step.
 - `pathToFolderWithCsvFiles`: Path to the CSV file containing user data. Can be absolute or relative to the OJS root directory.
-- `sendWelcomeEmail`: (Optional) Set to `true` to send welcome emails to imported users. If set to true, the sender email will be the user retrieved by the username on the CLI command.
+
+Optional flags (must be placed before the `users`/`issues` positional argument):
+- `--sendWelcomeEmail`: Send welcome emails to imported users. The sender email will be the user retrieved by the username on the CLI command. No emails are sent when combined with `--dry-mode`.
+- `--dry-mode`: Validate the CSV without persisting any data. See [Dry Mode](dry-mode.md).
 
 Example:
 ```bash
-php tools/importExport.php CSVImportExportPlugin users admin /path/to/folder_with_csv_user_files true
+php tools/importExport.php CSVImportExportPlugin --sendWelcomeEmail users admin /path/to/folder_with_csv_user_files
 ```
 
 ## Importing Issues
@@ -25,12 +28,15 @@ php tools/importExport.php CSVImportExportPlugin users admin /path/to/folder_wit
 To import issues from a CSV file, use the following command:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin issues [username] [pathToFolderWithCsvFiles]
+php tools/importExport.php CSVImportExportPlugin [--dry-mode] issues [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
 - `username`: The username of a valid Journal manager. This username is used to validate that the command is running by a valid user as a security step.
 - `pathToFolderWithCsvFiles`: Path to the CSV file containing issue data. Can be absolute or relative to the OJS root directory.
+
+Optional flags (must be placed before the `issues` positional argument):
+- `--dry-mode`: Validate the CSV without persisting any data. See [Dry Mode](dry-mode.md).
 
 Example:
 ```bash

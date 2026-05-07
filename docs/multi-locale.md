@@ -45,6 +45,7 @@ The system will:
    - `keywords`
    - `subjects`
    - `categories` (category titles)
+   - `supportingAgencies`
    - Author names (`givenName`, `familyName`)
    - Author affiliations
    - `issueTitle`

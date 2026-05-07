@@ -17,8 +17,8 @@
 | roles | No | Semicolon-separated list of roles | Reader;Author |
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two |
 | subscriptionType | No | Subscription type ID | 1 |
-| start_date | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
-| end_date | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
+| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
+| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
 | orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
 
 > **User Interests:** User interests in the users CSV use a semicolon-separated format:
@@ -79,6 +79,7 @@ You can take a look at the example we provide on the [User CSV file](../examples
 | coverImageAltText | No | Alt text for cover | Journal Cover | Required if cover image used |
 | galleyFilenames | No | Semicolon-separated primary galley files | doc.docx;data.xlsx | Optional |
 | galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
+| galleyViews | No | Semicolon-separated view counts per galley | 120;45 | Must match galleyLabels count. Each value is a non-negative integer |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
@@ -96,6 +97,10 @@ You can take a look at the example we provide on the [User CSV file](../examples
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
 | references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
+| username | No | Username of the submission author for this row | jdoe | Overrides the CLI/web user as the submission's assigned user. Must exist in the system |
+| funders | No | Semicolon-separated funder data | See [Funders Format](#funders-format) | Requires the Funding plugin to be enabled in the journal |
+| supportingAgencies | No | Semicolon-separated supporting agencies | NSF;ESA | Localized field — provide per locale in multi-locale rows |
+| articleViews | No | Total view count for the article | 256 | Must be a non-negative integer |
 
 > **Authors Format**
 > The `authors` field in the articles CSV must contain author information in the following format:
@@ -128,6 +133,31 @@ You can take a look at the example we provide on the [User CSV file](../examples
 >  - The system normalizes the value to the canonical URL form `https://orcid.org/0000-0000-0000-0000`
 >  - The last character may be `X` (checksum), e.g., `0000-0002-1694-233X`
 >  - Invalid formats are ignored without blocking the import
+
+> **Funders Format**
+> The `funders` field accepts a semicolon-separated list of funders. Each funder uses commas to separate its fields, and a pipe character (`|`) to separate multiple awards for the same funder:
+>
+> ```
+> FunderName,FunderIdentification,Award1|Award2;FunderName2,FunderIdentification2,Award3
+> ```
+>
+>  - Funders are separated by `;`
+>  - Funder fields are separated by `,`
+>  - Multiple awards for the same funder are separated by `|`
+>  - `FunderName` is required; `FunderIdentification` and awards are optional
+>
+> Examples:
+>
+> ```
+> "National Science Foundation,https://doi.org/10.13039/100000001,NSF-1234|NSF-5678"
+> "European Space Agency,https://doi.org/10.13039/501100000844,"
+> "Some Funder,,"
+> ```
+>
+> Validation:
+>  - The Funding plugin must be enabled in the journal — rows with funder data are rejected otherwise
+>  - When the Funding plugin's `enableGrantIdValidation` setting is on, each `FunderIdentification` (when provided) must be a Crossref Funder Registry DOI matching `https://doi.org/10.13039/...`
+>  - Rows that fail funder validation are written to the `invalid_*.csv` file
 
 ### Issues CSV Example
 
