@@ -225,15 +225,20 @@ class IssueProcessor
             return 0;
         });
 
-        // Apply custom ordering to all issues
+        $issueDao->update(
+            'DELETE FROM custom_issue_orders WHERE journal_id = ?',
+            [(int) $journalId]
+        );
+
         $sequence = 1;
         foreach ($allIssues as $issue) {
-            $issueDao->moveCustomIssueOrder($journalId, $issue->getId(), $sequence);
+            $issueDao->insertCustomIssueOrder($journalId, $issue->getId(), $sequence);
             $sequence++;
         }
 
-        // Resequence to ensure proper ordering
-        $issueDao->resequenceCustomIssueOrders($journalId);
+        $mostRecentIssue = $allIssues[0];
+        $mostRecentIssue->setCurrent(1);
+        $issueDao->updateCurrent($journalId, $mostRecentIssue);
     }
 
     /**
