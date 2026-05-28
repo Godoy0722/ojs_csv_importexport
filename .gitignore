@@ -1,3 +1,3 @@
-examples/issues
+examples/issues/*
 !examples/issues/*.csv
 imports
