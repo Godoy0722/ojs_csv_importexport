@@ -16,13 +16,14 @@
 
 	<div class="app__contentPanel">
 		<div style="background: #f3f6f9; border-left: 4px solid #006798; padding: 1rem 1.25rem; margin-left: 32px; margin-right: 32px; margin-bottom: 0.75rem; border-radius: 2px; font-size: 0.875rem; line-height: 1.6; color: #333;">
-			{translate key="plugins.importexport.csv.form.zipHelp"}
-		</div>
-		<div style="background: #f3f6f9; border-left: 4px solid #006798; padding: 1rem 1.25rem; margin-left: 32px; margin-right: 32px; margin-bottom: 0.75rem; border-radius: 2px; font-size: 0.875rem; line-height: 1.6; color: #333;">
-			{translate key="plugins.importexport.csv.form.userImportHelp"}
+			<h2 style="margin: 0 0 0.5rem; font-size: 1rem;">{translate key="plugins.importexport.csv.form.importType.issues"}</h2>
+			<p style="margin: 0 0 0.5rem;">{translate key="plugins.importexport.csv.form.zipHelp"}</p>
+			<p style="margin: 0;">{translate key="plugins.importexport.csv.form.examplesHelp"}</p>
 		</div>
 		<div style="background: #f3f6f9; border-left: 4px solid #006798; padding: 1rem 1.25rem; margin-left: 32px; margin-right: 32px; margin-bottom: 1.5rem; border-radius: 2px; font-size: 0.875rem; line-height: 1.6; color: #333;">
-			{translate key="plugins.importexport.csv.form.examplesHelp"}
+			<h2 style="margin: 0 0 0.5rem; font-size: 1rem;">{translate key="plugins.importexport.csv.form.importType.users"}</h2>
+			<p style="margin: 0 0 0.5rem;">{translate key="plugins.importexport.csv.form.userImportHelp"}</p>
+			<p style="margin: 0;">{translate key="plugins.importexport.csv.form.usersExamplesHelp"}</p>
 		</div>
 
 		<pkp-form
