@@ -21,6 +21,13 @@
 | endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
 | orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
 
+> **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
+>
+>  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
+>  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
+>
+>  - The journal must already exist in OJS; the importer does not create journals.
+
 > **User Interests:** User interests in the users CSV use a semicolon-separated format:
 >
 > ```
@@ -101,6 +108,17 @@ You can take a look at the example we provide on the [User CSV file](../examples
 | funders | No | Semicolon-separated funder data | See [Funders Format](#funders-format) | Requires the Funding plugin to be enabled in the journal |
 | supportingAgencies | No | Semicolon-separated supporting agencies | NSF;ESA | Localized field — provide per locale in multi-locale rows |
 | articleViews | No | Total view count for the article | 256 | Must be a non-negative integer |
+
+> **DOIs (`doi` column):** Only fill in this column if the article was **already published with a DOI assigned to it** (for example, it was previously hosted on another platform that minted the DOI). Enter that existing DOI exactly as it was registered.
+>
+>  - If your journal does **not** yet use DOIs and you are just starting out, **leave this column empty**. After migration you can enable and configure DOIs under **Settings → Distribution** (set your DOI prefix and pattern there), then open the **DOIs** page in the main menu and use its bulk **Assign** action to **batch-assign DOIs** to your articles at once. Letting OJS generate them keeps your DOIs consistent and avoids duplicates.
+>  - Do **not** invent DOIs to fill the column — an unregistered DOI will not resolve.
+
+> **Sections & Categories:** These describe how your content is organized in the journal. If a section or category named here does not exist yet, the importer creates it for you.
+>
+>  - **`sectionTitle` / `sectionAbbrev`** — Sections are the divisions a journal uses to organize an issue's table of contents (for example `Articles`). You can see and manage your journal's sections under **Settings → Journal → Sections**. If the `sectionTitle` you provide does not match an existing section, the importer creates a new one, using `sectionAbbrev` as its abbreviation.
+>  - **`categories`** — Categories are an optional way to group submissions across the journal. You can see and manage them under **Settings → Journal → Categories**. Provide one or more as a semicolon-separated list; any category that does not exist yet is created during import.
+>  - If you only need a simple table of contents, set `sectionTitle` (e.g. `Articles`) and leave `categories` empty.
 
 > **Authors Format**
 > The `authors` field in the articles CSV must contain author information in the following format:
