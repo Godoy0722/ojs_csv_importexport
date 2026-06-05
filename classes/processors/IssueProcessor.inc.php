@@ -225,10 +225,7 @@ class IssueProcessor
             return 0;
         });
 
-        $issueDao->update(
-            'DELETE FROM custom_issue_orders WHERE journal_id = ?',
-            [(int) $journalId]
-        );
+        $issueDao->deleteCustomIssueOrdering($journalId);
 
         $sequence = 1;
         foreach ($allIssues as $issue) {
