@@ -1,3 +1,6 @@
 examples/issues/*
 !examples/issues/*.csv
 imports
+examples/**/invalid_*.csv
+examples/**/*.zip
+docs/superpowers/

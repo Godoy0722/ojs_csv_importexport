@@ -1,16 +1,16 @@
 <?php
 
 /**
- * @file plugins/importexport/csv/CSVImportExportPlugin.inc.php
+ * @file plugins/importexport/csv/CSVImportPlugin.inc.php
  *
  * Copyright (c) 2026 Simon Fraser University
  * Copyright (c) 2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class CSVImportExportPlugin
+ * @class CSVImportPlugin
  * @ingroup plugins_importexport_csv
  *
- * @brief CSV import/export plugin
+ * @brief CSV import plugin
  */
 
 namespace APP\plugins\importexport\csv;
@@ -32,7 +32,7 @@ use PKP\plugins\ImportExportPlugin;
 use PKP\user\User;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-class CSVImportExportPlugin extends ImportExportPlugin
+class CSVImportPlugin extends ImportExportPlugin
 {
     /** @var string Command being used from CLI (supports "issues" or "users") */
     private string $command = '';
@@ -43,7 +43,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
     /** @var User|null Authenticated user instance */
     private ?User $user = null;
 
-    /** @var string Source directory for import/export */
+    /** @var string Source directory for import */
     private string $sourceDir = '';
 
     /** @var bool Whether to send welcome email */
@@ -101,7 +101,7 @@ class CSVImportExportPlugin extends ImportExportPlugin
      */
     public function getName(): string
     {
-        return 'CSVImportExportPlugin';
+        return 'CSVImportPlugin';
     }
 
     /**

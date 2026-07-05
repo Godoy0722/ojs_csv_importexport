@@ -7,7 +7,7 @@
 To import users from a CSV file, use the following command:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin [--sendWelcomeEmail] [--dry-mode] users [username] [pathToFolderWithCsvFiles]
+php tools/importExport.php CSVImportPlugin [--sendWelcomeEmail] [--dry-mode] users [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
@@ -20,7 +20,7 @@ Optional flags (must be placed before the `users`/`issues` positional argument):
 
 Example:
 ```bash
-php tools/importExport.php CSVImportExportPlugin --sendWelcomeEmail users admin /path/to/folder_with_csv_user_files
+php tools/importExport.php CSVImportPlugin --sendWelcomeEmail users admin /path/to/folder_with_csv_user_files
 ```
 
 ## Importing Issues
@@ -28,7 +28,7 @@ php tools/importExport.php CSVImportExportPlugin --sendWelcomeEmail users admin 
 To import issues from a CSV file, use the following command:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin [--dry-mode] issues [username] [pathToFolderWithCsvFiles]
+php tools/importExport.php CSVImportPlugin [--dry-mode] issues [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
@@ -40,7 +40,7 @@ Optional flags (must be placed before the `issues` positional argument):
 
 Example:
 ```bash
-php tools/importExport.php CSVImportExportPlugin issues admin /path/to/folder_with_csv_issue_files
+php tools/importExport.php CSVImportPlugin issues admin /path/to/folder_with_csv_issue_files
 ```
 
 > **Important Notes**

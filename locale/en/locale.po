@@ -12,10 +12,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 msgid "plugins.importexport.csv.displayName"
-msgstr "CSV Import Export Plugin"
+msgstr "CSV Import Plugin"
 
 msgid "plugins.importexport.csv.description"
-msgstr "Import and export issues or users through a CSV file."
+msgstr "Import issues or users through a CSV file."
 
 msgid "plugins.importexport.csv.cliUsage"
 msgstr "Command-line tool for importing issues or users through a CSV file.\n"
@@ -95,7 +95,7 @@ msgid "plugins.importexport.csv.tab.description"
 msgstr "Import users and issues from CSV files. Select the import type and upload your CSV file to get started."
 
 msgid "plugins.importexport.csv.tab.title"
-msgstr "CSV Import/Export Tool"
+msgstr "CSV Import Tool"
 
 msgid "plugins.importexport.csv.importType"
 msgstr "Import Type"
