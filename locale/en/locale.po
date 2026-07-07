@@ -216,3 +216,6 @@ msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CS
 
 msgid "plugins.importexport.csv.form.usersExamplesHelp"
 msgstr "<b>Need an example?</b> You can view and download ready-to-use sample user CSV files here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/users\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for users</a>."
+
+msgid "plugins.importexport.csv.userUpdated"
+msgstr "User \"{$email}\" updated."

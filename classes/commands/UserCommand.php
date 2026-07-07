@@ -116,14 +116,19 @@ class UserCommand
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
 
                     InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, 'Journal');
-                    InvalidRowValidations::validateUserAlreadyExistsWithThisEmail($data->email);
+                    $existingUser = CachedEntities::getCachedUserByEmail($data->email);
+                    $isNewUser = is_null($existingUser);
 
-                    if ($data->username) {
-                        InvalidRowValidations::validateUserAlreadyExistsWithThisUsername($data->username);
-                    }
+                    if ($isNewUser) {
+                        InvalidRowValidations::validateUserAlreadyExistsWithThisEmail($data->email);
 
-                    if (empty($data->username)) {
-                        $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                        if ($data->username) {
+                            InvalidRowValidations::validateUserAlreadyExistsWithThisUsername($data->username);
+                        }
+
+                        if (empty($data->username)) {
+                            $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                        }
                     }
 
                     $roles = array_map('trim', explode(';', $data->roles));
@@ -143,7 +148,7 @@ class UserCommand
                         OrcidHandler::validate($data->orcid);
                     }
 
-                    if (is_null($data->tempPassword)) {
+                    if ($isNewUser && is_null($data->tempPassword)) {
                         $data->tempPassword = Validation::generatePassword();
                     }
 
@@ -151,7 +156,11 @@ class UserCommand
                     $userId = $user->getId();
                     $userInterests = array_map('trim', explode(';', $data->reviewInterests));
                     UserInterestsProcessor::process($userInterests, $userId);
-                    UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    if ($isNewUser) {
+                        UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    } else {
+                        UserGroupsProcessor::assignMissingOnly($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    }
 
                     if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
                         $dateFormat = 'Y-m-d';
@@ -161,7 +170,7 @@ class UserCommand
                         UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
                     }
 
-                    if ($this->sendWelcomeEmail && !$this->dryMode) {
+                    if ($this->sendWelcomeEmail && !$this->dryMode && $isNewUser) {
                         WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
                     }
                 } catch (RowValidationException $e) {
