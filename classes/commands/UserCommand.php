@@ -156,10 +156,9 @@ class UserCommand
                     $userId = $user->getId();
                     $userInterests = array_map('trim', explode(';', $data->reviewInterests));
                     UserInterestsProcessor::process($userInterests, $userId);
+
                     if ($isNewUser) {
                         UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
-                    } else {
-                        UserGroupsProcessor::assignMissingOnly($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
                     }
 
                     if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
