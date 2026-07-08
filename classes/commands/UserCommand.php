@@ -109,6 +109,9 @@ class UserCommand
 
                 ++$this->processedRows;
 
+                if (!$this->dryMode) {
+                    DB::beginTransaction();
+                }
                 try {
                     InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
 
@@ -179,7 +182,15 @@ class UserCommand
                     if ($this->sendWelcomeEmail && !$this->dryMode && $isNewUser) {
                         WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
                     }
+
+                    if (!$this->dryMode) {
+                        DB::commit();
+                    }
                 } catch (RowValidationException $e) {
+                    if (!$this->dryMode) {
+                        DB::rollBack();
+                    }
+
                     if (is_null($invalidCsvFile)) {
                         $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
                             $this->sourceDir,
@@ -200,6 +211,36 @@ class UserCommand
                     );
                     if ($this->dryMode) {
                         $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
+                    }
+
+                    continue;
+                } catch (\Throwable $e) {
+                    if (!$this->dryMode) {
+                        DB::rollBack();
+                    }
+
+                    if (is_null($invalidCsvFile)) {
+                        $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
+                            $this->sourceDir,
+                            "invalid_{$basename}",
+                            RequiredUserHeaders::$userHeaders
+                        );
+                        if (is_null($invalidCsvFile)) {
+                            continue 2;
+                        }
+                    }
+
+                    $message = __('plugins.importexport.csv.rowImportFailed', ['message' => $e->getMessage()]);
+
+                    CSVFileHandler::processFailedRow(
+                        $invalidCsvFile,
+                        $fields,
+                        $this->expectedRowSize,
+                        $message,
+                        $this->failedRows
+                    );
+                    if ($this->dryMode) {
+                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $message];
                     }
 
                     continue;
