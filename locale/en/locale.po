@@ -52,8 +52,8 @@ msgstr "Could not create the file \"{$filename}\"."
 msgid "plugins.importexport.csv.invalidArticleFile"
 msgstr "Invalid article file for this submission."
 
-msgid "plugins.importexpot.csv.fileProcessFinished"
-msgstr "Process for file \"{$filename}\" finished. {$processedRows} rows processed. {$failedRows} rows with error."
+msgid "plugins.importexport.csv.fileProcessFinished"
+msgstr "Process for file \"{$filename}\" finished. {$createdRows} created, {$updatedRows} updated, {$failedRows} failed."
 
 msgid "plugins.importexport.csv.invalidBookCoverImage"
 msgstr "The cover image has an invalid format for this row."
@@ -219,3 +219,15 @@ msgstr "<b>Need an example?</b> You can view and download ready-to-use sample us
 
 msgid "plugins.importexport.csv.userUpdated"
 msgstr "User \"{$email}\" updated."
+
+msgid "plugins.importexport.csv.results.createdRows"
+msgstr "Created"
+
+msgid "plugins.importexport.csv.results.updatedRows"
+msgstr "Updated"
+
+msgid "plugins.importexport.csv.results.updatedUsersSection"
+msgstr "UPDATED USERS"
+
+msgid "plugins.importexport.csv.results.updatedUsersExplanation"
+msgstr "Users marked as updated were found by email. Profile data (name, affiliation, country, email, ORCID) was updated. Password and roles were left unchanged — only new users receive password and role assignments."

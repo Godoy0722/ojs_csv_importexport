@@ -68,6 +68,8 @@ class UserCommand
             'filesProcessed' => 0,
             'totalRows' => 0,
             'successfulRows' => 0,
+            'createdRows' => 0,
+            'updatedRows' => 0,
             'failedRows' => 0,
             'perFile' => [],
         ];
@@ -91,6 +93,8 @@ class UserCommand
 
             $this->processedRows = 0;
             $this->failedRows = 0;
+            $fileUpdatedRows = 0;
+            $fileUpdatedUsers = [];
             $fileFailedRows = [];
 
             if ($this->dryMode) {
@@ -159,6 +163,9 @@ class UserCommand
 
                     if ($isNewUser) {
                         UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    } else {
+                        $fileUpdatedRows++;
+                        $fileUpdatedUsers[] = $data->email;
                     }
 
                     if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
@@ -218,9 +225,12 @@ class UserCommand
                 CachedEntities::reset();
             }
 
-            echo __('plugins.importexpot.csv.fileProcessFinished', [
+            $createdRows = $this->processedRows - $this->failedRows - $fileUpdatedRows;
+            echo __('plugins.importexport.csv.fileProcessFinished', [
                 'filename' => $fileInfo->getFilename(),
                 'processedRows' => $this->processedRows,
+                'createdRows' => $createdRows,
+                'updatedRows' => $fileUpdatedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
 
@@ -228,6 +238,9 @@ class UserCommand
                 'filename' => $basename,
                 'rows' => $this->processedRows,
                 'successful' => $this->processedRows - $this->failedRows,
+                'created' => $this->processedRows - $this->failedRows - $fileUpdatedRows,
+                'updated' => $fileUpdatedRows,
+                'updatedUsers' => $fileUpdatedUsers,
                 'failed' => $this->failedRows,
                 'errors' => $fileFailedRows,
                 'invalidFile' => $this->failedRows > 0 ? "invalid_{$basename}" : null,
@@ -236,6 +249,8 @@ class UserCommand
             $results['filesProcessed']++;
             $results['totalRows'] += $this->processedRows;
             $results['successfulRows'] += $this->processedRows - $this->failedRows;
+            $results['createdRows'] = ($results['createdRows'] ?? 0) + $this->processedRows - $this->failedRows - $fileUpdatedRows;
+            $results['updatedRows'] = ($results['updatedRows'] ?? 0) + $fileUpdatedRows;
             $results['failedRows'] += $this->failedRows;
         }
 
