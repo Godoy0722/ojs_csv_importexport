@@ -39,6 +39,10 @@ class SectionsProcessor extends SharedSectionsProcessor
             }
         }
 
+        if (empty($data->sectionTitle) && empty($data->sectionAbbrev)) {
+            return;
+        }
+
         $section = CachedEntities::getCachedSection($data->sectionTitle, $data->sectionAbbrev, $data->locale, $journalId);
 
 		if (!is_null($section)) {
@@ -54,6 +58,10 @@ class SectionsProcessor extends SharedSectionsProcessor
      */
     public static function newSectionToPublication(object $data, int $contextId, Publication $publication): void
     {
+        if (empty($data->sectionTitle)) {
+            return;
+        }
+
         $section = Repo::section()->newDataObject();
 
         $section->setContextId($contextId);
