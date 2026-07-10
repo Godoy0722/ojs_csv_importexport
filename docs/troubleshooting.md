@@ -25,10 +25,11 @@
 3. **Missing or Invalid Fields**
    - Error: `Row doesn't contain all fields` or `Verify the required fields for this row`
    - Solution:
-     - Check that all required columns are present in the CSV header
+     - Check that all columns are present in the CSV header, including the non-required ones. It's ok for the non-required columnns to be empty as long as the header is present.
      - Ensure all rows have the same number of fields as the header
      - Verify there are no empty lines in the CSV file
      - Check for proper CSV escaping of fields containing commas or quotes
+     - Some software may change the UTF encoding or interfere with the separators in the sample CSV, which may result in this error. Editing the CSV in Excel or Google Sheets seems to be less error-prone.
 
 4. **Invalid Date Formats**
    - Error: `The subscription start/end date is not valid. Format required: YYYY-MM-DD`
