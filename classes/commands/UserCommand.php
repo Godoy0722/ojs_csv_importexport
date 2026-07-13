@@ -130,9 +130,10 @@ class UserCommand
 
                     if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
                         throw new RowValidationException(
-                            __('plugins.importexport.csv.journalPathMismatch', [
-                                'csvJournalPath' => $data->journalPath,
-                                'currentJournalPath' => $this->currentJournalPath,
+                            __('plugins.importexport.csv.contextPathMismatch', [
+                                'contextType' => 'journal',
+                                'csvContextPath' => $data->journalPath,
+                                'currentContextPath' => $this->currentJournalPath,
                             ])
                         );
                     }
