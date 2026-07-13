@@ -111,12 +111,16 @@ class IssueCommand
 
     private bool $dryMode;
 
-    public function __construct(string $sourceDir, User $user, bool $dryMode = false)
+    /** @var string|null Current journal path from GUI context. When set, rows with a different journalPath are rejected. */
+    private ?string $currentJournalPath;
+
+    public function __construct(string $sourceDir, User $user, bool $dryMode = false, ?string $currentJournalPath = null)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->sourceDir = $sourceDir;
         $this->user = $user;
         $this->dryMode = $dryMode;
+        $this->currentJournalPath = $currentJournalPath;
         $this->processedIssues = [];
         $this->processedArticles = [];
         $this->failedIdentifiers = [];
@@ -263,6 +267,15 @@ class IssueCommand
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
 
                     InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, 'Journal');
+
+                    if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
+                        throw new RowValidationException(
+                            __('plugins.importexport.csv.journalPathMismatch', [
+                                'csvJournalPath' => $data->journalPath,
+                                'currentJournalPath' => $this->currentJournalPath,
+                            ])
+                        );
+                    }
                     InvalidRowValidations::validateContextLocale($journal, $data->locale, 'Journal');
 
                     $genreName = 'SUBMISSION';

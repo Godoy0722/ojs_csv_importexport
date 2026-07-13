@@ -50,13 +50,17 @@ class UserCommand
 
     private bool $dryMode;
 
-    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail, bool $dryMode = false)
+    /** @var string|null Current journal path from GUI context. When set, rows with a different journalPath are rejected. */
+    private ?string $currentJournalPath;
+
+    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail, bool $dryMode = false, ?string $currentJournalPath = null)
     {
         $this->expectedRowSize = count(RequiredUserHeaders::$userHeaders);
         $this->sourceDir = $sourceDir;
         $this->senderEmailUser = $user;
         $this->sendWelcomeEmail = $sendWelcomeEmail;
         $this->dryMode = $dryMode;
+        $this->currentJournalPath = $currentJournalPath;
     }
 
     public function run(): array
@@ -123,6 +127,15 @@ class UserCommand
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
 
                     InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, 'Journal');
+
+                    if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
+                        throw new RowValidationException(
+                            __('plugins.importexport.csv.journalPathMismatch', [
+                                'csvJournalPath' => $data->journalPath,
+                                'currentJournalPath' => $this->currentJournalPath,
+                            ])
+                        );
+                    }
                     $existingUser = CachedEntities::getCachedUserByEmail($data->email);
                     $isNewUser = is_null($existingUser);
 

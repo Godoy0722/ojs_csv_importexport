@@ -261,9 +261,11 @@ class CSVImportPlugin extends ImportExportPlugin
             }
 
             ob_start();
+            $context = $request->getContext();
+            $currentJournalPath = $context?->getPath();
             $result = match ($importType) {
-                'issues' => (new IssueCommand($sourceDir, $user, $dryMode))->run(),
-                'users' => (new UserCommand($sourceDir, $user, $sendWelcomeEmail, $dryMode))->run(),
+                'issues' => (new IssueCommand($sourceDir, $user, $dryMode, $currentJournalPath))->run(),
+                'users' => (new UserCommand($sourceDir, $user, $sendWelcomeEmail, $dryMode, $currentJournalPath))->run(),
             };
             $capturedOutput = ob_get_clean();
 
