@@ -296,19 +296,21 @@ class IssueCommand
                     $this->initializeStaticVariables();
 
                     $coverImageUploadName = null;
-                    if (!$this->dryMode && $data->coverImageFilename) {
+                    if ($data->coverImageFilename) {
                         InvalidRowValidations::validateCoverImageIsValid($data->coverImageFilename, $this->sourceDir);
 
-                        $sanitizedCoverImageName = str_replace([' ', '_', ':'], '-', mb_strtolower($data->coverImageFilename));
-                        $sanitizedCoverImageName = preg_replace('/[^a-z0-9\.\-]+/', '', $sanitizedCoverImageName);
-                        $coverImageUploadName = uniqid() . '-' . basename($sanitizedCoverImageName);
+                        if (!$this->dryMode) {
+                            $sanitizedCoverImageName = str_replace([' ', '_', ':'], '-', mb_strtolower($data->coverImageFilename));
+                            $sanitizedCoverImageName = preg_replace('/[^a-z0-9\.\-]+/', '', $sanitizedCoverImageName);
+                            $coverImageUploadName = uniqid() . '-' . basename($sanitizedCoverImageName);
 
-                        $destFilePath = $this->publicFileManager->getContextFilesPath($journal->getId()) . '/' . $coverImageUploadName;
-                        $srcFilePath = "{$this->sourceDir}/{$data->coverImageFilename}";
-                        $bookCoverImageSaved = $this->fileManager->copyFile($srcFilePath, $destFilePath);
+                            $destFilePath = $this->publicFileManager->getContextFilesPath($journal->getId()) . '/' . $coverImageUploadName;
+                            $srcFilePath = "{$this->sourceDir}/{$data->coverImageFilename}";
+                            $bookCoverImageSaved = $this->fileManager->copyFile($srcFilePath, $destFilePath);
 
-                        if (!$bookCoverImageSaved) {
-                            throw new RowValidationException(__('plugin.importexport.csv.erroWhileSavingBookCoverImage'));
+                            if (!$bookCoverImageSaved) {
+                                throw new RowValidationException(__('plugin.importexport.csv.erroWhileSavingBookCoverImage'));
+                            }
                         }
                     }
 
