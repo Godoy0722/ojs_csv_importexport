@@ -6,7 +6,7 @@ This plugin allows administrators to import users and issues with their associat
 
 ### Web Interface
 
-Navigate to **Tools → Import/Export → CSV Import Plugin**, select the import type (Issues or Users), upload your CSV file or a ZIP archive, optionally enable Dry Mode, and click **Import**. See [Web Interface Usage](docs/web-interface.md) for details.
+Navigate to **Tools → Import/Export → CSV Import Plugin**, select the import type (Issues or Users), upload your CSV file or a ZIP archive, optionally enable Data Validation Mode, and click **Import**. See [Web Interface Usage](docs/web-interface.md) for details.
 
 ### CLI
 
