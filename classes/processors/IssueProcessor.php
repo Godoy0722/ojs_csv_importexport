@@ -46,7 +46,7 @@ class IssueProcessor
             $issue->setShowYear(!empty($data->issueYear));
             $issue->setShowTitle(!empty($data->issueTitles));
             $issue->setPublished(true);
-            $issue->setDatePublished(Core::getCurrentDate());
+            $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : Core::getCurrentDate());
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
             $issue->setData('locale', $data->locale);

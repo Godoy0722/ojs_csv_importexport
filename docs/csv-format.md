@@ -99,7 +99,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 | issueNumber | No | Issue number | 1 | |
 | issueYear | No | Publication year | 2024 | |
 | issueDescription | No | Issue description | Special Edition | Optional |
-| datePublished | Yes | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
+| issuePublicationDate | No | Issue publication date | 2024-01-01 | Format: YYYY-MM-DD. When provided, sets the issue's publication date. Defaults to the import date if left empty |
+| datePublished | Yes | Article publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |
 | copyrightYear | No | Copyright year | 2025 | Defaults to system setting if not provided |

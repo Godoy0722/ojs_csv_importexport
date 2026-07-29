@@ -57,6 +57,7 @@ The system will:
    - `licenseUrl`
    - `doi`
    - `datePublished`
+   - `issuePublicationDate`
    - `startPage` and `endPage`
    - File attachments (galleys and supplementary files)
 

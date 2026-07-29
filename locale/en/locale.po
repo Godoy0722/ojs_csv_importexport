@@ -55,6 +55,9 @@ msgstr "Invalid article file for this submission."
 msgid "plugins.importexport.csv.fileProcessFinished"
 msgstr "Process for file \"{$filename}\" finished. {$createdRows} created, {$updatedRows} updated, {$failedRows} failed."
 
+msgid "plugins.importexport.csv.submissionFileProcessFinished"
+msgstr "Process for file \"{$filename}\" finished. {$processedRows} processed, {$failedRows} failed."
+
 msgid "plugins.importexport.csv.invalidBookCoverImage"
 msgstr "The cover image has an invalid format for this row."
 
@@ -213,6 +216,9 @@ msgstr "Upload a ZIP file built in one of two simple ways:<br><br><b>Option 1 â€
 
 msgid "plugins.importexport.csv.form.examplesHelp"
 msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CSV files for issue imports here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/issues\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for issues</a>."
+
+msgid "plugins.importexport.csv.invalidDateFormat"
+msgstr "Invalid date format for {$fieldName}. Expected format: YYYY-MM-DD (e.g., 2024-01-15)."
 
 msgid "plugins.importexport.csv.form.usersExamplesHelp"
 msgstr "<b>Need an example?</b> You can view and download ready-to-use sample user CSV files here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/users\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for users</a>."
