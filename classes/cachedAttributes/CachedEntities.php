@@ -34,11 +34,15 @@ class CachedEntities extends SharedCachedEntities
     /** @var array<string,SubscriptionType|null> */
     static array $subscriptionTypes = [];
 
+    /** @var array<int,array<string,bool>> Journal-scoped cache of existing DOIs from the database */
+    static array $existingDoisByJournal = [];
+
     /** Resets all cached entities. Used after dry-mode rollback to clear stale IDs. */
     public static function reset(): void
     {
         parent::reset();
 
+        static::$existingDoisByJournal = [];
         static::$journals = [];
         static::$issues = [];
         static::$subscriptionTypes = [];
@@ -97,5 +101,26 @@ class CachedEntities extends SharedCachedEntities
         }
 
         return self::$subscriptionTypes[$subscriptionType] ??= CachedDaos::getSubscriptionTypeDao()->getById((int) $subscriptionType, $journalId);
+    }
+
+    /** Retrieves all existing DOIs for a journal, cached statically. Returns assoc array [doi => true]. */
+    static function getExistingDois(int $journalId): array
+    {
+        if (isset(static::$existingDoisByJournal[$journalId])) {
+            return static::$existingDoisByJournal[$journalId];
+        }
+
+        $dois = \Illuminate\Support\Facades\DB::table('dois')
+            ->where('context_id', $journalId)
+            ->whereNotNull('doi')
+            ->distinct()
+            ->pluck('doi');
+
+        $map = [];
+        foreach ($dois as $doi) {
+            $map[$doi] = true;
+        }
+
+        return static::$existingDoisByJournal[$journalId] = $map;
     }
 }

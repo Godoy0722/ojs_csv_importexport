@@ -109,6 +109,9 @@ class IssueCommand
     /** @var array Track failed identifiers for cascaded failure detection */
     private array $failedIdentifiers;
 
+    /** @var array<string,bool> DOIs imported during this run for deduplication */
+    private array $importedDois;
+
     private bool $dryMode;
 
     /** @var string|null Current journal path from GUI context. When set, rows with a different journalPath are rejected. */
@@ -124,6 +127,7 @@ class IssueCommand
         $this->processedIssues = [];
         $this->processedArticles = [];
         $this->failedIdentifiers = [];
+        $this->importedDois = [];
     }
 
     public function run(): array
@@ -271,6 +275,8 @@ class IssueCommand
 
                     InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, 'Journal');
 
+                    $existingDois = CachedEntities::getExistingDois($journal->getId());
+
                     if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
                         throw new RowValidationException(
                             __('plugins.importexport.csv.contextPathMismatch', [
@@ -295,6 +301,12 @@ class IssueCommand
                         InvalidRowValidations::validateFundingPluginEnabled($data->funders, $journal->getId(), 'Journal');
                         InvalidRowValidations::validateFundersCrossrefRegistry($data->funders, $journal->getId());
                     }
+
+                    InvalidRowValidations::validateDoiNotDuplicate(
+                        $data->doi ?? null,
+                        $existingDois,
+                        $this->importedDois
+                    );
 
                     $this->initializeStaticVariables();
 
@@ -566,6 +578,13 @@ class IssueCommand
 
                     if (!$this->dryMode) {
                         DB::commit();
+                    }
+
+                    if (!empty(trim($data->doi ?? ''))) {
+                        $normalizedDoi = InvalidRowValidations::normalizeVorDoi($data->doi);
+                        if ($normalizedDoi !== null) {
+                            $this->importedDois[$normalizedDoi] = true;
+                        }
                     }
                 } catch (RowValidationException $e) {
                     if (!$this->dryMode) {
