@@ -38,7 +38,6 @@ class RequiredUserHeaders
     static $userRequiredHeaders = [
         'journalPath',
         'firstname',
-        'lastname',
         'email',
         'roles',
     ];
