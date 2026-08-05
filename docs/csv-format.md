@@ -8,7 +8,7 @@
 |--------|----------|-------------|---------|
 | journalPath | Yes | Path of the journal | leo |
 | firstname | Yes | User's first name | Homer |
-| lastname | Yes | User's last name | Simpson |
+| lastname | No | User's last name | Simpson |
 | email | Yes | User's email address | homer@example.com |
 | affiliation | No | User's affiliation | University of British Columbia |
 | country | No | Two-letter country code | CA |
