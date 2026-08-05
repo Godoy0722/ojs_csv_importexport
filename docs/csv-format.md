@@ -21,6 +21,25 @@
 | endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
 | orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
 
+> **Subscription Types (`subscriptionType`, `startDate`, `endDate`):** The `subscriptionType` column expects the numeric ID of a subscription type that already exists in your journal. Subscription types define the paid access plans readers can purchase — each type has a name, cost, currency, duration, and format (Online, Print, or Print + Online).
+>
+> **Finding your Subscription Type ID:**
+>
+>  1. **From the admin area:** Go to **Payments → Subscription Types** (requires Manager, Site Admin, or Subscription Manager permissions). The page lists all subscription types for your journal. Click the edit button next to the type you want — the edit form opens. Look at your browser's address bar: you'll see a `typeId` parameter like `.../editSubscriptionType?typeId=3`. That number is your `subscriptionType`.
+>
+>  2. **From the database:** If you have database access, you can query the `subscription_types` table directly:
+>     ```sql
+>     SELECT type_id, cost, currency_code_alpha, duration, format
+>     FROM subscription_types
+>     WHERE journal_id = <your-journal-id>
+>     ORDER BY seq;
+>     ```
+>
+> Notes:
+>  - If the ID you provide doesn't exist for that journal, the row is rejected.
+>  - Leave `subscriptionType` empty if the user should not receive a subscription.
+>  - When `subscriptionType` is provided, `startDate` and `endDate` **must also be provided** (format: `YYYY-MM-DD`). All three or none.
+
 > **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
 >
 >  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
