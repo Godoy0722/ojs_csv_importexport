@@ -108,6 +108,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 | galleyFilenames | No | Semicolon-separated primary galley files | doc.docx;data.xlsx | Optional |
 | galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
 | galleyViews | No | Semicolon-separated view counts per galley | 120;45 | Must match galleyLabels count. Each value is a non-negative integer |
+| htmlGalley | No | Semicolon-separated HTML galley with dependent files | article.html;style.css;chart.svg | First file must be .html/.htm. See [HTML Galleys](#html-galleys) |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
@@ -204,6 +205,35 @@ Make sure to follow this CSV structure with all headers present, including the n
 You can take a look at the example we provide on the [Issue CSV file](../examples/issues/issues_example.csv).
 
 Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
+
+### HTML Galleys
+
+The `htmlGalley` column imports an HTML file as a galley, optionally bundled with dependent files such as CSS, JavaScript, SVGs, or images.
+
+**Format:** Semicolon-separated values — the first entry is the HTML galley, and all following entries are dependent files:
+
+```
+htmlFile.html;dependentFile1.css;dependentFile2.svg;dependentFile3.js
+```
+
+**Rules:**
+- The **first file** must be the HTML galley and must have a `.html` or `.htm` extension
+- All remaining files are treated as dependent files
+- Files should live in the same directory as the CSV (or a subfolder), referenced via relative path from the CSV directory
+  ```
+  galleys/article.html;galleys/styles.css;galleys/chart.svg
+  ```
+
+**Example:**
+```
+htmlGalley: article.html;styles.css;chart.svg;app.js;logo.png
+```
+
+**Combining with regular galleys:** The `htmlGalley` and `galleyFilenames` columns can both be used in the same row. When an HTML galley is present, it always receives the label `HTML`. If `galleyViews` is provided, it must include a count for the HTML galley — dependent files do not count toward the view count entries.
+
+> **Known limitation:** Relative paths inside the HTML file itself (e.g., `<link href="styles.css">`) are not resolved at import time. When a reader downloads the galley, they receive the raw HTML file — there is no URL routing to serve the dependent files within the reader view.
+
+> **Dependent file types:** Any file type is accepted for dependent files (CSS, SVG, PNG, JPEG, JS, fonts, etc.). Only the first file is required to be `.html` or `.htm`.
 
 ### Import File Structure
 
