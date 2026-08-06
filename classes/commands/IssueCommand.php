@@ -37,6 +37,7 @@ use APP\plugins\importexport\csv\shared\processors\FundersProcessor;
 use APP\plugins\importexport\csv\shared\processors\KeywordsProcessor;
 use APP\plugins\importexport\csv\shared\processors\StatisticsProcessor;
 use APP\plugins\importexport\csv\shared\processors\SubjectsProcessor;
+use APP\plugins\importexport\csv\shared\processors\HtmlGalleyProcessor;
 use APP\plugins\importexport\csv\shared\processors\SubmissionFileProcessor;
 use APP\publication\Publication;
 use APP\submission\Submission;
@@ -228,6 +229,13 @@ class IssueCommand
                         InvalidRowValidations::validatePublicationGalleys(
                             $data->galleyFilenames,
                             $data->galleyLabels,
+                            $this->sourceDir
+                        );
+                    }
+
+                    if ($data->htmlGalley) {
+                        InvalidRowValidations::validateHtmlGalleys(
+                            $data->htmlGalley,
                             $this->sourceDir
                         );
                     }
@@ -427,6 +435,72 @@ class IssueCommand
                                 $publication->getId(),
                                 $fileUploadUser
                             );
+                        }
+                    }
+
+                    if (!$this->dryMode && $data->htmlGalley) {
+                        $htmlGalleyFiles = array_values(array_filter(
+                            array_map('trim', explode(';', $data->htmlGalley)),
+                            fn(string $f) => $f !== ''
+                        ));
+
+                        $htmlFile = $htmlGalleyFiles[0];
+                        $dependentFiles = array_slice($htmlGalleyFiles, 1);
+
+                        $htmlSourcePath = "{$this->sourceDir}/{$htmlFile}";
+
+                        $sanitizedHtml = HtmlGalleyProcessor::sanitizeHtmlFile($htmlSourcePath);
+                        $tempFile = tempnam(sys_get_temp_dir(), 'csv_html_galley_');
+                        file_put_contents($tempFile, $sanitizedHtml);
+
+                        try {
+                            $htmlFileId = $this->saveSubmissionFile(
+                                $htmlFile,
+                                $journal->getId(),
+                                $submission,
+                                __('plugins.importexport.csv.errorWhileSavingHtmlGalley', ['filename' => $htmlFile]),
+                                $tempFile
+                            );
+
+                            if (is_null($htmlFileId)) {
+                                foreach ($galleyIds as $galleyItem) {
+                                    $this->fileService->delete($galleyItem['id']);
+                                }
+                                continue;
+                            }
+
+                            $htmlGalleyLabel = 'HTML';
+                            $htmlGalleyMeta = $this->handleGalley(
+                                ['file' => $htmlFile, 'id' => $htmlFileId],
+                                $data,
+                                $submission->getId(),
+                                $genreId,
+                                $htmlGalleyLabel,
+                                $publication->getId(),
+                                $fileUploadUser
+                            );
+
+                            $galleyMetadata[] = $htmlGalleyMeta;
+
+                            $submissionDir = sprintf($this->format, $journal->getId(), $submission->getId());
+
+                            if (!empty($dependentFiles)) {
+                                HtmlGalleyProcessor::createDependentFiles(
+                                    $dependentFiles,
+                                    $htmlGalleyMeta['submissionFileId'],
+                                    $this->sourceDir,
+                                    $submissionDir,
+                                    $data,
+                                    $submission->getId(),
+                                    $genreId,
+                                    $fileUploadUser,
+                                    $this->fileService
+                                );
+                            }
+                        } finally {
+                            if (file_exists($tempFile)) {
+                                unlink($tempFile);
+                            }
                         }
                     }
 
@@ -732,12 +806,13 @@ class IssueCommand
         int $journalId,
         Submission $submission,
         string $reason,
+        ?string $sourcePathOverride = null,
     ): ?int
     {
         try {
             $extension = $this->fileManager->parseFileExtension($filePath);
             $submissionDir = sprintf($this->format, $journalId, $submission->getId());
-            $completePath = "{$this->sourceDir}/{$filePath}";
+            $completePath = $sourcePathOverride ?? "{$this->sourceDir}/{$filePath}";
 
             return $this->fileService->add($completePath, $submissionDir . '/' . uniqid() . '.' . $extension);
         } catch (\Exception $e) {

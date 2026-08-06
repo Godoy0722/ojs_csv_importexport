@@ -38,6 +38,7 @@ class RequiredIssueHeaders
         'galleyFilenames',
         'galleyLabels',
         'galleyViews',
+        'htmlGalley',
         'suppFilenames',
         'suppLabels',
         'suppDescriptions',
@@ -68,6 +69,7 @@ class RequiredIssueHeaders
         'articleTitle',
         'authors',
         'datePublished',
+        'sectionTitle',
     ];
 
     public static function validateRowHasAllFields(array $row): bool
