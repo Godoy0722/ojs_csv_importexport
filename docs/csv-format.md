@@ -4,22 +4,32 @@
 
 ## Users CSV Format
 
-| Column | Required | Description | Example |
-|--------|----------|-------------|---------|
-| journalPath | Yes | Path of the journal | leo |
-| firstname | Yes | User's first name | Homer |
-| lastname | No | User's last name | Simpson |
-| email | Yes | User's email address | homer@example.com |
-| affiliation | No | User's affiliation | University of British Columbia |
-| country | No | Two-letter country code | CA |
-| username | Yes | Username for login | hsimpson |
-| tempPassword | Yes | Temporary password | temppassword123 |
-| roles | No | Semicolon-separated list of roles | Reader;Author |
-| reviewInterests | No | Semicolon-separated interests | interest one;interest two |
-| subscriptionType | No | Subscription type ID | 1 |
-| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
-| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
-| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
+A sample user CSV file is available here - [User CSV file](../examples/users/users_example.csv).
+
+Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
+
+| Column | Required | Description | Example | Can be updated? |
+|--------|----------|-------------|---------|---------|
+| journalPath | Yes | Path of the journal | leo | No - keep original
+| firstname | Yes | User's first name | Homer | Yes
+| lastname | No | User's last name | Simpson | Yes
+| email | Yes | User's email address | homer@example.com | No
+| affiliation | No | User's affiliation | University of British Columbia | Yes
+| country | No | Two-letter country code | CA | Yes
+| username | Yes | Username for login | hsimpson | No - keep original
+| tempPassword | Yes | Temporary password | temppassword123 | No
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No
+| reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes
+| subscriptionType | No | Subscription type ID | 1 | No
+| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes
+| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 | Yes
+| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 | No
+
+> **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' can be the same as the 'email'.
+
+> **tempPassword:** You can enter a temporary password when filling out the CSV. If you don't, it will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using tempPassword. Upon first login, they will be prompted to update their password to their own password preference.
+
+> **Roles:** At least one role is mandatory. For the list of default available roles in OJS to select from, navigate to Users & Roles > Roles in your OJS journal or see the reference in the [Learning OJS Guide: Getting to Know Permissions and Role](https://docs.pkp.sfu.ca/learning-ojs/journal-managers/en/users#permissions-roles). Make sure to add a "Reader" role to each account as the minimum permission level granted to all users.
 
 > **Subscription Types (`subscriptionType`, `startDate`, `endDate`):** The `subscriptionType` column expects the numeric ID of a subscription type that already exists in your journal. Subscription types define the paid access plans readers can purchase — each type has a name, cost, currency, duration, and format (Online, Print, or Print + Online).
 >
@@ -79,13 +89,17 @@
 > 0000000256781235
 > ```
 
-### Users CSV Example
-
-You can take a look at the example we provide on the [User CSV file](../examples/users/users_example.csv).
-
-Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
+> **Updating user data via a CSV upload:**
+> It is possible to update certain data for existing OJS users by uploading a CSV via this tool. Specific fields that can be updated are indicated in the table above.
+> To make such an update:
+>   -  Prepare a CSV file following the above format, only including the contacts that require an update
+>   -  Ensure the existing usernames are listed for existing users - this is how the system will identify the users to be updated. For the other fields, only include the values for the fields you want updated.
 
 ## Issues CSV Format
+
+A sample issue CSV file is available here - [Issue CSV file](../examples/issues).
+
+Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
 
 | Column | Required | Description | Example | Notes |
 |--------|----------|-------------|---------|-------|
@@ -93,7 +107,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 | locale | Yes | Article locale | en_US | Must be enabled in the journal |
 | versionIdentifier | No | Unique identifier for article versions | article-001 | Links versions together. Leave empty for single-version articles |
 | version | No | Version number | 1 | Required if versionIdentifier is provided. Must be positive integer |
-| articlePrefix | No | Article prefix | PREF | Optional |
+| articlePrefix | No | Article prefix | The | Optional |
 | articleTitle | Yes | Article title | My Research Paper | Required for version 1, optional for versions > 1 |
 | articleSubtitle | No | Article subtitle | A Study of... | Optional |
 | articleAbstract | No | Article abstract | This paper examines... | Optional |
@@ -199,12 +213,6 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - The Funding plugin must be enabled in the journal — rows with funder data are rejected otherwise
 >  - When the Funding plugin's `enableGrantIdValidation` setting is on, each `FunderIdentification` (when provided) must be a Crossref Funder Registry DOI matching `https://doi.org/10.13039/...`
 >  - Rows that fail funder validation are written to the `invalid_*.csv` file
-
-### Issues CSV Example
-
-You can take a look at the example we provide on the [Issue CSV file](../examples/issues/issues_example.csv).
-
-Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
 
 ### HTML Galleys
 
