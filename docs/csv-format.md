@@ -10,20 +10,27 @@ Make sure to follow this CSV structure with all headers present, including the n
 
 | Column | Required | Description | Example | Can be updated? |
 |--------|----------|-------------|---------|---------|
-| journalPath | Yes | Path of the journal | leo | No - keep original
+| journalPath | Yes | Path of the journal | leo | n/a
 | firstname | Yes | User's first name | Homer | Yes
 | lastname | No | User's last name | Simpson | Yes
-| email | Yes | User's email address | homer@example.com | No
+| email | Yes | User's email address | homer@example.com | No - keep original
 | affiliation | No | User's affiliation | University of British Columbia | Yes
 | country | No | Two-letter country code | CA | Yes
-| username | Yes | Username for login | hsimpson | No - keep original
-| tempPassword | Yes | Temporary password | temppassword123 | No
-| roles | Yes | Semicolon-separated list of roles | Reader;Author | No
+| username | Yes | Username for login | hsimpson | Yes
+| tempPassword | Yes | Temporary password | temppassword123 | No - skip
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No - skip
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes
-| subscriptionType | No | Subscription type ID | 1 | No
+| subscriptionType | No | Subscription type ID | 1 | Yes
 | startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes
 | endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 | Yes
-| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 | No
+| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 | Yes
+
+> **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
+>
+>  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
+>  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
+>
+>  - The journal must already exist in OJS; the importer does not create journals.
 
 > **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' can be the same as the 'email'.
 
@@ -49,13 +56,6 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - If the ID you provide doesn't exist for that journal, the row is rejected.
 >  - Leave `subscriptionType` empty if the user should not receive a subscription.
 >  - When `subscriptionType` is provided, `startDate` and `endDate` **must also be provided** (format: `YYYY-MM-DD`). All three or none.
-
-> **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
->
->  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
->  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
->
->  - The journal must already exist in OJS; the importer does not create journals.
 
 > **User Interests:** User interests in the users CSV use a semicolon-separated format:
 >
@@ -92,8 +92,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 > **Updating user data via a CSV upload:**
 > It is possible to update certain data for existing OJS users by uploading a CSV via this tool. Specific fields that can be updated are indicated in the table above.
 > To make such an update:
->   -  Prepare a CSV file following the above format, only including the contacts that require an update
->   -  Ensure the existing usernames are listed for existing users - this is how the system will identify the users to be updated. For the other fields, only include the values for the fields you want updated.
+>   -  Prepare a CSV file following the above format, only including the contacts that require an update.
+>   -  Ensure the existing email is listed for each existing user - this is how the system will identify the user to be updated. For the other fields, only include the values for the fields you want updated, keep the other fields empty.
+>   -  Leave the password and roles value empty - these fields cannot be updated via the CSV import for security reasons.
 
 ## Issues CSV Format
 
@@ -145,6 +146,13 @@ Make sure to follow this CSV structure with all headers present, including the n
 | funders | No | Semicolon-separated funder data | See [Funders Format](#funders-format) | Requires the Funding plugin to be enabled in the journal |
 | supportingAgencies | No | Semicolon-separated supporting agencies | NSF;ESA | Localized field — provide per locale in multi-locale rows |
 | articleViews | No | Total view count for the article | 256 | Must be a non-negative integer |
+
+> **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
+>
+>  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
+>  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
+>
+>  - The journal must already exist in OJS; the importer does not create journals.
 
 > **DOIs (`doi` column):** Only fill in this column if the article was **already published with a DOI assigned to it** (for example, it was previously hosted on another platform that minted the DOI). Enter that existing DOI exactly as it was registered.
 >
