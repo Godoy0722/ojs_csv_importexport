@@ -69,7 +69,6 @@ class RequiredIssueHeaders
         'articleTitle',
         'authors',
         'datePublished',
-        'sectionTitle',
     ];
 
     public static function validateRowHasAllFields(array $row): bool
@@ -77,13 +76,20 @@ class RequiredIssueHeaders
         return count($row) === count(self::$issueHeaders);
     }
 
-    public static function validateRowHasAllRequiredFields(object $row, array $processedArticles = []): bool
+    /**
+     * A row is a subsequent version or locale of an article already processed in this run.
+     * Such rows inherit the metadata of the base row, so required-field rules don't apply to them.
+     */
+    public static function isMultiVersionOrLocale(object $row, array $processedArticles = []): bool
     {
-        $isMultiVersionOrLocale = !empty($row->versionIdentifier)
+        return !empty($row->versionIdentifier)
             && !empty($row->version)
             && isset($processedArticles[$row->versionIdentifier]);
+    }
 
-        if ($isMultiVersionOrLocale) {
+    public static function validateRowHasAllRequiredFields(object $row, array $processedArticles = []): bool
+    {
+        if (self::isMultiVersionOrLocale($row, $processedArticles)) {
             return true;
         }
 

@@ -58,7 +58,10 @@ class SectionsProcessor extends SharedSectionsProcessor
      */
     public static function newSectionToPublication(object $data, int $contextId, Publication $publication): void
     {
-        if (empty($data->sectionTitle)) {
+        // A row may carry only sectionAbbrev; the abbreviation then names the section as well.
+        $sectionTitle = trim($data->sectionTitle ?? '') ?: trim($data->sectionAbbrev ?? '');
+
+        if ($sectionTitle === '') {
             return;
         }
 
@@ -74,7 +77,7 @@ class SectionsProcessor extends SharedSectionsProcessor
         $section->setHideTitle(false);
         $section->setHideAuthor(false);
         $section->setIsInactive(false);
-        $section->setTitle($data->sectionTitle, $data->locale);
+        $section->setTitle($sectionTitle, $data->locale);
         $section->setAbbrev(mb_strtoupper(trim($data->sectionAbbrev)), $data->locale);
         $section->setIdentifyType('', $data->locale);
         $section->setPolicy('', $data->locale);
@@ -82,8 +85,7 @@ class SectionsProcessor extends SharedSectionsProcessor
         $sectionId = Repo::section()->add($section);
 
         $createdSection = Repo::section()->get($sectionId, $contextId);
-        $customSectionKey = $data->sectionTitle . '_' . mb_strtoupper(trim($data->sectionAbbrev));
-        CachedEntities::$sections[$customSectionKey] = $createdSection;
+        CachedEntities::indexSection($createdSection, $contextId);
 
         PublicationProcessor::updateSectionId($publication, $sectionId);
     }

@@ -225,6 +225,11 @@ class IssueCommand
                         }
                     }
 
+                    // Subsequent versions and locales inherit the section from the base row.
+                    if (!RequiredIssueHeaders::isMultiVersionOrLocale($data, $this->processedArticles)) {
+                        InvalidRowValidations::validateSectionFields($data);
+                    }
+
                     if ($data->galleyFilenames) {
                         InvalidRowValidations::validatePublicationGalleys(
                             $data->galleyFilenames,
