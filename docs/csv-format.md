@@ -80,6 +80,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - The ORCID checksum is validated during import
 >  - Invalid ORCIDs will cause the row to be rejected
 >  - Leave empty if the user doesn't have an ORCID
+>  - ORCID iDs imported in this manner will appear as “unauthenticated” on the article landing pages. If the ORCID integration is enabled, these ORCID iDs will need to be either authenticated or deleted in order for the article or version to be published.
 >
 > Examples:
 >
