@@ -16,9 +16,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 | email | Yes | User's email address | homer@example.com | No - keep original
 | affiliation | No | User's affiliation | University of British Columbia | Yes
 | country | No | Two-letter country code | CA | Yes
-| username | Yes | Username for login | hsimpson | Yes
-| tempPassword | Yes | Temporary password | temppassword123 | No - skip
-| roles | Yes | Semicolon-separated list of roles | Reader;Author | No - skip
+| username | Yes | Username for login | hsimpson | No
+| tempPassword | Yes | Temporary password | temppassword123 | No
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes
 | subscriptionType | No | Subscription type ID | 1 | Yes
 | startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes
@@ -93,9 +93,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 > **Updating user data via a CSV upload:**
 > It is possible to update certain data for existing OJS users by uploading a CSV via this tool. Specific fields that can be updated are indicated in the table above.
 > To make such an update:
->   -  Prepare a CSV file following the above format, only including the contacts that require an update.
+>   -  Prepare a CSV file following the above format.
 >   -  Ensure the existing email is listed for each existing user - this is how the system will identify the user to be updated. For the other fields, only include the values for the fields you want updated, keep the other fields empty.
->   -  Leave the password and roles value empty - these fields cannot be updated via the CSV import for security reasons.
+>   -  Username, password and roles will be left unchanged during an update — only new users receive password, username and role assignments.
 
 ## Issues CSV Format
 
