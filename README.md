@@ -173,6 +173,7 @@ You can take a look at the example we provide on the [User CSV file](./examples/
 | issueNumber | No | Issue number | 1 | |
 | issueYear | No | Publication year | 2024 | |
 | issueDescription | No | Issue description | Special Edition | Optional |
+| issuePublicationDate | No | Issue publication date | 2024-01-01 | Format: YYYY-MM-DD. When empty, the issue receives the most recent datePublished among its articles at the end of the CSV file processing |
 | datePublished | Yes | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |

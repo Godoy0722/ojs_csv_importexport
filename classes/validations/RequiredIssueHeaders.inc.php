@@ -47,6 +47,7 @@ class RequiredIssueHeaders
         'issueNumber',
         'issueYear',
         'issueDescription',
+        'issuePublicationDate',
         'datePublished',
         'startPage',
         'endPage',

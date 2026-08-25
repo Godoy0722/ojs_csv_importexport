@@ -526,6 +526,9 @@ class IssueCommand
                 }
             }
 
+            import('plugins.importexport.csv.classes.processors.IssueProcessor');
+            IssueProcessor::fillMissingIssueDates($this->_processedIssues);
+
             echo __('plugins.importexpot.csv.fileProcessFinished', [
                 'filename' => $fileInfo->getFilename(),
                 'processedRows' => $this->_processedRows,

@@ -66,7 +66,9 @@ class IssueProcessor
             $issue->setShowYear(!empty($data->issueYear));
             $issue->setShowTitle(!empty($data->issueTitles));
             $issue->setPublished(true);
-            $issue->setDatePublished(\Core::getCurrentDate());
+            // A null date published flags the issue to have its date defined from its articles
+            // at the end of the CSV file processing.
+            $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : null);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->setAccessStatus(ISSUE_ACCESS_OPEN);
             $issue->setData('locale', $data->locale);
@@ -116,6 +118,41 @@ class IssueProcessor
 
 		CachedDaos::getIssueDao()->updateObject($issue);
         return CachedDaos::getIssueDao()->getById($issue->getId());
+    }
+
+	/**
+     * Defines the date published for every processed issue imported without the issuePublicationDate
+     * column filled, using the most recent date published among its articles.
+	 *
+	 * @param array $processedIssues
+	 *
+	 * @return void
+     */
+    public static function fillMissingIssueDates($processedIssues)
+    {
+        $issueDao = CachedDaos::getIssueDao();
+
+        foreach ($processedIssues as $processedIssue) {
+            /** @var \Issue $issue */
+            $issue = $processedIssue['issue'];
+
+            if (!empty($issue->getDatePublished())) {
+                continue;
+            }
+
+            $result = $issueDao->retrieve(
+                'SELECT MAX(p.date_published) AS max_date
+                    FROM publications p
+                    INNER JOIN publication_settings ps ON (ps.publication_id = p.publication_id)
+                    WHERE ps.setting_name = \'issueId\' AND ps.setting_value = ?',
+                [(string) $issue->getId()]
+            );
+
+            $row = $result->current();
+
+            $issue->setDatePublished(($row && $row->max_date) ? $row->max_date : \Core::getCurrentDate());
+            $issueDao->updateObject($issue);
+        }
     }
 
 	/**
@@ -234,8 +271,16 @@ class IssueProcessor
         }
 
         $mostRecentIssue = $allIssues[0];
-        $mostRecentIssue->setCurrent(1);
-        $issueDao->updateCurrent($journalId, $mostRecentIssue);
+        $issueDao->update(
+            'UPDATE issues SET current = 0 WHERE journal_id = ? AND current = 1',
+            [(int) $journalId]
+        );
+        $issueDao->update(
+            'UPDATE issues SET current = 1 WHERE issue_id = ?',
+            [(int) $mostRecentIssue->getId()]
+        );
+        $issueDao->resequenceCustomIssueOrders($journalId);
+        $issueDao->flushCache();
     }
 
     /**
