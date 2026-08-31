@@ -142,6 +142,9 @@ class CSVImportExportPlugin extends \ImportExportPlugin
             exit(1);
         }
 
+        // Schema constants must exist before SchemaDAO subclasses load (CLI bootstrap skips this).
+        import('lib.pkp.classes.services.PKPSchemaService');
+
 		import('plugins.importexport.csv.classes.cachedAttributes.CachedDaos');
 
 		$this->_validateUser();
