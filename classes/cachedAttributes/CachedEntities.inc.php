@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/cachedAttributes/CachedEntities.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2014-2026 Simon Fraser University
+ * Copyright (c) 2003-2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CachedEntities
@@ -216,7 +216,7 @@ class CachedEntities
 	 *
 	 * @return \Section|null
      */
-	static function getCachedSectionById($baseSectionId, $journalId, $locale)
+    static function getCachedSectionById($baseSectionId, $journalId, $locale)
     {
         $existingSection = null;
         foreach (self::$sections as $section) {
@@ -231,13 +231,27 @@ class CachedEntities
         }
 
         $section = CachedDaos::getSectionDao()->getById($baseSectionId, $journalId);
-        $sectionTitle = $section->getTitle($locale);
-        $sectionAbbrev = $section->getAbbrev($locale);
+        $sectionTitle = self::_getLocalizedSettingValue($section->getTitle($locale), $locale);
+        $sectionAbbrev = self::_getLocalizedSettingValue($section->getAbbrev($locale), $locale);
 
         $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
         self::$sections[$customSectionKey] = $section;
 
         return $section;
+    }
+
+    /**
+     * @param mixed $value
+     * @param string $locale
+     * @return string
+     */
+    private static function _getLocalizedSettingValue($value, $locale)
+    {
+        if (is_array($value)) {
+            return trim((string) ($value[$locale] ?? reset($value) ?? ''));
+        }
+
+        return trim((string) $value);
     }
 
 		/**
@@ -254,4 +268,20 @@ class CachedEntities
 
 			return self::$subscriptionTypes[$subscriptionType] ?? self::$subscriptionTypes[$subscriptionType] = $subscriptionType;
 		}
+
+    /**
+     * Reset all cached entities (used after dry-mode rollbacks).
+     */
+    static function reset()
+    {
+        self::$journals = [];
+        self::$userGroupIds = [];
+        self::$userGroups = [];
+        self::$genreIds = [];
+        self::$categories = [];
+        self::$sections = [];
+        self::$issues = [];
+        self::$users = [];
+        self::$subscriptionTypes = [];
+    }
 }

@@ -153,3 +153,150 @@ msgstr "Invalid ORCID format: \"{$orcid}\". Accepted formats: URL (https://orcid
 
 msgid "plugins.importexport.csv.invalidOrcidChecksum"
 msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."
+
+msgid "plugins.importexport.csv.form.submitButton"
+msgstr "Import"
+
+msgid "plugins.importexport.csv.form.importing"
+msgstr "Processing"
+
+msgid "plugins.importexport.csv.form.imported"
+msgstr "Completed"
+
+msgid "plugins.importexport.csv.form.importFile"
+msgstr "Import File"
+
+msgid "plugins.importexport.csv.form.importFile.description"
+msgstr "Upload a ZIP file containing CSV files and assets (cover images, galley files), or a single CSV file directly."
+
+msgid "plugins.importexport.csv.form.importType"
+msgstr "Import Type"
+
+msgid "plugins.importexport.csv.form.importType.issues"
+msgstr "Issues"
+
+msgid "plugins.importexport.csv.form.importType.users"
+msgstr "Users"
+
+msgid "plugins.importexport.csv.form.dryMode"
+msgstr "Data Validation"
+
+msgid "plugins.importexport.csv.form.dryMode.description"
+msgstr "Validate all CSV data without writing to the database. Review results before running a real import."
+
+msgid "plugins.importexport.csv.form.dryMode.enable"
+msgstr "Enable Data Validation mode"
+
+msgid "plugins.importexport.csv.form.sendWelcomeEmail"
+msgstr "Welcome Email"
+
+msgid "plugins.importexport.csv.form.sendWelcomeEmail.enable"
+msgstr "Send welcome email to imported users"
+
+msgid "plugins.importexport.csv.uploadFailed"
+msgstr "File upload failed."
+
+msgid "plugins.importexport.csv.invalidImportType"
+msgstr "Invalid import type: \"{$importType}\"."
+
+msgid "plugins.importexport.csv.zipExtractionFailed"
+msgstr "Failed to extract ZIP file: {$reason}"
+
+msgid "plugins.importexport.csv.zipCorruptArchive"
+msgstr "Cannot open ZIP archive: \"{$path}\"."
+
+msgid "plugins.importexport.csv.zipBombDetected"
+msgstr "ZIP archive rejected: uncompressed size ({$actual}) exceeds the allowed limit ({$limit})."
+
+msgid "plugins.importexport.csv.zipPathTraversal"
+msgstr "ZIP archive rejected: entry \"{$entry}\" contains a path traversal sequence."
+
+msgid "plugins.importexport.csv.results.dryModeTitle"
+msgstr "Data Validation Results"
+
+msgid "plugins.importexport.csv.results.importCompleteTitle"
+msgstr "Import Complete"
+
+msgid "plugins.importexport.csv.results.importType"
+msgstr "Import Type"
+
+msgid "plugins.importexport.csv.results.filesProcessed"
+msgstr "Files Processed"
+
+msgid "plugins.importexport.csv.results.totalRows"
+msgstr "Total Rows"
+
+msgid "plugins.importexport.csv.results.successfulRows"
+msgstr "Successful Rows"
+
+msgid "plugins.importexport.csv.results.failedRows"
+msgstr "Failed Rows"
+
+msgid "plugins.importexport.csv.results.createdRows"
+msgstr "Created"
+
+msgid "plugins.importexport.csv.results.updatedRows"
+msgstr "Updated"
+
+msgid "plugins.importexport.csv.results.invalidFiles"
+msgstr "Download invalid rows"
+
+msgid "plugins.importexport.csv.results.updatedUsersSection"
+msgstr "UPDATED USERS"
+
+msgid "plugins.importexport.csv.results.updatedUsersExplanation"
+msgstr "Users marked as updated were found by email. Profile data (name, affiliation, country, email, ORCID) was updated. Password and roles were left unchanged — only new users receive password and role assignments."
+
+msgid "plugins.importexport.csv.results.intro.issues"
+msgstr "This is the result of importing <b>issues and articles</b>. Every row of your CSV files was processed: rows that succeeded were saved to the journal, and any that failed are listed further down together with the reason they could not be imported."
+
+msgid "plugins.importexport.csv.results.intro.issues.dryMode"
+msgstr "This is a <b>Data Validation</b> for <b>issues and articles</b> — nothing was saved to the journal. The summary below is a preview of what a real import would do: it shows which rows would be created and which would fail, along with the reason for each failure. When you are happy with the result, disable <b>Data Validation</b> and import again to apply the changes."
+
+msgid "plugins.importexport.csv.results.intro.users"
+msgstr "This is the result of importing <b>users</b>. Every row of your CSV files was processed: rows that succeeded were created as user accounts, and any that failed are listed further down together with the reason they could not be imported."
+
+msgid "plugins.importexport.csv.results.intro.users.dryMode"
+msgstr "This is a <b>Data Validation</b> for <b>users</b> — no accounts were created. The summary below is a preview of what a real import would do: it shows which rows would be created and which would fail, along with the reason for each failure. When you are happy with the result, disable <b>Data Validation</b> and import again to apply the changes."
+
+msgid "plugins.importexport.csv.results.legend"
+msgstr "The counters below show the totals for this run, followed by a per-file breakdown. Each failed row is listed with its row number and the reason it failed, so you can fix it in the CSV and import again."
+
+msgid "plugins.importexport.csv.results.invalidFilesHint"
+msgstr "For every CSV that had failed rows, a downloadable copy named <b>invalid_&lt;your-file&gt;.csv</b> is generated containing only those failed rows. Click the file name shown below each error table to download it, fix the rows, and import again."
+
+msgid "plugins.importexport.csv.ExecutedInNSeconds"
+msgstr "Executed in: {$seconds} seconds.\n"
+
+msgid "plugins.importexport.csv.form.zipHelp"
+msgstr "Upload a ZIP file built in one of two simple ways:<br><br><b>Option 1 — Everything together:</b> Put your CSV file and all its assets (PDFs, images, and other files) side by side at the top level of the ZIP.<br><b>Option 2 — Everything in one folder:</b> Put your CSV file and all its assets inside a single folder, then ZIP that folder. The plugin finds the folder automatically.<br><br>In both cases, the file path you write in each CSV column must match where the file actually sits in the ZIP. If a file is inside a subfolder, use its relative path (e.g., <em>galleys/article.pdf</em>). Files named <em>invalid_*.csv</em> are reserved for error output and are skipped during import."
+
+msgid "plugins.importexport.csv.form.examplesHelp"
+msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CSV files for issue imports here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/issues\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for issues</a>."
+
+msgid "plugins.importexport.csv.form.userImportHelp"
+msgstr "<b>Users:</b> For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above."
+
+msgid "plugins.importexport.csv.form.usersExamplesHelp"
+msgstr "<b>Need an example?</b> You can view and download ready-to-use sample user CSV files here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/users\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for users</a>."
+
+msgid "plugins.importexport.csv.contextPathMismatch"
+msgstr "The CSV row's {$contextType}Path \"{$csvContextPath}\" does not match the currently opened {$contextType} \"{$currentContextPath}\". Rows must belong to the same {$contextType} context."
+
+msgid "plugins.importexport.csv.submissionFileProcessFinished"
+msgstr "Process for file \"{$filename}\" finished. {$processedRows} processed, {$failedRows} failed."
+
+msgid "plugins.importexport.csv.dryModeFileHeader"
+msgstr "=== {$filename} ==="
+
+msgid "plugins.importexport.csv.dryModeTableHeader"
+msgstr "ROW  | STATUS | ERROR"
+
+msgid "plugins.importexport.csv.dryModeFailedRow"
+msgstr "{$row}  | FAILED | {$reason}"
+
+msgid "plugins.importexport.csv.dryModeFileSummary"
+msgstr "Result: {$passed} passed, {$failed} failed ({$total} total)"
+
+msgid "plugins.importexport.csv.dryModeGrandTotal"
+msgstr "--- Data Validation complete: {$files} files, {$passed} passed, {$failed} failed ---"

@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/handlers/CSVFileHandler.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2014-2026 Simon Fraser University
+ * Copyright (c) 2003-2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CSVFileHandler
@@ -78,7 +78,9 @@ class CSVFileHandler
      */
     public static function processFailedRow(&$invalidRowsCsvFile, $fields, $rowSize, $reason, &$failedRows)
     {
-        $invalidRowsCsvFile->fputcsv(array_merge(array_pad($fields, $rowSize, null), [$reason]));
+        if ($invalidRowsCsvFile !== null) {
+            $invalidRowsCsvFile->fputcsv(array_merge(array_pad($fields, $rowSize, null), [$reason]));
+        }
 		++$failedRows;
 	}
 }

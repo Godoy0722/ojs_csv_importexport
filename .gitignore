@@ -1,3 +1,5 @@
 .antigrvitycli
 .claude
 imports/
+examples/
+!examples/*.csv

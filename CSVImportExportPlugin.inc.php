@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/CSVImportExportPlugin.inc.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2014-2026 Simon Fraser University
+ * Copyright (c) 2003-2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class CSVImportExportPlugin
@@ -21,6 +21,10 @@ import('lib.pkp.classes.plugins.ImportExportPlugin');
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 use PKP\Plugins\ImportExport\CSV\Classes\Commands\IssueCommand;
 use PKP\Plugins\ImportExport\CSV\Classes\Commands\UserCommand;
+use PKP\Plugins\ImportExport\CSV\Classes\Exceptions\ZipExtractionException;
+use PKP\Plugins\ImportExport\CSV\Classes\Forms\CsvImportForm;
+use PKP\Plugins\ImportExport\CSV\Classes\Handlers\ZipExtractor;
+use PKP\Plugins\ImportExport\CSV\Classes\Store\ImportResultStore;
 
 class CSVImportExportPlugin extends \ImportExportPlugin
 {
@@ -107,6 +111,316 @@ class CSVImportExportPlugin extends \ImportExportPlugin
     }
 
     /**
+     * @copydoc ImportExportPlugin::display()
+     *
+     * @param array $args
+     * @param \PKPRequest $request
+     */
+    public function display($args, $request)
+    {
+        parent::display($args, $request);
+
+        $op = array_shift($args);
+        if ($op === null) {
+            $op = '';
+        }
+
+        switch ($op) {
+            case 'index':
+            case '':
+                return $this->_displayImportForm($request);
+            case 'import':
+                return $this->_handleImport($request);
+            case 'downloadInvalidCsv':
+                return $this->_handleDownloadInvalidCsv($request);
+            case 'cleanup':
+                return $this->_handleCleanup($request);
+            default:
+                fatalError('Invalid operation.');
+        }
+    }
+
+    /**
+     * @param \PKPRequest $request
+     */
+    private function _displayImportForm($request)
+    {
+        $templateMgr = \TemplateManager::getManager($request);
+        $context = $request->getContext();
+        if (!$context) {
+            fatalError('Context required.');
+        }
+
+        import('plugins.importexport.csv.classes.forms.CsvImportForm');
+
+        $form = new CsvImportForm(
+            $request->getDispatcher()->url(
+                $request,
+                ROUTE_PAGE,
+                null,
+                'management',
+                'importexport',
+                ['plugin', $this->getName(), 'import']
+            ),
+            $request->getDispatcher()->url($request, ROUTE_API, $context->getPath(), 'temporaryFiles')
+        );
+
+        $templateMgr->setConstants(['FORM_CSV_IMPORT']);
+
+        $existingComponents = $templateMgr->getState('components') ?? [];
+        $templateMgr->setState([
+            'components' => array_merge($existingComponents, [
+                FORM_CSV_IMPORT => $form->getConfig(),
+            ]),
+        ]);
+
+        $templateMgr->assign('pageComponent', 'ImportExportPage');
+
+        $downloadBaseUrl = $request->getDispatcher()->url(
+            $request,
+            ROUTE_PAGE,
+            null,
+            'management',
+            'importexport',
+            ['plugin', $this->getName(), 'downloadInvalidCsv']
+        );
+        $cleanupUrl = $request->getDispatcher()->url(
+            $request,
+            ROUTE_PAGE,
+            null,
+            'management',
+            'importexport',
+            ['plugin', $this->getName(), 'cleanup']
+        );
+
+        $scriptUrl = $request->getBaseUrl() . '/' . $this->getPluginPath() . '/scripts/csvImportResults.js';
+        $templateMgr->addJavaScript('csvImportResults', $scriptUrl, [
+            'contexts' => ['backend'],
+            'priority' => STYLE_SEQUENCE_LAST,
+        ]);
+
+        $templateMgr->assign('csvImportPluginConfig', json_encode([
+            'formId' => FORM_CSV_IMPORT,
+            'downloadBaseUrl' => $downloadBaseUrl,
+            'cleanupUrl' => $cleanupUrl,
+            'labels' => [
+                'dryModeTitle' => __('plugins.importexport.csv.results.dryModeTitle'),
+                'importCompleteTitle' => __('plugins.importexport.csv.results.importCompleteTitle'),
+                'importType' => __('plugins.importexport.csv.results.importType'),
+                'filesProcessed' => __('plugins.importexport.csv.results.filesProcessed'),
+                'totalRows' => __('plugins.importexport.csv.results.totalRows'),
+                'successfulRows' => __('plugins.importexport.csv.results.successfulRows'),
+                'createdRows' => __('plugins.importexport.csv.results.createdRows'),
+                'updatedRows' => __('plugins.importexport.csv.results.updatedRows'),
+                'failedRows' => __('plugins.importexport.csv.results.failedRows'),
+                'updatedUsersSection' => __('plugins.importexport.csv.results.updatedUsersSection'),
+                'updatedUsersExplanation' => __('plugins.importexport.csv.results.updatedUsersExplanation'),
+                'invalidFiles' => __('plugins.importexport.csv.results.invalidFiles'),
+                'introIssues' => __('plugins.importexport.csv.results.intro.issues'),
+                'introIssuesDryMode' => __('plugins.importexport.csv.results.intro.issues.dryMode'),
+                'introUsers' => __('plugins.importexport.csv.results.intro.users'),
+                'introUsersDryMode' => __('plugins.importexport.csv.results.intro.users.dryMode'),
+                'legend' => __('plugins.importexport.csv.results.legend'),
+                'invalidFilesHint' => __('plugins.importexport.csv.results.invalidFilesHint'),
+                'importing' => __('plugins.importexport.csv.form.importing'),
+                'imported' => __('plugins.importexport.csv.form.imported'),
+            ],
+        ]));
+
+        $templateMgr->display($this->getTemplateResource('settingsForm.tpl'));
+    }
+
+    /**
+     * @param array $data
+     * @param int $statusCode
+     */
+    private function _sendJsonResponse($data, $statusCode = 200)
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json');
+        echo json_encode($data);
+    }
+
+    /**
+     * @param \PKPRequest $request
+     */
+    private function _handleImport($request)
+    {
+        $user = $request->getUser();
+        $importType = $request->getUserVar('importType');
+        $dryMode = $this->_getCheckboxValue($request, 'dryMode');
+        $sendWelcomeEmail = $this->_getCheckboxValue($request, 'sendWelcomeEmail');
+
+        if (!in_array($importType, ['issues', 'users'])) {
+            $this->_sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.invalidImportType', ['importType' => $importType])], 400);
+            return;
+        }
+
+        $importFile = $request->getUserVar('importFile');
+        $temporaryFileId = is_array($importFile) ? ($importFile['temporaryFileId'] ?? null) : $request->getUserVar('temporaryFileId');
+
+        import('lib.pkp.classes.file.TemporaryFileManager');
+        $temporaryFileManager = new \TemporaryFileManager();
+        $temporaryFile = $temporaryFileManager->getFile($temporaryFileId, $user->getId());
+
+        if (!$temporaryFile) {
+            $this->_sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.uploadFailed')], 400);
+            return;
+        }
+
+        try {
+            set_time_limit(1200);
+
+            import('lib.pkp.classes.services.PKPSchemaService');
+            import('plugins.importexport.csv.classes.cachedAttributes.CachedDaos');
+            import('plugins.importexport.csv.classes.handlers.CSVFileHandler');
+            import('plugins.importexport.csv.classes.validations.InvalidRowValidations');
+            import('plugins.importexport.csv.classes.cachedAttributes.CachedEntities');
+
+            $filePath = $temporaryFile->getFilePath();
+            $extension = strtolower(pathinfo($temporaryFile->getOriginalFileName(), PATHINFO_EXTENSION));
+
+            if ($extension === 'zip') {
+                import('plugins.importexport.csv.classes.handlers.ZipExtractor');
+                import('plugins.importexport.csv.classes.exceptions.ZipExtractionException');
+                $extractor = new ZipExtractor();
+                $extractDir = $extractor->extract($filePath);
+                $sourceDir = ZipExtractor::resolveSourceDir($extractDir);
+            } else {
+                $sourceDir = sys_get_temp_dir() . '/csv_import_' . bin2hex(random_bytes(16));
+                mkdir($sourceDir, 0700, true);
+                copy($filePath, $sourceDir . '/' . $temporaryFile->getOriginalFileName());
+            }
+
+            ob_start();
+            $context = $request->getContext();
+            $currentJournalPath = $context ? $context->getPath() : null;
+
+            if ($importType === 'issues') {
+                import('plugins.importexport.csv.classes.commands.IssueCommand');
+                $result = (new IssueCommand($sourceDir, $user, $dryMode, $currentJournalPath))->run();
+            } else {
+                import('plugins.importexport.csv.classes.commands.UserCommand');
+                $result = (new UserCommand($sourceDir, $user, $sendWelcomeEmail, $dryMode, $currentJournalPath))->run();
+            }
+            ob_get_clean();
+
+            $uuid = bin2hex(random_bytes(16));
+            $storeDir = sys_get_temp_dir() . '/csv_import_results';
+            import('plugins.importexport.csv.classes.store.ImportResultStore');
+            $store = new ImportResultStore($storeDir);
+
+            $invalidFiles = [];
+            foreach ($result['perFile'] as $fileResult) {
+                if (
+                    !empty($fileResult['invalidFile'])
+                    && is_file($sourceDir . '/' . $fileResult['invalidFile'])
+                ) {
+                    $invalidFiles[] = $fileResult['invalidFile'];
+                }
+            }
+
+            $store->save($uuid, [
+                'status' => $result['failedRows'] > 0 ? 'partial' : 'success',
+                'importType' => $importType,
+                'rowsProcessed' => $result['totalRows'],
+                'rowsFailed' => $result['failedRows'],
+                'perFileResults' => $invalidFiles,
+                'sourceDir' => $sourceDir,
+            ]);
+
+            $this->_sendJsonResponse([
+                'uuid' => $uuid,
+                'resultImportType' => $importType,
+                'resultDryMode' => $dryMode,
+                'resultFilesProcessed' => $result['filesProcessed'],
+                'resultTotalRows' => $result['totalRows'],
+                'resultSuccessfulRows' => $result['successfulRows'],
+                'resultCreatedRows' => $result['createdRows'] ?? 0,
+                'resultUpdatedRows' => $result['updatedRows'] ?? 0,
+                'resultFailedRows' => $result['failedRows'],
+                'resultInvalidFiles' => $invalidFiles,
+                'resultPerFile' => $result['perFile'],
+            ]);
+        } catch (ZipExtractionException $e) {
+            $this->_sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.zipExtractionFailed', ['reason' => $e->getMessage()])], 400);
+        }
+    }
+
+    /**
+     * @param \PKPRequest $request
+     */
+    private function _handleDownloadInvalidCsv($request)
+    {
+        $uuid = $request->getUserVar('uuid');
+        $filename = basename($request->getUserVar('filename') ?: '');
+
+        if (empty($filename) || empty($uuid)) {
+            fatalError('Invalid request.');
+        }
+
+        import('plugins.importexport.csv.classes.store.ImportResultStore');
+        $store = new ImportResultStore(sys_get_temp_dir() . '/csv_import_results');
+        $result = $store->get($uuid);
+
+        if ($result === null) {
+            fatalError('Result not found.');
+        }
+
+        $invalidFiles = $result['perFileResults'] ?? [];
+        if (!in_array($filename, $invalidFiles)) {
+            fatalError('File not found.');
+        }
+
+        $sourceDir = $result['sourceDir'] ?? '';
+        $sourceDirReal = $sourceDir ? realpath($sourceDir) : false;
+        $tempRealPath = realpath(sys_get_temp_dir());
+
+        if (!$sourceDirReal || !$tempRealPath || strpos($sourceDirReal, $tempRealPath . DIRECTORY_SEPARATOR) !== 0) {
+            fatalError('Invalid file path.');
+        }
+
+        $filePath = $sourceDirReal . DIRECTORY_SEPARATOR . $filename;
+        if (!is_file($filePath)) {
+            fatalError('File not found.');
+        }
+
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        readfile($filePath);
+    }
+
+    /**
+     * @param \PKPRequest $request
+     */
+    private function _handleCleanup($request)
+    {
+        $uuid = $request->getUserVar('uuid');
+        if (empty($uuid)) {
+            $this->_sendJsonResponse(['cleaned' => false], 400);
+            return;
+        }
+
+        import('plugins.importexport.csv.classes.store.ImportResultStore');
+        $store = new ImportResultStore(sys_get_temp_dir() . '/csv_import_results');
+        $result = $store->get($uuid);
+
+        if ($result !== null) {
+            $sourceDir = $result['sourceDir'] ?? '';
+            $tempRealPath = realpath(sys_get_temp_dir());
+            $sourceRealPath = $sourceDir ? realpath($sourceDir) : false;
+            if ($sourceRealPath && $tempRealPath && strpos($sourceRealPath, $tempRealPath . DIRECTORY_SEPARATOR) === 0) {
+                import('plugins.importexport.csv.classes.handlers.ZipExtractor');
+                ZipExtractor::deleteDirectory($sourceDir);
+            }
+
+            $store->delete($uuid);
+        }
+
+        $this->_sendJsonResponse(['cleaned' => true]);
+    }
+
+    /**
      * @copydoc PKPImportExportPlugin::usage
      */
     public function usage($scriptName)
@@ -127,10 +441,31 @@ class CSVImportExportPlugin extends \ImportExportPlugin
     public function executeCLI($scriptName, &$args)
     {
         $startTime = microtime(true);
+        $this->_sendWelcomeEmail = false;
+
+        $key = array_search('--sendWelcomeEmail', $args);
+        if ($key !== false) {
+            $this->_sendWelcomeEmail = true;
+            unset($args[$key]);
+            $args = array_values($args);
+        }
+
+        $dryMode = false;
+        $key = array_search('--dry-mode', $args);
+        if ($key !== false) {
+            $dryMode = true;
+            unset($args[$key]);
+            $args = array_values($args);
+        }
+
         $this->_command = array_shift($args);
 		$this->_username = array_shift($args);
         $this->_sourceDir = array_shift($args);
-        $this->_sendWelcomeEmail = array_shift($args) ?? false;
+
+        if (!$this->_sendWelcomeEmail && !empty($args)) {
+            $maybeSendWelcomeEmail = array_shift($args);
+            $this->_sendWelcomeEmail = filter_var($maybeSendWelcomeEmail, FILTER_VALIDATE_BOOLEAN);
+        }
 
         if (! in_array($this->_command, ['issues', 'users']) || !$this->_sourceDir || !$this->_username) {
 			$this->usage($scriptName);
@@ -142,13 +477,9 @@ class CSVImportExportPlugin extends \ImportExportPlugin
             exit(1);
         }
 
-        // Schema constants must exist before SchemaDAO subclasses load (CLI bootstrap skips this).
         import('lib.pkp.classes.services.PKPSchemaService');
-
 		import('plugins.importexport.csv.classes.cachedAttributes.CachedDaos');
-
 		$this->_validateUser();
-
 		import('plugins.importexport.csv.classes.handlers.CSVFileHandler');
 		import('plugins.importexport.csv.classes.validations.InvalidRowValidations');
 		import('plugins.importexport.csv.classes.cachedAttributes.CachedEntities');
@@ -156,19 +487,23 @@ class CSVImportExportPlugin extends \ImportExportPlugin
         switch ($this->_command) {
             case 'issues':
 				import('plugins.importexport.csv.classes.commands.IssueCommand');
-				(new IssueCommand($this->_sourceDir, $this->_user))->run();
+				$result = (new IssueCommand($this->_sourceDir, $this->_user, $dryMode))->run();
                 break;
             case 'users':
 				import('plugins.importexport.csv.classes.commands.UserCommand');
-                (new UserCommand($this->_sourceDir, $this->_user, $this->_sendWelcomeEmail))->run();
+                $result = (new UserCommand($this->_sourceDir, $this->_user, $this->_sendWelcomeEmail, $dryMode))->run();
                 break;
             default:
                 throw new \InvalidArgumentException("Comando inválido: {$this->_command}");
         }
 
+        $exitCode = $result['exitCode'] ?? ($result['failedRows'] > 0 ? 1 : 0);
+
 		$endTime = microtime(true);
 		$executionTime = $endTime - $startTime;
-		echo "Executed in: " . number_format($executionTime, 2) . " seconds\n";
+		echo __('plugins.importexport.csv.ExecutedInNSeconds', ['seconds' => number_format($executionTime, 2)]);
+
+        exit($exitCode);
     }
 
     /**
@@ -196,4 +531,18 @@ class CSVImportExportPlugin extends \ImportExportPlugin
 		$userDao = CachedDaos::getUserDao();
 		return $userDao->getByUsername($this->_username);
 	}
+
+    /**
+     * @param \PKPRequest $request
+     * @param string $name
+     * @return bool
+     */
+    private function _getCheckboxValue($request, $name)
+    {
+        $value = $request->getUserVar($name);
+        if (is_array($value)) {
+            return !empty($value);
+        }
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
 }
