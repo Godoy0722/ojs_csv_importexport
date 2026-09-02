@@ -89,10 +89,14 @@ class CachedEntities
 	 *
 	 * @return \User|null
 	 */
-    static function getCachedUserByUsername(string $username)
+    static function getCachedUserByUsername(string $username, $strict = false)
     {
 		$userDao = CachedDaos::getUserDao();
 		$user = $userDao->getByUsername($username);
+
+        if ($strict && !$user) {
+            return null;
+        }
 
 		return self::$users[$username] ?? self::$users[$username] = $user;
     }

@@ -26,11 +26,14 @@ use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeFileTracker;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeReporter;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\AuthorsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\CategoriesProcessor;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\FundersProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\GalleyProcessor;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\HtmlGalleyProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\IssueProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\KeywordsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\PublicationProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\SectionsProcessor;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\StatisticsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\SubjectsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\SubmissionFileProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\SubmissionProcessor;
@@ -265,6 +268,34 @@ class IssueCommand
                     }
                 }
 
+                if ($data->htmlGalley) {
+                    $reason = InvalidRowValidations::validateHtmlGalleys($data->htmlGalley, $this->_sourceDir);
+                    if (!is_null($reason)) {
+                        $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                        continue;
+                    }
+                }
+
+                $reason = InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
+                if (!is_null($reason)) {
+                    $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                    continue;
+                }
+
+                $reason = InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
+                if (!is_null($reason)) {
+                    $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                    continue;
+                }
+
+                if ($data->funders) {
+                    $reason = InvalidRowValidations::validateFunders($data->funders);
+                    if (!is_null($reason)) {
+                        $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                        continue;
+                    }
+                }
+
                 if ($data->suppFilenames) {
                     $reason = InvalidRowValidations::validateSupplementaryFiles(
                         $data->suppFilenames,
@@ -297,6 +328,23 @@ class IssueCommand
                         continue;
                     }
                 }
+
+                if (!RequiredIssueHeaders::isMultiVersionOrLocale($data, $this->_processedPublications)) {
+                    $reason = InvalidRowValidations::validateSectionFields($data);
+                    if (!is_null($reason)) {
+                        $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                        continue;
+                    }
+                }
+
+                $fileUploadUser = $this->_user;
+                $csvUser = null;
+                $usedDefaultUser = false;
+                if (!empty($data->username)) {
+                    $csvUser = CachedEntities::getCachedUserByUsername($data->username, true);
+                    $csvUser ? $fileUploadUser = $csvUser : $usedDefaultUser = true;
+                }
+                $hasValidCsvUser = !empty($data->username) && !$usedDefaultUser && isset($csvUser);
 
                 $journal = CachedEntities::getCachedJournal($data->journalPath);
 
@@ -339,6 +387,20 @@ class IssueCommand
                 if (!is_null($reason)) {
                     $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
                     continue;
+                }
+
+                if ($data->funders) {
+                    $reason = InvalidRowValidations::validateFundingPluginEnabled($data->funders, $journal->getId(), 'Journal');
+                    if (!is_null($reason)) {
+                        $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                        continue;
+                    }
+
+                    $reason = InvalidRowValidations::validateFundersCrossrefRegistry($data->funders, $journal->getId());
+                    if (!is_null($reason)) {
+                        $this->_processFailedRow($invalidCsvFile, $fields, $reason, $fileFailedRows);
+                        continue;
+                    }
                 }
 
                 $this->_initializeStaticVariables();
@@ -423,6 +485,7 @@ class IssueCommand
 
                 // Array to store each galley ID to its respective galley file
                 $galleyIds = [];
+                $galleyMetadata = [];
                 if ($data->galleyFilenames) {
                     foreach (array_map('trim', explode(';', $data->galleyFilenames)) as $galleyFile) {
                         $galleyFileId = $this->_saveSubmissionFile(
@@ -453,14 +516,90 @@ class IssueCommand
                         $galleyItem = $galleyIds[$i];
                         $galleyLabel = $galleyLabelsArray[$i];
 
-                        $this->_handleGalley(
+                        $galleyMetadata[] = $this->_handleGalley(
                             $galleyItem,
                             $data,
                             $submission->getId(),
                             $genreId,
                             $galleyLabel,
-                            $publication->getId()
+                            $publication->getId(),
+                            $fileUploadUser
                         );
+                    }
+                }
+
+                if ($data->htmlGalley) {
+                    import('plugins.importexport.csv.classes.processors.HtmlGalleyProcessor');
+                    $htmlGalleyFiles = array_values(array_filter(
+                        array_map('trim', explode(';', $data->htmlGalley)),
+                        function($f) { return $f !== ''; }
+                    ));
+
+                    $htmlFile = $htmlGalleyFiles[0];
+                    $dependentFiles = array_slice($htmlGalleyFiles, 1);
+                    $htmlSourcePath = "{$this->_sourceDir}/{$htmlFile}";
+
+                    $preparedHtml = HtmlGalleyProcessor::prepareHtmlGalleyFile($htmlSourcePath, $dependentFiles);
+                    $tempFile = tempnam(sys_get_temp_dir(), 'csv_html_galley_') . '.html';
+                    file_put_contents($tempFile, $preparedHtml);
+
+                    try {
+                        $htmlFileId = $this->_saveSubmissionFile(
+                            $htmlFile,
+                            $journal->getId(),
+                            $submission->getId(),
+                            $invalidCsvFile,
+                            __('plugins.importexport.csv.errorWhileSavingHtmlGalley', ['filename' => $htmlFile]),
+                            $fieldsList,
+                            $fileFailedRows,
+                            $tempFile
+                        );
+
+                        if (!is_null($htmlFileId)) {
+                            HtmlGalleyProcessor::setFileMimetype($htmlFileId, 'text/html');
+                        }
+
+                        if (is_null($htmlFileId)) {
+                            foreach ($galleyIds as $galleyItem) {
+                                $this->_fileService->delete($galleyItem['id']);
+                            }
+                            continue;
+                        } else {
+                            $htmlGalleyMeta = $this->_handleGalley(
+                                ['file' => $htmlFile, 'id' => $htmlFileId],
+                                $data,
+                                $submission->getId(),
+                                $genreId,
+                                'HTML',
+                                $publication->getId(),
+                                $fileUploadUser
+                            );
+
+                            $galleyMetadata[] = $htmlGalleyMeta;
+
+                            $submissionDir = sprintf($this->_format, $journal->getId(), $submission->getId());
+
+                            if (!empty($dependentFiles)) {
+                                HtmlGalleyProcessor::createDependentFiles(
+                                    $dependentFiles,
+                                    $htmlGalleyMeta['submissionFileId'],
+                                    $this->_sourceDir,
+                                    $submissionDir,
+                                    $data,
+                                    $submission->getId(),
+                                    $genreId,
+                                    $fileUploadUser,
+                                    $this->_fileService
+                                );
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        $this->_processFailedRow($invalidCsvFile, $fieldsList, $e->getMessage(), $fileFailedRows);
+                        continue;
+                    } finally {
+                        if (file_exists($tempFile)) {
+                            unlink($tempFile);
+                        }
                     }
                 }
 
@@ -515,8 +654,39 @@ class IssueCommand
                             $suppGenreId,
                             $suppLabel,
                             $publication->getId(),
+                            $fileUploadUser,
 							$suppDescription
                         );
+                    }
+                }
+
+                import('plugins.importexport.csv.classes.processors.StatisticsProcessor');
+                if (!empty($data->articleViews) && (int)$data->articleViews > 0) {
+                    StatisticsProcessor::insertSubmissionViews(
+                        $submission->getId(),
+                        $journal->getId(),
+                        (int)$data->articleViews
+                    );
+                }
+
+                if (!empty($data->galleyViews) && !empty($galleyMetadata)) {
+                    $galleyViewsArray = explode(';', $data->galleyViews);
+                    foreach ($galleyViewsArray as $idx => $views) {
+                        $views = trim($views);
+                        if ($views === '' || (int)$views === 0) {
+                            continue;
+                        }
+                        if (isset($galleyMetadata[$idx])) {
+                            $meta = $galleyMetadata[$idx];
+                            StatisticsProcessor::insertGalleyViews(
+                                $submission->getId(),
+                                $journal->getId(),
+                                $meta['galleyId'],
+                                $meta['submissionFileId'],
+                                StatisticsProcessor::resolveFileType($meta['filename']),
+                                (int)$views
+                            );
+                        }
                     }
                 }
 
@@ -524,15 +694,28 @@ class IssueCommand
 				import('plugins.importexport.csv.classes.processors.KeywordsProcessor');
 				import('plugins.importexport.csv.classes.processors.SubjectsProcessor');
 				if ($isMultiLocaleImport) {
-                    // For multi-locale imports, update existing publication with new locale data
+                    if ($hasValidCsvUser) {
+                        AuthorsProcessor::updateUsernameAuthorLocale($csvUser, $publication, $data->locale);
+                    }
                     AuthorsProcessor::processMultiLocale($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId);
                     KeywordsProcessor::processMultiLocale($data, $publication->getId());
                     SubjectsProcessor::processMultiLocale($data, $publication->getId());
+                    import('plugins.importexport.csv.classes.processors.FundersProcessor');
+                    FundersProcessor::processMultiLocale($data, $submission, $journal->getId());
+                    PublicationProcessor::processSupportingAgenciesMultiLocale($data, $publication);
                 } else {
-                    // For new submissions or versions, use the regular process
-                    AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication);
+                    $usernameAuthorAdded = false;
+                    if ($hasValidCsvUser && (!empty($data->authors) || is_null($basePublication))) {
+                        AuthorsProcessor::addAuthorFromUser($csvUser, $submission, $publication, $journal, $userGroupId);
+                        $usernameAuthorAdded = true;
+                    }
+
+                    AuthorsProcessor::process($data, $journal->getContactEmail(), $submission->getId(), $publication, $userGroupId, $basePublication, $usernameAuthorAdded ? $csvUser : null);
                     KeywordsProcessor::process($data, $publication->getId(), $basePublication);
                     SubjectsProcessor::process($data, $publication->getId(), $basePublication);
+                    import('plugins.importexport.csv.classes.processors.FundersProcessor');
+                    FundersProcessor::process($data, $submission, $journal->getId(), $basePublication);
+                    PublicationProcessor::processSupportingAgencies($data, $publication, $basePublication);
                 }
 
                 if ($data->coverage || ($basePublication && !$data->coverage)) {
@@ -713,15 +896,16 @@ class IssueCommand
      * @param string $reason
      * @param array $fieldsList
      * @param array $fileFailedRows
+     * @param string|null $sourcePathOverride
      *
      * @return int|null
      */
-    private function _saveSubmissionFile($filePath, $journalId, $submissionId, &$invalidCsvFile, $reason, $fieldsList, &$fileFailedRows)
+    private function _saveSubmissionFile($filePath, $journalId, $submissionId, &$invalidCsvFile, $reason, $fieldsList, &$fileFailedRows, $sourcePathOverride = null)
     {
         try {
             $extension = $this->_fileManager->parseFileExtension($filePath);
             $submissionDir = sprintf($this->_format, $journalId, $submissionId);
-            $completePath = "{$this->_sourceDir}/{$filePath}";
+            $completePath = $sourcePathOverride ?? "{$this->_sourceDir}/{$filePath}";
             $fileId = $this->_fileService->add($completePath, $submissionDir . '/' . uniqid() . '.' . $extension);
 
             if ($this->_dryModeFileTracker) {
@@ -749,11 +933,12 @@ class IssueCommand
      * @param int $genreId
      * @param string $label
      * @param int $publicationId
+     * @param \User $fileUploadUser
 	 * @param ?string $description
      *
-     * @return void
+     * @return array
      */
-    private function _handleGalley($item, $data, $submissionId, $genreId, $label, $publicationId, $description = null)
+    private function _handleGalley($item, $data, $submissionId, $genreId, $label, $publicationId, $fileUploadUser, $description = null)
     {
         $galleyCompletePath = "{$this->_sourceDir}/{$item['file']}";
         $galleyExtension = $this->_fileManager->parseFileExtension($galleyCompletePath);
@@ -761,7 +946,7 @@ class IssueCommand
         import('plugins.importexport.csv.classes.processors.SubmissionFileProcessor');
         $file = SubmissionFileProcessor::process(
             $data->locale,
-            $this->_user->getId(),
+            $fileUploadUser->getId(),
             $submissionId,
             $galleyCompletePath,
             $genreId,
@@ -773,6 +958,12 @@ class IssueCommand
         import('plugins.importexport.csv.classes.processors.GalleyProcessor');
         $galleyId = GalleyProcessor::process($file->getId(), $data, $label, $publicationId, $galleyExtension);
         SubmissionFileProcessor::updateAssocInfo($file, $galleyId);
+
+        return [
+            'galleyId' => $galleyId,
+            'submissionFileId' => $file->getId(),
+            'filename' => $item['file'],
+        ];
     }
 
 	/**

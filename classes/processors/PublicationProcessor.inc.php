@@ -405,4 +405,58 @@ class PublicationProcessor
 
         return $publication;
     }
+
+    /**
+     * Set supporting agencies from CSV data, falling back to the base publication if versioning.
+     *
+     * @param object $data
+     * @param \Publication $publication
+     * @param \Publication|null $basePublication
+     *
+     * @return void
+     */
+    public static function processSupportingAgencies($data, $publication, $basePublication = null)
+    {
+        if (empty($data->supportingAgencies) && !is_null($basePublication)) {
+            $baseSupportingAgencies = $basePublication->getData('supportingAgencies');
+            if (empty($baseSupportingAgencies)) {
+                return;
+            }
+
+            self::updatePublicationAttribute($publication, 'supportingAgencies', $baseSupportingAgencies);
+            return;
+        }
+
+        if (empty($data->supportingAgencies)) {
+            return;
+        }
+
+        $agenciesList = [$data->locale => array_map('trim', explode(';', $data->supportingAgencies))];
+        if (empty($agenciesList[$data->locale])) {
+            return;
+        }
+
+        self::updatePublicationAttribute($publication, 'supportingAgencies', $agenciesList);
+    }
+
+    /**
+     * Merge supporting agencies for a new locale into the existing agencies array.
+     *
+     * @param object $data
+     * @param \Publication $publication
+     *
+     * @return void
+     */
+    public static function processSupportingAgenciesMultiLocale($data, $publication)
+    {
+        if (empty($data->supportingAgencies)) {
+            return;
+        }
+
+        $existingAgencies = $publication->getData('supportingAgencies') ?? [];
+        $newAgencies = array_map('trim', explode(';', $data->supportingAgencies));
+        $existingAgencies[$data->locale] = $newAgencies;
+
+        self::updatePublicationAttribute($publication, 'supportingAgencies', $existingAgencies);
+    }
 }

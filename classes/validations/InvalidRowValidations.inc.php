@@ -17,6 +17,7 @@
 namespace PKP\Plugins\ImportExport\CSV\Classes\Validations;
 
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\FundersProcessor;
 
 class InvalidRowValidations
 {
@@ -51,10 +52,6 @@ class InvalidRowValidations
      */
     public static function validateRowHasAllRequiredFields($data, $requiredFieldsValidation)
     {
-        if (!empty($data->version) && !empty($data->versionIdentifier) && (int)$data->version > 1) {
-			return null;
-		}
-
         return !$requiredFieldsValidation($data)
             ? __('plugins.importexport.csv.verifyRequiredFieldsForThisRow')
             : null;
@@ -434,6 +431,228 @@ class InvalidRowValidations
         $extension = pathinfo(mb_strtolower($referencesFilename), PATHINFO_EXTENSION);
         if ($extension !== 'txt') {
             return __('plugins.importexport.csv.invalidReferencesFileExtension');
+        }
+
+        return null;
+    }
+
+    /**
+     * Perform all necessary validations for HTML galleys.
+     *
+     * @param string|null $htmlGalley
+     * @param string $sourceDir
+     *
+     * @return string|null
+     */
+    public static function validateHtmlGalleys($htmlGalley, $sourceDir)
+    {
+        if (empty(trim($htmlGalley ?? ''))) {
+            return null;
+        }
+
+        $htmlGalleyFiles = array_filter(array_map('trim', explode(';', $htmlGalley)), function($f) {
+            return $f !== '';
+        });
+
+        if (empty($htmlGalleyFiles)) {
+            return null;
+        }
+
+        $firstFile = $htmlGalleyFiles[0];
+        $firstExtension = mb_strtolower(pathinfo($firstFile, PATHINFO_EXTENSION));
+
+        if (!in_array($firstExtension, ['html', 'htm'])) {
+            return __('plugins.importexport.csv.invalidHtmlGalleyFirstFile', ['filename' => $firstFile]);
+        }
+
+        foreach ($htmlGalleyFiles as $file) {
+            $filePath = "{$sourceDir}/{$file}";
+            if (!is_readable($filePath)) {
+                return __('plugins.importexport.csv.invalidHtmlGalleyFile', ['filename' => $file]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates the galleyViews field.
+     *
+     * @param string|null $galleyViews
+     * @param string|null $galleyLabels
+     *
+     * @return string|null
+     */
+    public static function validateGalleyViews($galleyViews, $galleyLabels)
+    {
+        if (empty($galleyViews)) {
+            return null;
+        }
+
+        if (empty($galleyLabels)) {
+            return __('plugins.importexport.csv.galleyViewsWithoutGalleys');
+        }
+
+        $galleyViewsArray = array_map('trim', explode(';', $galleyViews));
+        $galleyLabelsArray = array_map('trim', explode(';', $galleyLabels));
+
+        if (count($galleyViewsArray) !== count($galleyLabelsArray)) {
+            return __('plugins.importexport.csv.invalidNumberOfGalleyViews');
+        }
+
+        foreach ($galleyViewsArray as $value) {
+            $value = trim($value);
+            if ($value === '') {
+                continue;
+            }
+            if (!ctype_digit($value)) {
+                return __('plugins.importexport.csv.invalidGalleyViewValue', ['value' => $value]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates the articleViews field.
+     *
+     * @param string|null $submissionViews
+     * @param string $fieldName
+     *
+     * @return string|null
+     */
+    public static function validatePublicationViews($submissionViews, $fieldName)
+    {
+        if (empty($submissionViews)) {
+            return null;
+        }
+
+        if (!ctype_digit($submissionViews)) {
+            return __('plugins.importexport.csv.invalidSubmissionViews', ['fieldName' => $fieldName]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates the funders string format.
+     *
+     * @param string|null $fundersString
+     *
+     * @return string|null
+     */
+    public static function validateFunders($fundersString)
+    {
+        if (empty($fundersString)) {
+            return null;
+        }
+
+        $fundersArray = array_map('trim', explode(';', $fundersString));
+
+        foreach ($fundersArray as $index => $funderString) {
+            if (empty($funderString)) {
+                continue;
+            }
+
+            $funderParts = array_map('trim', explode(',', $funderString));
+            $funderName = $funderParts[0] ?? '';
+
+            if (empty($funderName)) {
+                return __('plugins.importexport.csv.invalidFunderFormat', ['index' => $index + 1]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates that the Funding plugin is enabled when funders data is provided.
+     *
+     * @param string|null $fundersString
+     * @param int $contextId
+     * @param string $contextMessage
+     *
+     * @return string|null
+     */
+    public static function validateFundingPluginEnabled($fundersString, $contextId, $contextMessage)
+    {
+        if (empty($fundersString)) {
+            return null;
+        }
+
+        if (!FundersProcessor::isFundingPluginEnabled($contextId)) {
+            return __('plugins.importexport.csv.fundingPluginNotEnabled', ['context' => $contextMessage]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates Crossref registry identifications for funders when enabled.
+     *
+     * @param string|null $fundersString
+     * @param int $contextId
+     *
+     * @return string|null
+     */
+    public static function validateFundersCrossrefRegistry($fundersString, $contextId)
+    {
+        if (empty($fundersString)) {
+            return null;
+        }
+
+        if (!FundersProcessor::isCrossrefValidationEnabled($contextId)) {
+            return null;
+        }
+
+        $fundersArray = array_map('trim', explode(';', $fundersString));
+
+        foreach ($fundersArray as $index => $funderString) {
+            if (empty($funderString)) {
+                continue;
+            }
+
+            $funderParts = array_map('trim', explode(',', $funderString));
+            $funderName = $funderParts[0] ?? '';
+            $funderIdentification = $funderParts[1] ?? '';
+
+            if (empty($funderName)) {
+                continue;
+            }
+
+            if (!empty($funderIdentification)) {
+                $hasCrossrefDoi = preg_match('/https?:\/\/(dx\.)?doi\.org\/10\.13039\//i', $funderIdentification);
+                if (!$hasCrossrefDoi) {
+                    return __('plugins.importexport.csv.funderNotInCrossrefRegistry', [
+                        'funderName' => $funderName,
+                        'index' => $index + 1,
+                    ]);
+                }
+            } else {
+                return __('plugins.importexport.csv.funderMissingCrossrefId', [
+                    'funderName' => $funderName,
+                    'index' => $index + 1,
+                ]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validates that the row identifies a section.
+     *
+     * @param object $data
+     *
+     * @return string|null
+     */
+    public static function validateSectionFields($data)
+    {
+        $sectionTitle = trim($data->sectionTitle ?? '');
+        $sectionAbbrev = trim($data->sectionAbbrev ?? '');
+
+        if ($sectionTitle === '' && $sectionAbbrev === '') {
+            return __('plugins.importexport.csv.incompleteSectionFields');
         }
 
         return null;

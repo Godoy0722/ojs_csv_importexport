@@ -33,7 +33,7 @@ class AuthorsProcessor
 	 *
 	 * @return void
 	 */
-	public static function process($data, $contactEmail, $submissionId, $publication, $userGroupId, $basePublication = null)
+	public static function process($data, $contactEmail, $submissionId, $publication, $userGroupId, $basePublication = null, $usernameUser = null)
     {
 		if (empty($data->authors) && !is_null($basePublication)) {
             self::cloneAuthorsFromBasePublication($basePublication, $publication, $submissionId);
@@ -44,21 +44,6 @@ class AuthorsProcessor
 		$authorsString = self::splitRespectingQuotes($data->authors, ';');
 
         foreach ($authorsString as $index => $authorString) {
-            /**
-             * Examine the author string. The pattern is: "GivenName,FamilyName,email@email.com,orcid,affiliation".
-             *
-             * If the article has more than one author, it must separate the authors by a semicolon (;). Example:
-             * "<AUTHOR_1_INFORMATION>;<AUTHOR_2_INFORMATION>".
-             *
-             * Fields familyName, email, orcid, and affiliation are optional and can be left as empty fields. E.g.:
-             * "GivenName,,,,".
-             *
-             * Affiliations containing commas or semicolons must be wrapped in double quotes. E.g.:
-             * "GivenName,FamilyName,email@email.com,,"Dept of Medicine, University of Example, City, Country"".
-             *
-             * By default, if an author doesn't have an email, the primary contact email will be used in its place.
-             */
-			$givenName = $familyName = $emailAddress = $orcid = $affiliation = null;
 			$authorParts = self::splitRespectingQuotes($authorString, ',', true);
             $givenName = $authorParts[0] ?? '';
             $familyName = $authorParts[1] ?? '';
@@ -69,6 +54,10 @@ class AuthorsProcessor
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
 			}
+
+            if ($usernameUser && self::csvAuthorMatchesUser($givenName, $familyName, $emailAddress, $usernameUser, $data->locale)) {
+                continue;
+            }
 
 			/** @var \Author $author */
 			$author = $authorDao->newDataObject();
@@ -88,7 +77,7 @@ class AuthorsProcessor
 
 			$authorDao->insertObject($author);
 
-			if (!$index) {
+			if (!$index && is_null($usernameUser)) {
 				$author->setPrimaryContact(true);
 				$authorDao->updateObject($author);
 
@@ -96,6 +85,103 @@ class AuthorsProcessor
 			}
 		}
 	}
+
+    /**
+     * Create an Author from a User and add as primary contact.
+     *
+     * @param \User $user
+     * @param \Submission $submission
+     * @param \Publication $publication
+     * @param \Journal $journal
+     * @param int $userGroupId
+     *
+     * @return int
+     */
+    public static function addAuthorFromUser($user, $submission, $publication, $journal, $userGroupId)
+    {
+        $authorDao = CachedDaos::getAuthorDao();
+        $locale = $journal->getPrimaryLocale();
+
+        /** @var \Author $author */
+        $author = $authorDao->newDataObject();
+        $author->setSubmissionId($submission->getId());
+        $author->setUserGroupId($userGroupId);
+        $author->setEmail($user->getEmail());
+        $author->setGivenName($user->getGivenName($locale) ?: $user->getGivenName($user->getDefaultLocale()), $locale);
+        $author->setFamilyName($user->getFamilyName($locale) ?: $user->getFamilyName($user->getDefaultLocale()), $locale);
+        $author->setData('publicationId', $publication->getId());
+
+        $authorId = $authorDao->insertObject($author);
+
+        $author->setPrimaryContact(true);
+        $authorDao->updateObject($author);
+
+        PublicationProcessor::updatePrimaryContactId($publication, $authorId);
+
+        return $authorId;
+    }
+
+    /**
+     * Update locale-specific name data on the username-derived author.
+     *
+     * @param \User $user
+     * @param \Publication $publication
+     * @param string $locale
+     *
+     * @return void
+     */
+    public static function updateUsernameAuthorLocale($user, $publication, $locale)
+    {
+        $existingAuthors = $publication->getData('authors') ?: [];
+        $userEmail = $user->getEmail();
+
+        foreach ($existingAuthors as $author) {
+            if (strcasecmp($author->getEmail(), $userEmail) === 0) {
+                $givenName = $user->getGivenName($locale) ?: $user->getGivenName($user->getDefaultLocale());
+                if ($givenName) {
+                    $author->setGivenName($givenName, $locale);
+                }
+
+                $familyName = $user->getFamilyName($locale) ?: $user->getFamilyName($user->getDefaultLocale());
+                if ($familyName) {
+                    $author->setFamilyName($familyName, $locale);
+                }
+
+                CachedDaos::getAuthorDao()->updateObject($author);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Check if a CSV author entry matches a User on givenName, familyName, and email.
+     *
+     * @param string $csvGivenName
+     * @param string $csvFamilyName
+     * @param string $csvEmail
+     * @param \User $user
+     * @param string $locale
+     *
+     * @return bool
+     */
+    private static function csvAuthorMatchesUser($csvGivenName, $csvFamilyName, $csvEmail, $user, $locale)
+    {
+        if (strcasecmp($csvEmail, $user->getEmail()) !== 0) {
+            return false;
+        }
+
+        $userGivenName = $user->getGivenName($locale) ?: $user->getGivenName($user->getDefaultLocale()) ?: '';
+        if (strcasecmp($csvGivenName, $userGivenName) !== 0) {
+            return false;
+        }
+
+        $userFamilyName = $user->getFamilyName($locale) ?: $user->getFamilyName($user->getDefaultLocale()) ?: '';
+        if (strcasecmp($csvFamilyName, $userFamilyName) !== 0) {
+            return false;
+        }
+
+        return true;
+    }
 
 	/**
      * Clone authors from base publication to new versioned publication

@@ -37,6 +37,8 @@ class RequiredIssueHeaders
         'coverImageAltText',
         'galleyFilenames',
         'galleyLabels',
+        'galleyViews',
+        'htmlGalley',
         'suppFilenames',
         'suppLabels',
 		'suppDescriptions',
@@ -55,6 +57,10 @@ class RequiredIssueHeaders
 		'copyrightHolder',
 		'licenseUrl',
 		'references',
+        'username',
+        'funders',
+        'supportingAgencies',
+        'articleViews',
     ];
 
     static $issueRequiredHeaders = [
@@ -78,17 +84,45 @@ class RequiredIssueHeaders
     }
 
     /**
+     * Returns true when the row is a subsequent version or an additional locale
+     * for an already-processed version (required fields may be omitted).
+     *
+     * @param object $row
+     * @param array $processedArticles
+     *
+     * @return bool
+     */
+    public static function isMultiVersionOrLocale($row, $processedArticles)
+    {
+        if (!empty($row->version) && !empty($row->versionIdentifier) && (int)$row->version > 1) {
+            return true;
+        }
+
+        if (!empty($row->versionIdentifier) && !empty($row->version)) {
+            $identifier = $row->versionIdentifier;
+            $version = (int)$row->version;
+
+            if (isset($processedArticles[$identifier][$version]) && !empty($processedArticles[$identifier][$version])) {
+                return !isset($processedArticles[$identifier][$version][$row->locale]);
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Validates whether the row contains all required headers.
 	 *
 	 * @param object $row
+	 * @param array $processedArticles
 	 *
 	 * @return bool
      */
-    public static function validateRowHasAllRequiredFields($row)
+    public static function validateRowHasAllRequiredFields($row, $processedArticles = [])
     {
-		if (!empty($row->version) && !empty($row->versionIdentifier) && (int)$row->version > 1) {
-			return true;
-		}
+        if (self::isMultiVersionOrLocale($row, $processedArticles)) {
+            return true;
+        }
 
         foreach(self::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {

@@ -238,7 +238,7 @@ class UserCommand
                     }
                 }
 
-                if (is_null($data->tempPassword)) {
+                if (empty($data->tempPassword)) {
                     $data->tempPassword = \Validation::generatePassword();
                 }
 

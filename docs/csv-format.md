@@ -10,12 +10,12 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 |--------|----------|-------------|---------|
 | journalPath | Yes | Path of the journal | leo |
 | firstname | Yes | User's first name | Homer |
-| lastname | Yes | User's last name | Simpson |
+| lastname | No | User's last name | Simpson |
 | email | Yes | User's email address | homer@example.com |
 | affiliation | No | User's affiliation | University of British Columbia |
 | country | No | Two-letter country code | CA |
 | username | Yes | Username for login | hsimpson |
-| tempPassword | Yes | Temporary password | temppassword123 |
+| tempPassword | No | Temporary password | temppassword123 | Auto-generated when empty for new users |
 | roles | No | Semicolon-separated list of roles | Reader;Author |
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two |
 | subscriptionType | No | Subscription type ID | 1 |
@@ -68,6 +68,8 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 | coverImageAltText | No | Alt text for cover | Journal Cover | Required if cover image used |
 | galleyFilenames | No | Semicolon-separated primary galley files | doc.docx;data.xlsx | Optional |
 | galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
+| galleyViews | No | Semicolon-separated view counts per galley | 100;50 | Must match galleyLabels count; non-negative integers |
+| htmlGalley | No | Semicolon-separated HTML galley files | article.html;style.css;image.png | First file must be .html or .htm; remaining files are dependent assets |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
@@ -86,6 +88,10 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
 | references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
+| username | No | Username of an existing OJS user | jsmith | Used as file uploader and optional primary author |
+| funders | No | Semicolon-separated funder entries | NSF,https://doi.org/10.13039/100000001,GR-123;NIH,, | Requires Funding plugin; format: Name,Identification,Award1\|Award2 |
+| supportingAgencies | No | Semicolon-separated supporting agencies | Agency One;Agency Two | Stored per locale on the publication |
+| articleViews | No | Total abstract view count | 150 | Non-negative integer; imported into usage statistics |
 
 ### Authors Format
 
