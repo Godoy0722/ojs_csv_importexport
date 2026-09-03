@@ -2,4 +2,4 @@
 .claude
 imports/
 examples/
-!examples/*.csv
+!examples/**/*.csv
