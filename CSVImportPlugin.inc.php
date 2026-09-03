@@ -1,17 +1,17 @@
 <?php
 
 /**
- * @file plugins/importexport/csv/CSVImportExportPlugin.inc.php
+ * @file plugins/importexport/csv/CSVImportPlugin.inc.php
  *
  * Copyright (c) 2014-2026 Simon Fraser University
  * Copyright (c) 2003-2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
- * @class CSVImportExportPlugin
+ * @class CSVImportPlugin
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief CSV import/export plugin
+ * @brief CSV import plugin
  */
 
 namespace PKP\Plugins\ImportExport\CSV;
@@ -26,7 +26,7 @@ use PKP\Plugins\ImportExport\CSV\Classes\Forms\CsvImportForm;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\ZipExtractor;
 use PKP\Plugins\ImportExport\CSV\Classes\Store\ImportResultStore;
 
-class CSVImportExportPlugin extends \ImportExportPlugin
+class CSVImportPlugin extends \ImportExportPlugin
 {
 
     /**
@@ -107,7 +107,7 @@ class CSVImportExportPlugin extends \ImportExportPlugin
      */
     public function getName()
     {
-        return 'CSVImportExportPlugin';
+        return 'CSVImportPlugin';
     }
 
     /**

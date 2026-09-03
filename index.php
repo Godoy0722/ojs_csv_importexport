@@ -9,12 +9,12 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Wrapper for CSV import/export plugin.
+ * @brief Wrapper for CSV import plugin.
  *
  */
 
 namespace PKP\Plugins\ImportExport\CSV;
 
-require_once 'CSVImportExportPlugin.inc.php';
+require_once 'CSVImportPlugin.inc.php';
 
-return new CSVImportExportPlugin();
+return new CSVImportPlugin();

@@ -13,13 +13,13 @@ Navigate to **Tools → Import/Export → CSV Import Plugin**, select the import
 Import users:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin users [username] [pathToFolderWithCsvFiles] [sendWelcomeEmail]
+php tools/importExport.php CSVImportPlugin users [username] [pathToFolderWithCsvFiles] [sendWelcomeEmail]
 ```
 
 Import issues:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin issues [username] [pathToFolderWithCsvFiles]
+php tools/importExport.php CSVImportPlugin issues [username] [pathToFolderWithCsvFiles]
 ```
 
 See [CLI Usage](docs/cli-usage.md) for parameter details and examples.
