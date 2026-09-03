@@ -272,13 +272,13 @@ msgid "plugins.importexport.csv.form.zipHelp"
 msgstr "Upload a ZIP file built in one of two simple ways:<br><br><b>Option 1 — Everything together:</b> Put your CSV file and all its assets (PDFs, images, and other files) side by side at the top level of the ZIP.<br><b>Option 2 — Everything in one folder:</b> Put your CSV file and all its assets inside a single folder, then ZIP that folder. The plugin finds the folder automatically.<br><br>In both cases, the file path you write in each CSV column must match where the file actually sits in the ZIP. If a file is inside a subfolder, use its relative path (e.g., <em>galleys/article.pdf</em>). Files named <em>invalid_*.csv</em> are reserved for error output and are skipped during import."
 
 msgid "plugins.importexport.csv.form.examplesHelp"
-msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CSV files for issue imports here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/issues\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for issues</a>."
+msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CSV files for issue imports here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_3_0/examples/issues\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for issues</a>."
 
 msgid "plugins.importexport.csv.form.userImportHelp"
 msgstr "<b>Users:</b> For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above."
 
 msgid "plugins.importexport.csv.form.usersExamplesHelp"
-msgstr "<b>Need an example?</b> You can view and download ready-to-use sample user CSV files here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/users\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for users</a>."
+msgstr "<b>Need an example?</b> You can view and download ready-to-use sample user CSV files here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_3_0/examples/users\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for users</a>."
 
 msgid "plugins.importexport.csv.contextPathMismatch"
 msgstr "The CSV row's {$contextType}Path \"{$csvContextPath}\" does not match the currently opened {$contextType} \"{$currentContextPath}\". Rows must belong to the same {$contextType} context."
