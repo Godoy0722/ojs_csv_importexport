@@ -72,7 +72,7 @@ class OrcidHandler
             return null;
         }
 
-        $normalizedOrcid = self::normalize($orcid);
+        $normalizedOrcid = static::normalize($orcid);
 
         if ($normalizedOrcid === null) {
             return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
@@ -84,7 +84,7 @@ class OrcidHandler
             return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
         }
 
-        if (!self::validateChecksum($digits)) {
+        if (!static::validateChecksum($digits)) {
             return __('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]);
         }
 

@@ -38,48 +38,80 @@ class CachedDaos
      */
     public static function getJournalDao(): JournalDAO
     {
-        return self::$cachedDaos['JournalDAO'] ??= DAORegistry::getDAO('JournalDAO');
+        return static::$cachedDaos['JournalDAO'] ??= DAORegistry::getDAO('JournalDAO');
     }
 
     /** Retrieves the cached GenreDAO instance. */
     public static function getGenreDao(): GenreDAO
     {
-        return self::$cachedDaos['GenreDAO'] ??= DAORegistry::getDAO('GenreDAO');
+        return static::$cachedDaos['GenreDAO'] ??= DAORegistry::getDAO('GenreDAO');
     }
 
     /** Retrieves the cached SubmissionKeywordDAO instance. */
     public static function getSubmissionKeywordDao(): SubmissionKeywordDAO
     {
-        return self::$cachedDaos['SubmissionKeywordDAO'] ??= DAORegistry::getDAO('SubmissionKeywordDAO');
+        return static::$cachedDaos['SubmissionKeywordDAO'] ??= DAORegistry::getDAO('SubmissionKeywordDAO');
     }
 
     /** Retrieves the cached SubmissionSubjectDAO instance. */
     public static function getSubmissionSubjectDao(): SubmissionSubjectDAO
     {
-        return self::$cachedDaos['SubmissionSubjectDAO'] ??= DAORegistry::getDAO('SubmissionSubjectDAO');
+        return static::$cachedDaos['SubmissionSubjectDAO'] ??= DAORegistry::getDAO('SubmissionSubjectDAO');
     }
 
     /** Retrieves the cached InterestDAO instance, which is used for user interests. */
     public static function getUserInterestDao(): InterestDAO
     {
-        return self::$cachedDaos['InterestDAO'] ??= DAORegistry::getDAO('InterestDAO');
+        return static::$cachedDaos['InterestDAO'] ??= DAORegistry::getDAO('InterestDAO');
     }
 
     /** Retrieves the cached CategoryDAO instance. */
     public static function getCategoryDao(): CategoryDAO
 	{
-		return self::$cachedDaos['CategoryDAO'] ??= Repo::category()->dao;
+		return static::$cachedDaos['CategoryDAO'] ??= Repo::category()->dao;
 	}
 
     /** Retrieves the cached IndividualSubscriptionDAO instance. */
     public static function getIndividualSubscriptionDao(): SubscriptionIndividualSubscriptionDAO
 	{
-		return self::$cachedDaos['IndividualSubscriptionDAO'] ??= DAORegistry::getDAO('IndividualSubscriptionDAO');
+		return static::$cachedDaos['IndividualSubscriptionDAO'] ??= DAORegistry::getDAO('IndividualSubscriptionDAO');
 	}
 
     /** Retrieves the cached SubscriptionTypeDAO instance. */
     public static function getSubscriptionTypeDao(): SubscriptionSubscriptionTypeDAO
 	{
-		return self::$cachedDaos['SubscriptionTypeDAO'] ??= DAORegistry::getDAO('SubscriptionTypeDAO');
+		return static::$cachedDaos['SubscriptionTypeDAO'] ??= DAORegistry::getDAO('SubscriptionTypeDAO');
 	}
+
+    /** Retrieves the cached FunderDAO instance when the Funding plugin is available. */
+    public static function getFunderDao(): ?object
+    {
+        if (isset(static::$cachedDaos['FunderDAO'])) {
+            return static::$cachedDaos['FunderDAO'];
+        }
+
+        if (!file_exists('plugins/generic/funding/classes/FunderDAO.inc.php')) {
+            return null;
+        }
+
+        import('plugins.generic.funding.classes.FunderDAO');
+
+        return static::$cachedDaos['FunderDAO'] = new \FunderDAO();
+    }
+
+    /** Retrieves the cached FunderAwardDAO instance when the Funding plugin is available. */
+    public static function getFunderAwardDao(): ?object
+    {
+        if (isset(static::$cachedDaos['FunderAwardDAO'])) {
+            return static::$cachedDaos['FunderAwardDAO'];
+        }
+
+        if (!file_exists('plugins/generic/funding/classes/FunderAwardDAO.inc.php')) {
+            return null;
+        }
+
+        import('plugins.generic.funding.classes.FunderAwardDAO');
+
+        return static::$cachedDaos['FunderAwardDAO'] = new \FunderAwardDAO();
+    }
 }

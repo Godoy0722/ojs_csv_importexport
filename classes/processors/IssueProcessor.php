@@ -61,7 +61,7 @@ class IssueProcessor
             $issue->setShowYear(!empty($data->issueYear));
             $issue->setShowTitle(!empty($data->issueTitles));
             $issue->setPublished(true);
-            $issue->setDatePublished(Core::getCurrentDate());
+            $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : null);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
             $issue->setData('locale', $data->locale);
@@ -89,6 +89,31 @@ class IssueProcessor
 
         return $issue;
 	}
+
+    /**
+     * Sets issue publication dates for issues imported without issuePublicationDate,
+     * using the most recent datePublished among their articles.
+     */
+    public static function fillMissingIssueDates(array $processedIssues): void
+    {
+        foreach ($processedIssues as $processedIssue) {
+            /** @var Issue $issue */
+            $issue = $processedIssue['issue'];
+
+            if (!empty($issue->getDatePublished())) {
+                continue;
+            }
+
+            $result = DB::table('publications as p')
+                ->join('publication_settings as ps', 'ps.publication_id', '=', 'p.publication_id')
+                ->where('ps.setting_name', 'issueId')
+                ->where('ps.setting_value', (string) $issue->getId())
+                ->max('p.date_published');
+
+            $issue->setDatePublished($result ?: Core::getCurrentDate());
+            Repo::issue()->edit($issue, []);
+        }
+    }
 
     /**
      * Process multi-locale issue data (adds new locale to existing issue)
@@ -133,7 +158,7 @@ class IssueProcessor
 
         // Reorder all issues for each journal that had imported issues
         foreach ($journalIds as $journalId) {
-            self::reorderAllIssuesForJournal($journalId);
+            static::reorderAllIssuesForJournal($journalId);
         }
     }
 
@@ -158,12 +183,12 @@ class IssueProcessor
         // Sort all issues according to the same criteria as imported issues
         usort($allIssues, function($a, $b) {
             // Extract sorting criteria from issue objects
-            $yearA = self::extractNumericValue($a->getYear());
-            $yearB = self::extractNumericValue($b->getYear());
-            $volumeA = self::extractNumericValue($a->getVolume());
-            $volumeB = self::extractNumericValue($b->getVolume());
-            $numberA = self::extractNumericValue($a->getNumber());
-            $numberB = self::extractNumericValue($b->getNumber());
+            $yearA = static::extractNumericValue($a->getYear());
+            $yearB = static::extractNumericValue($b->getYear());
+            $volumeA = static::extractNumericValue($a->getVolume());
+            $volumeB = static::extractNumericValue($b->getVolume());
+            $numberA = static::extractNumericValue($a->getNumber());
+            $numberB = static::extractNumericValue($b->getNumber());
 
             // Primary sort: Year (most recent to oldest - descending)
             if ($yearA !== null && $yearB !== null) {

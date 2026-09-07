@@ -71,7 +71,7 @@ class PublicationProcessor
         }
 
         if (!empty($data->references)) {
-            $referencesString = self::getReferencesContent($data->references, $sourceDir);
+            $referencesString = static::getReferencesContent($data->references, $sourceDir);
 
             if (!empty($referencesString)) {
                 $submissionPublication->setData('citationsRaw', $referencesString);
@@ -80,19 +80,19 @@ class PublicationProcessor
 
         Repo::publication()->dao->update($submissionPublication);
 
-        self::setCopyrightFromSystem($submission, $submissionPublication, $data);
+        static::setCopyrightFromSystem($submission, $submissionPublication, $data);
 
         return $submissionPublication;
     }
 
     public static function updatePrimaryContactId(Publication $publication, int $authorId)
     {
-        self::updatePublicationAttribute($publication, 'primaryContactId', $authorId);
+        static::updatePublicationAttribute($publication, 'primaryContactId', $authorId);
     }
 
     public static function updateCoverage(Publication $publication, string $coverage, string $locale)
     {
-        self::updatePublicationAttribute($publication, 'coverage', $coverage, $locale);
+        static::updatePublicationAttribute($publication, 'coverage', $coverage, $locale);
     }
 
     public static function updateCoverImage(Publication $publication, object $data, string $uploadName)
@@ -115,12 +115,12 @@ class PublicationProcessor
 
     public static function updateIssueId(Publication $publication, int $issueId)
     {
-        self::updatePublicationAttribute($publication, 'issueId', $issueId);
+        static::updatePublicationAttribute($publication, 'issueId', $issueId);
     }
 
     public static function updateSectionId(Publication $publication, int $sectionId)
     {
-        self::updatePublicationAttribute($publication, 'sectionId', $sectionId);
+        static::updatePublicationAttribute($publication, 'sectionId', $sectionId);
     }
 
     static function updatePublicationAttribute(Publication $publication, string $attribute, mixed $data, ?string $locale = null)
@@ -141,21 +141,21 @@ class PublicationProcessor
             $publication
         );
 
-        self::updatePublicationAttribute($publication, 'copyrightHolder', $copyrightHolder, $data->locale);
+        static::updatePublicationAttribute($publication, 'copyrightHolder', $copyrightHolder, $data->locale);
 
         $copyrightYear = $data->copyrightYear ?? $submission->_getContextLicenseFieldValue(
             null,
             Submission::PERMISSIONS_FIELD_COPYRIGHT_YEAR,
             $publication
         );
-        self::updatePublicationAttribute($publication, 'copyrightYear', $copyrightYear);
+        static::updatePublicationAttribute($publication, 'copyrightYear', $copyrightYear);
 
         $licenseUrl =  $data->licenseUrl ?? $submission->_getContextLicenseFieldValue(
             null,
             Submission::PERMISSIONS_FIELD_LICENSE_URL,
             $publication
         );
-        self::updatePublicationAttribute($publication, 'licenseUrl', $licenseUrl);
+        static::updatePublicationAttribute($publication, 'licenseUrl', $licenseUrl);
     }
 
     /**
@@ -204,11 +204,11 @@ class PublicationProcessor
         string $sourceDir
     ): Publication {
         // Update version and status
-        self::updatePublicationAttribute($publication, 'version', (int)$data->version);
-        self::updatePublicationAttribute($publication, 'status', Submission::STATUS_PUBLISHED);
+        static::updatePublicationAttribute($publication, 'version', (int)$data->version);
+        static::updatePublicationAttribute($publication, 'status', Submission::STATUS_PUBLISHED);
 
         $datePublished = !empty($data->datePublished) ? $data->datePublished : $basePublication->getData('datePublished');
-        self::updatePublicationAttribute($publication, 'datePublished', $datePublished);
+        static::updatePublicationAttribute($publication, 'datePublished', $datePublished);
 
         $localizedFields = [
             'title' => 'articleTitle',
@@ -221,9 +221,9 @@ class PublicationProcessor
 
         foreach ($localizedFields as $field => $csvField) {
             if (!empty($data->{$csvField})) {
-                self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
+                static::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
             } elseif ($basePublication->getLocalizedData($field, $data->locale)) {
-                self::updatePublicationAttribute($publication, $field, $basePublication->getLocalizedData($field, $data->locale), $data->locale);
+                static::updatePublicationAttribute($publication, $field, $basePublication->getLocalizedData($field, $data->locale), $data->locale);
             }
         }
 
@@ -231,18 +231,18 @@ class PublicationProcessor
 
         foreach ($nonLocalizedFields as $nonLocaleField) {
             if (!empty($data->{$nonLocaleField})) {
-                self::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
+                static::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
             } elseif ($basePublication->getData($nonLocaleField)) {
-                self::updatePublicationAttribute($publication, $nonLocaleField, $basePublication->getData($nonLocaleField));
+                static::updatePublicationAttribute($publication, $nonLocaleField, $basePublication->getData($nonLocaleField));
             }
         }
 
         if (!empty($data->doi)) {
-            self::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
+            static::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
         }
 
         if (!empty($data->references)) {
-            $referencesString = self::getReferencesContent($data->references, $sourceDir);
+            $referencesString = static::getReferencesContent($data->references, $sourceDir);
 
             if (!empty($referencesString)) {
                 $publication->setData('citationsRaw', $referencesString);
@@ -272,7 +272,7 @@ class PublicationProcessor
 
         foreach ($localizedFields as $field => $csvField) {
             if (!empty($data->{$csvField})) {
-                self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
+                static::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
             }
         }
 
@@ -281,7 +281,7 @@ class PublicationProcessor
 
         foreach ($nonLocalizedFields as $nonLocaleField) {
             if (!empty($data->{$nonLocaleField})) {
-                self::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
+                static::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
             }
         }
 
@@ -302,5 +302,42 @@ class PublicationProcessor
     {
         $referencesFilePath = "{$sourceDir}/{$referencesFilename}";
         return file_get_contents($referencesFilePath);
+    }
+
+    public static function processSupportingAgencies(object $data, Publication $publication, ?Publication $basePublication = null): void
+    {
+        if (empty($data->supportingAgencies) && !is_null($basePublication)) {
+            $baseSupportingAgencies = $basePublication->getData('supportingAgencies');
+            if (empty($baseSupportingAgencies)) {
+                return;
+            }
+
+            static::updatePublicationAttribute($publication, 'supportingAgencies', $baseSupportingAgencies);
+            return;
+        }
+
+        if (empty($data->supportingAgencies)) {
+            return;
+        }
+
+        $agenciesList = [$data->locale => array_map('trim', explode(';', $data->supportingAgencies))];
+        if (empty($agenciesList[$data->locale])) {
+            return;
+        }
+
+        static::updatePublicationAttribute($publication, 'supportingAgencies', $agenciesList);
+    }
+
+    public static function processSupportingAgenciesMultiLocale(object $data, Publication $publication): void
+    {
+        if (empty($data->supportingAgencies)) {
+            return;
+        }
+
+        $existingAgencies = $publication->getData('supportingAgencies') ?? [];
+        $newAgencies = array_map('trim', explode(';', $data->supportingAgencies));
+        $existingAgencies[$data->locale] = $newAgencies;
+
+        static::updatePublicationAttribute($publication, 'supportingAgencies', $existingAgencies);
     }
 }

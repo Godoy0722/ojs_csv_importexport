@@ -156,3 +156,45 @@ msgstr "Invalid ORCID format: \"{$orcid}\". Accepted formats: URL (https://orcid
 
 msgid "plugins.importexport.csv.invalidOrcidChecksum"
 msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."
+
+msgid "plugins.importexport.csv.invalidHtmlGalleyFirstFile"
+msgstr "The first HTML galley file must have an .html or .htm extension: \"{$filename}\"."
+
+msgid "plugins.importexport.csv.invalidHtmlGalleyFile"
+msgstr "Invalid HTML galley file \"{$filename}\" for this submission."
+
+msgid "plugins.importexport.csv.errorWhileSanitizingHtmlGalley"
+msgstr "An error occurred while sanitizing the HTML galley \"{$filename}\"."
+
+msgid "plugins.importexport.csv.errorWhileSavingHtmlGalley"
+msgstr "An error occurred while saving the HTML galley \"{$filename}\"."
+
+msgid "plugins.importexport.csv.errorWhileSavingHtmlDependentFile"
+msgstr "An error occurred while saving the HTML dependent file \"{$filename}\"."
+
+msgid "plugins.importexport.csv.galleyViewsWithoutGalleys"
+msgstr "galleyViews cannot be provided without galleyLabels and galleyFilenames."
+
+msgid "plugins.importexport.csv.invalidNumberOfGalleyViews"
+msgstr "Galley view counts don't match the number of galley labels. Please verify it for this row."
+
+msgid "plugins.importexport.csv.invalidGalleyViewValue"
+msgstr "Invalid galley view value \"{$value}\". Must be a non-negative integer."
+
+msgid "plugins.importexport.csv.invalidSubmissionViews"
+msgstr "Invalid value for {$fieldName}. Must be a non-negative integer."
+
+msgid "plugins.importexport.csv.invalidFunderFormat"
+msgstr "Invalid funder format at position {$index}. Each funder must include a name."
+
+msgid "plugins.importexport.csv.fundingPluginNotEnabled"
+msgstr "Funders data was provided but the Funding plugin is not enabled for {$context}."
+
+msgid "plugins.importexport.csv.funderNotInCrossrefRegistry"
+msgstr "Funder \"{$funderName}\" at position {$index} does not have a valid Crossref Funder Registry DOI."
+
+msgid "plugins.importexport.csv.funderMissingCrossrefId"
+msgstr "Funder \"{$funderName}\" at position {$index} is missing a Crossref Funder Registry identification."
+
+msgid "plugins.importexport.csv.incompleteSectionFields"
+msgstr "At least one of sectionTitle or sectionAbbrev must be provided."

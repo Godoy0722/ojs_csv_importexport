@@ -43,7 +43,7 @@ class CategoriesProcessor
             $category = CachedEntities::getCachedCategory($lowerCategoryPath, $journalId);
 
             if (is_null($category)) {
-                $category = $category = self::createNewCategory($journalId, $categoryPath, $locale);
+                $category = $category = static::createNewCategory($journalId, $categoryPath, $locale);
 
                 $categoryId = Repo::category()->add($category);
                 CachedEntities::$categories[$lowerCategoryPath] = Repo::category()->get($categoryId);
@@ -83,7 +83,7 @@ class CategoriesProcessor
             }
         }
 
-        self::process($categories, $locale, $journalId, $publicationId);
+        static::process($categories, $locale, $journalId, $publicationId);
     }
 
     /**
@@ -120,7 +120,7 @@ class CategoriesProcessor
             }
 
             // Category doesn't exist, create it (should follow the same logic as process())
-            $category = self::createNewCategory($journalId, $categoryPath, $locale);
+            $category = static::createNewCategory($journalId, $categoryPath, $locale);
             $categoryId = Repo::category()->add($category);
 
             // Assign to publication if not already assigned

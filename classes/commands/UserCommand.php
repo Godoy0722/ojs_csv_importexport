@@ -60,13 +60,17 @@ class UserCommand
                 continue;
             }
 
+            $basename = $fileInfo->getBasename();
+            if (str_starts_with($basename, 'invalid_')) {
+                continue;
+            }
+
             $filePath = $fileInfo->getPathname();
             $file = CSVFileHandler::createReadableCSVFile($filePath);
             if (is_null($file)) {
                 continue;
             }
 
-            $basename = $fileInfo->getBasename();
             $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}", RequiredUserHeaders::$userHeaders);
             if (is_null($invalidCsvFile)) {
                 continue;
@@ -106,29 +110,30 @@ class UserCommand
                 }
 
                 $existingUserByEmail = CachedEntities::getCachedUserByEmail($data->email);
-                if (!is_null($existingUserByEmail)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, __('plugins.importexport.csv.userAlreadyExistsWithEmail', ['email' => $data->email]), $this->failedRows);
-                    continue;
-                }
+                $isNewUser = is_null($existingUserByEmail);
 
-                if ($data->username) {
-                    $existingUserByUsername = CachedEntities::getCachedUserByUsername($data->username);
-                    if (!is_null($existingUserByUsername)) {
-                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, __('plugins.importexport.csv.userAlreadyExistsWithUsername', ['username' => $data->username]), $this->failedRows);
-                        continue;
+                if ($isNewUser) {
+                    if ($data->username) {
+                        $existingUserByUsername = CachedEntities::getCachedUserByUsername($data->username);
+                        if (!is_null($existingUserByUsername)) {
+                            CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, __('plugins.importexport.csv.userAlreadyExistsWithUsername', ['username' => $data->username]), $this->failedRows);
+                            continue;
+                        }
                     }
-                }
 
-                if (empty($data->username)) {
-                    $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                    if (empty($data->username)) {
+                        $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                    }
                 }
 
                 $roles = array_map('trim', explode(';', $data->roles));
 
-                $reason = InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
-                if (!is_null($reason)) {
-                    CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-                    continue;
+                if ($isNewUser) {
+                    $reason = InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
+                    if (!is_null($reason)) {
+                        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
+                        continue;
+                    }
                 }
 
                 if (!empty($data->subscriptionType) || !empty($data->startDate) || !empty($data->endDate)) {
@@ -146,7 +151,7 @@ class UserCommand
                         continue;
                     }
 
-					$reason = InvalidRowValidations::validateSubscriptionDates($data->start_date, $data->end_date);
+					$reason = InvalidRowValidations::validateSubscriptionDates($data->startDate, $data->endDate);
 					if ($reason) {
 						CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
 						continue;
@@ -161,7 +166,7 @@ class UserCommand
                     }
                 }
 
-                if (is_null($data->tempPassword)) {
+                if ($isNewUser && is_null($data->tempPassword)) {
                     $data->tempPassword = Validation::generatePassword();
                 }
 
@@ -169,7 +174,10 @@ class UserCommand
                 $userId = $user->getId();
                 $userInterests = array_map('trim', explode(';', $data->reviewInterests));
                 UserInterestsProcessor::process($userInterests, $userId);
-                UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+
+                if ($isNewUser) {
+                    UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                }
 
                 if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
                     $dateFormat = 'Y-m-d';
@@ -179,7 +187,7 @@ class UserCommand
                     UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
                 }
 
-                if ($this->sendWelcomeEmail) {
+                if ($this->sendWelcomeEmail && $isNewUser) {
                     WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
                 }
             }

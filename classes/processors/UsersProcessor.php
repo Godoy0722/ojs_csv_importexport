@@ -25,7 +25,16 @@ use PKP\user\User;
 
 class UsersProcessor
 {
-	public static function process(object $data, string $locale): User
+    public static function process(object $data, string $locale): User
+    {
+        $existing = CachedEntities::getCachedUserByEmail($data->email);
+        if ($existing) {
+            return static::update($existing, $data, $locale);
+        }
+        return static::create($data, $locale);
+    }
+
+    public static function create(object $data, string $locale): User
     {
         $user = Repo::user()->newDataObject();
 
@@ -50,6 +59,31 @@ class UsersProcessor
 
         return Repo::user()->get($userId);
 	}
+
+    public static function update(User $user, object $data, string $locale): User
+    {
+        $user->setGivenName($data->firstname, $locale);
+        $user->setFamilyName($data->lastname, $locale);
+        $user->setAffiliation($data->affiliation, $locale);
+        $user->setEmail($data->email);
+        $user->setCountry($data->country);
+
+        if (!empty($data->orcid)) {
+            $normalizedOrcid = OrcidHandler::normalize($data->orcid);
+            if ($normalizedOrcid !== null) {
+                $user->setOrcid($normalizedOrcid);
+            }
+        }
+
+        if (!empty($data->tempPassword)) {
+            $user->setPassword(Validation::encryptCredentials($data->username ?: $user->getUsername(), $data->tempPassword));
+            $user->setMustChangePassword(true);
+        }
+
+        Repo::user()->edit($user);
+
+        return Repo::user()->get($user->getId());
+    }
 
     public static function getValidUsername(string $firstname, string $lastname): string
     {

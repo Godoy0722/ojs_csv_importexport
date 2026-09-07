@@ -47,6 +47,9 @@ class CachedEntities
     /** @var array<string,Section|null> */
     static array $sections = [];
 
+    /** @var array<int,array<int,Section>> Sections of a journal, keyed by section ID. Absent key means "not loaded yet". */
+    static array $sectionsByContext = [];
+
     /** @var array<string,Issue|null> */
     static array $issues = [];
 
@@ -61,14 +64,14 @@ class CachedEntities
     {
         $journalDao = CachedDaos::getJournalDao();
 
-        return self::$journals[$journalPath] ?? self::$journals[$journalPath] = $journalDao->getByPath($journalPath);
+        return static::$journals[$journalPath] ?? static::$journals[$journalPath] = $journalDao->getByPath($journalPath);
     }
 
     /** Retrieves a cached userGroup ID by journalId. Returns null if an error occurs. */
     static function getCachedUserGroupId(string $journalPath, int $journalId): ?int
     {
-        if (isset(self::$userGroupIds[$journalPath])) {
-            return self::$userGroupIds[$journalPath];
+        if (isset(static::$userGroupIds[$journalPath])) {
+            return static::$userGroupIds[$journalPath];
         }
 
         $userGroup = Repo::userGroup()->getCollector()
@@ -83,19 +86,19 @@ class CachedEntities
             return null;
         }
 
-        return self::$userGroupIds[$journalPath] = $userGroup->getId();
+        return static::$userGroupIds[$journalPath] = $userGroup->getId();
     }
 
 	/** Retrieves a cached User by email. Returns null if an error occurs. */
     static function getCachedUserByEmail(string $email): ?User
     {
-		return self::$users[$email] ??= Repo::user()->getByEmail($email);
+		return static::$users[$email] ??= Repo::user()->getByEmail($email);
     }
 
 	/** Retrieves a cached User by username. Returns null if an error occurs. */
     static function getCachedUserByUsername(string $username): ?User
     {
-		return self::$users[$username] ??= Repo::user()->getByUsername($username);
+		return static::$users[$username] ??= Repo::user()->getByUsername($username);
     }
 
 	/**
@@ -105,8 +108,8 @@ class CachedEntities
 	 */
     static function getCachedUserGroupsByJournalId(int $journalId): array
     {
-        if (isset(self::$userGroups[$journalId])) {
-            return self::$userGroups[$journalId];
+        if (isset(static::$userGroups[$journalId])) {
+            return static::$userGroups[$journalId];
         }
 
         $collector = Repo::userGroup()->getCollector()
@@ -119,13 +122,13 @@ class CachedEntities
             $userGroups[$userGroup->getId()] = $userGroup;
         }
 
-        return self::$userGroups[$journalId] = $userGroups;
+        return static::$userGroups[$journalId] = $userGroups;
     }
 
 	/** Retrieves a cached UserGroup by name and journalId. Returns null if an error occurs. */
     static function getCachedUserGroupByName(string $name, int $journalId, string $locale): ?UserGroup
     {
-        $userGroups = self::getCachedUserGroupsByJournalId($journalId);
+        $userGroups = static::getCachedUserGroupsByJournalId($journalId);
 
         foreach ($userGroups as $userGroup) {
             if (mb_strtolower($userGroup->getName($locale)) === mb_strtolower($name)) {
@@ -142,14 +145,14 @@ class CachedEntities
 		$genreDao = CachedDaos::getGenreDao();
 		$genre = $genreDao->getByKey($genreName, $journalId);
 
-		return self::$genreIds[$genreName] ?? self::$genreIds[$genreName] = $genre->getId();
+		return static::$genreIds[$genreName] ?? static::$genreIds[$genreName] = $genre->getId();
     }
 
     /** Retrieves a cached Category by categoryName and journalId. Returns null if an error occurs. */
     static function getCachedCategory(string $categoryName, int $journalId): ?Category
     {
-        if (isset(self::$categories[$categoryName])) {
-            return self::$categories[$categoryName];
+        if (isset(static::$categories[$categoryName])) {
+            return static::$categories[$categoryName];
         }
 
         $categories = Repo::category()->getCollector()
@@ -158,7 +161,7 @@ class CachedEntities
 
         foreach ($categories as $category) {
             if ($category->getPath() === $categoryName) {
-                return self::$categories[$categoryName] = $category;
+                return static::$categories[$categoryName] = $category;
             }
         }
 
@@ -194,66 +197,111 @@ class CachedEntities
         $issues = $collector->limit(1)->getMany();
         $issue = $issues->first();
 
-		self::$issues[$customIssueDescription] = $issue;
+		static::$issues[$customIssueDescription] = $issue;
 
-		return self::$issues[$customIssueDescription];
+		return static::$issues[$customIssueDescription];
     }
 
-    /** Retrieves a cached Section by sectionTitle, sectionAbbrev, and journalId. Returns null if an error occurs. */
+    /**
+     * Retrieves a Section of the journal matching the fields the CSV row provides.
+     * A row may carry the title, the abbreviation or both; whichever it carries has to match.
+     * When more than one section matches, the one with the lowest ID wins.
+     */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, string $locale, int $journalId): ?Section
     {
-        $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
+        $sectionTitle = static::normalizeSectionTitle($sectionTitle);
+        $sectionAbbrev = static::normalizeSectionAbbrev($sectionAbbrev);
 
-        if (isset(self::$sections[$customSectionKey])) {
-            return self::$sections[$customSectionKey];
+        if ($sectionTitle === '' && $sectionAbbrev === '') {
+            return null;
         }
 
-        $sections = Repo::section()->getCollector()
-            ->filterByContextIds([$journalId])
-            ->getMany();
+        foreach (static::getSectionsForContext($journalId) as $section) {
+            $titleMatches = $sectionTitle === '' || static::normalizeSectionTitle($section->getTitle($locale)) === $sectionTitle;
+            $abbrevMatches = $sectionAbbrev === '' || static::normalizeSectionAbbrev($section->getAbbrev($locale)) === $sectionAbbrev;
 
-        foreach ($sections as $section) {
-            if ($section->getAbbrev($locale) === $sectionAbbrev && $section->getTitle($locale) === $sectionTitle) {
-                return self::$sections[$customSectionKey] = $section;
+            if ($titleMatches && $abbrevMatches) {
+                return $section;
             }
         }
 
         return null;
     }
 
-    static function getCachedSectionById(int $baseSectionId, int $serverId, string $locale): ?Section
+    static function getCachedSectionById(int $baseSectionId, int $journalId, string $locale): ?Section
     {
-        $existingSection = null;
-        foreach (self::$sections as $section) {
-            if ($section instanceof Section && $section->getId() === $baseSectionId) {
-                $existingSection = $section;
-                break;
-            }
+        if (isset(static::$sections["sectionId_{$baseSectionId}"])) {
+            return static::$sections["sectionId_{$baseSectionId}"];
         }
 
-        if ($existingSection) {
-            return $existingSection;
+        $section = Repo::section()->get($baseSectionId, $journalId);
+        if (!$section) {
+            return null;
         }
 
-        $section = Repo::section()->get($baseSectionId, $serverId);
-        $sectionTitle = $section->getTitle($locale);
-        $sectionAbbrev = $section->getAbbrev($locale);
+        static::indexSection($section, $journalId);
 
-        $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
-        self::$sections[$customSectionKey] = $section;
         return $section;
+    }
+
+    /** Makes a Section reachable by the lookups without hitting the database again. */
+    public static function indexSection(Section $section, int $journalId): void
+    {
+        static::$sections["sectionId_{$section->getId()}"] = $section;
+
+        if (isset(static::$sectionsByContext[$journalId])) {
+            static::$sectionsByContext[$journalId][$section->getId()] = $section;
+            ksort(static::$sectionsByContext[$journalId]);
+        }
+    }
+
+    /**
+     * Every section of the journal, keyed and ordered by ID. Read from the database once per journal.
+     *
+     * @return array<int,Section>
+     */
+    private static function getSectionsForContext(int $journalId): array
+    {
+        if (isset(static::$sectionsByContext[$journalId])) {
+            return static::$sectionsByContext[$journalId];
+        }
+
+        $sections = Repo::section()->getCollector()
+            ->filterByContextIds([$journalId])
+            ->getMany();
+
+        static::$sectionsByContext[$journalId] = [];
+
+        foreach ($sections as $section) {
+            static::$sections["sectionId_{$section->getId()}"] = $section;
+            static::$sectionsByContext[$journalId][$section->getId()] = $section;
+        }
+
+        ksort(static::$sectionsByContext[$journalId]);
+
+        return static::$sectionsByContext[$journalId];
+    }
+
+    private static function normalizeSectionTitle(string|array|null $sectionTitle): string
+    {
+        return is_string($sectionTitle) ? trim($sectionTitle) : '';
+    }
+
+    private static function normalizeSectionAbbrev(string|array|null $sectionAbbrev): string
+    {
+        return is_string($sectionAbbrev) ? mb_strtoupper(trim($sectionAbbrev)) : '';
     }
 
 	/** Retrieves a cached SubscriptionType by subscriptionType and journalId. Returns null if an error occurs. */
 	static function getCachedSubscriptionType(string $subscriptionType, int $journalId): ?SubscriptionType
     {
-        if (isset(self::$subscriptionTypes[$subscriptionType])) {
-            return self::$subscriptionTypes[$subscriptionType];
+        if (isset(static::$subscriptionTypes[$subscriptionType])) {
+            return static::$subscriptionTypes[$subscriptionType];
         }
 
         $subscriptionTypeDao = CachedDaos::getSubscriptionTypeDao();
         $retrievedType = $subscriptionTypeDao->getById((int) $subscriptionType, $journalId);
 
-        return self::$subscriptionTypes[$subscriptionType] = $retrievedType;
+        return static::$subscriptionTypes[$subscriptionType] = $retrievedType;
     }
 }
