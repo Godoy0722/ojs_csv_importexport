@@ -44,16 +44,16 @@ When you provide these fields in your CSV:
 
 ### Example 1: Single Article Without Versions
 
-For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty. You can take a look at the [single version CSV file](../examples/issues/single_version_issues.csv).
+For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty. You can take a look at the [single version example under Issue CSV file](../examples/issues).
 
 
 ### Example 2: Multi Version Articles
 
-For article with multiple versions, you'll need to set the `versionIdentifier` and `version` fields. The `versionIdentifier` tracks the same article and the `version` handles with the article different verisons. See [multi version CSV file](../examples/issues/multi_version_issues.csv) example.
+For article with multiple versions, you'll need to set the `versionIdentifier` and `version` fields. The `versionIdentifier` tracks the same article and the `version` handles with the article different versions. See the [multi-version example under Issue CSV file](../examples/issues).
 
 ### Example 3: Mixed Articles
 
-You can mix single-version and multi-version articles in the same CSV file. Take a look at [the default CSV file](../examples/issues/issues_example.csv).
+You can mix single-version and multi-version articles in the same CSV file. Take a look at [mixed CSV example under the Issue CSV file](../examples/issues).
 
 ## Important Notes
 
