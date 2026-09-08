@@ -59,6 +59,21 @@ class CachedEntities
     /** @var array<string,SubscriptionType|null> */
     static array $subscriptionTypes = [];
 
+    /** Resets all cached entities. Used after dry-mode rollback to clear stale IDs. */
+    public static function reset(): void
+    {
+        static::$journals = [];
+        static::$userGroupIds = [];
+        static::$userGroups = [];
+        static::$genreIds = [];
+        static::$categories = [];
+        static::$sections = [];
+        static::$sectionsByContext = [];
+        static::$issues = [];
+        static::$users = [];
+        static::$subscriptionTypes = [];
+    }
+
     /** Retrieves a cached Journal by its path. Returns null if an error occurs. */
     static function getCachedJournal(string $journalPath): ?Journal
     {

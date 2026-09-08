@@ -16,6 +16,12 @@ Import issues:
 php tools/importExport.php CSVImportExportPlugin issues [username] [pathToFolderWithCsvFiles]
 ```
 
+Validate the files without importing anything:
+
+```bash
+php tools/importExport.php CSVImportExportPlugin --dry-mode issues [username] [pathToFolderWithCsvFiles]
+```
+
 See [CLI Usage](docs/cli-usage.md) for parameter details and examples.
 
 ## Documentation
@@ -25,6 +31,7 @@ See [CLI Usage](docs/cli-usage.md) for parameter details and examples.
 - [Multi-Locale Support](docs/multi-locale.md) — import articles in multiple languages
 - [Article Versions](docs/article-versions.md) — track revisions of the same article
 - [Supplementary Files Descriptions](docs/supplementary-files.md) — describe supp files per locale
+- [Dry Mode](docs/dry-mode.md) — validate CSV files without writing anything
 - [Troubleshooting](docs/troubleshooting.md) — common errors and fixes
 
 ## Important Notes

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-[← Prev: Supplementary Files Descriptions](supplementary-files.md) | [README](../README.md)
+[← Prev: Dry Mode](dry-mode.md) | [README](../README.md)
 
 ## Common Issues and Solutions
 
@@ -86,4 +86,4 @@
 - Check the OJS error log for detailed PHP errors.
 - Delete or move leftover `invalid_*.csv` files before a clean re-import if you no longer need them.
 
-[← Prev: Supplementary Files Descriptions](supplementary-files.md) | [README](../README.md)
+[← Prev: Dry Mode](dry-mode.md) | [README](../README.md)

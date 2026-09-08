@@ -104,6 +104,14 @@ class CSVImportExportPlugin extends ImportExportPlugin
     public function executeCLI($scriptName, &$args)
     {
         $startTime = microtime(true);
+
+        $dryModeKey = array_search('--dry-mode', $args);
+        $dryMode = $dryModeKey !== false;
+        if ($dryMode) {
+            unset($args[$dryModeKey]);
+            $args = array_values($args);
+        }
+
         $this->command = array_shift($args);
 		$this->username = array_shift($args);
         $this->sourceDir = array_shift($args);
@@ -124,11 +132,11 @@ class CSVImportExportPlugin extends ImportExportPlugin
         switch ($this->command) {
             case 'issues':
 				import('plugins.importexport.csv.classes.commands.IssueCommand');
-				(new IssueCommand($this->sourceDir, $this->user))->run();
+				$exitCode = (new IssueCommand($this->sourceDir, $this->user, $dryMode))->run();
                 break;
             case 'users':
 				import('plugins.importexport.csv.classes.commands.UserCommand');
-                (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail))->run();
+                $exitCode = (new UserCommand($this->sourceDir, $this->user, $this->sendWelcomeEmail, $dryMode))->run();
                 break;
             default:
                 throw new \InvalidArgumentException("Comando inválido: {$this->command}");
@@ -137,6 +145,10 @@ class CSVImportExportPlugin extends ImportExportPlugin
 		$endTime = microtime(true);
 		$executionTime = $endTime - $startTime;
 		echo "Executed in: " . number_format($executionTime, 2) . " seconds\n";
+
+        if ($dryMode) {
+            exit($exitCode);
+        }
     }
 
 	private function validateUser()

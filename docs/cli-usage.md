@@ -35,6 +35,16 @@ Example:
 php tools/importExport.php CSVImportExportPlugin issues ggodoy /path/to/folder_with_csv_issue_files
 ```
 
+## Validating Without Importing
+
+Both commands accept a `--dry-mode` flag that runs the whole pipeline and reports what would happen, without persisting anything:
+
+```bash
+php tools/importExport.php CSVImportExportPlugin --dry-mode issues ggodoy /path/to/folder_with_csv_issue_files
+```
+
+See [Dry Mode](dry-mode.md) for the report format and exit codes.
+
 > **Important Notes**
 >
 > - The CLI user is assigned as the uploader of submission files unless a row provides a `username` column with an existing OJS user.
