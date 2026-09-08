@@ -32,7 +32,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
 
-> **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' can be the same as the 'email'.
+> **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' should not be the same as the 'email'.
 
 > **tempPassword:** You can enter a temporary password when filling out the CSV. If you don't, it will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using tempPassword. Upon first login, they will be prompted to update their password to their own password preference.
 
