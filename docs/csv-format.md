@@ -128,8 +128,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
-| sectionTitle | No | Section name | Articles | Will be created if needed |
-| sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
+| sectionTitle | Yes | Section name | Articles | Will be created if needed |
+| sectionAbbrev | Yes | Section abbreviation | ART | Used if section is created |
 | issueTitle | No | Issue title | Vol 1, No 1 (2024) | |
 | issueVolume | No | Volume number | 1 | |
 | issueNumber | No | Issue number | 1 | |
