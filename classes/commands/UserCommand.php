@@ -51,21 +51,33 @@ class UserCommand
     /** Validates the CSV files without persisting anything when true. */
     private bool $dryMode;
 
-    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail, bool $dryMode = false)
+    /** @var string|null Current journal path from GUI context. When set, rows with a different journalPath are rejected. */
+    private ?string $currentJournalPath;
+
+    public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail, bool $dryMode = false, ?string $currentJournalPath = null)
     {
         $this->expectedRowSize = count(RequiredUserHeaders::$userHeaders);
         $this->sourceDir = $sourceDir;
         $this->senderEmailUser = $user;
         $this->sendWelcomeEmail = $sendWelcomeEmail;
         $this->dryMode = $dryMode;
+        $this->currentJournalPath = $currentJournalPath;
     }
 
-    /** @return int The exit code: 1 when at least one row failed, 0 otherwise. */
-    public function run(): int
+    public function run(): array
     {
         $totalFiles = 0;
         $totalPassed = 0;
         $totalFailed = 0;
+        $results = [
+            'filesProcessed' => 0,
+            'totalRows' => 0,
+            'successfulRows' => 0,
+            'createdRows' => 0,
+            'updatedRows' => 0,
+            'failedRows' => 0,
+            'perFile' => [],
+        ];
 
         foreach (new \DirectoryIterator($this->sourceDir) as $fileInfo) {
             if (!$fileInfo->isFile() || $fileInfo->getExtension() !== 'csv') {
@@ -83,6 +95,8 @@ class UserCommand
 
             $this->processedRows = 0;
             $this->failedRows = 0;
+            $fileUpdatedRows = 0;
+            $fileUpdatedUsers = [];
             $fileFailedRows = [];
 
             if ($this->dryMode) {
@@ -109,6 +123,14 @@ class UserCommand
 
                     InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
 
+                    if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
+                        throw new RowValidationException(__('plugins.importexport.csv.contextPathMismatch', [
+                            'contextType' => 'journal',
+                            'csvContextPath' => $data->journalPath,
+                            'currentContextPath' => $this->currentJournalPath,
+                        ]));
+                    }
+
                     $existingUserByEmail = CachedEntities::getCachedUserByEmail($data->email);
                     $isNewUser = is_null($existingUserByEmail);
 
@@ -124,9 +146,7 @@ class UserCommand
 
                     $roles = array_map('trim', explode(';', $data->roles));
 
-                    if ($isNewUser) {
-                        InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
-                    }
+                    InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
 
                     if (!empty($data->subscriptionType) || !empty($data->startDate) || !empty($data->endDate)) {
                         InvalidRowValidations::validateSubscriptionFields($data);
@@ -152,6 +172,9 @@ class UserCommand
 
                     if ($isNewUser) {
                         UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    } else {
+                        $fileUpdatedRows++;
+                        $fileUpdatedUsers[] = $data->email;
                     }
 
                     if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
@@ -181,9 +204,7 @@ class UserCommand
                         $e->getMessage(),
                         $this->failedRows
                     );
-                    if ($this->dryMode) {
-                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
-                    }
+                    $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
 
                     continue;
                 } catch (\Throwable $e) {
@@ -204,15 +225,11 @@ class UserCommand
                         $message,
                         $this->failedRows
                     );
-                    if ($this->dryMode) {
-                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $message];
-                    }
+                    $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $message];
 
                     continue;
                 }
             }
-
-            $totalFailed += $this->failedRows;
 
             if ($this->dryMode) {
                 $passed = $this->processedRows - $this->failedRows;
@@ -226,23 +243,51 @@ class UserCommand
                 DryModeReporter::printFileSummary($passed, $this->failedRows, $this->processedRows);
                 $totalFiles++;
                 $totalPassed += $passed;
+                $totalFailed += $this->failedRows;
 
                 DB::rollBack();
                 DB::statement('SET FOREIGN_KEY_CHECKS=1');
                 CachedEntities::reset();
             }
 
-            echo __('plugins.importexpot.csv.fileProcessFinished', [
+            $createdRows = $this->processedRows - $this->failedRows - $fileUpdatedRows;
+            echo __('plugins.importexport.csv.fileProcessFinished', [
                 'filename' => $fileInfo->getFilename(),
                 'processedRows' => $this->processedRows,
+                'createdRows' => $createdRows,
+                'updatedRows' => $fileUpdatedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
+
+            $invalidFilename = "invalid_{$basename}";
+            $results['perFile'][] = [
+                'filename' => $basename,
+                'rows' => $this->processedRows,
+                'successful' => $this->processedRows - $this->failedRows,
+                'created' => $createdRows,
+                'updated' => $fileUpdatedRows,
+                'updatedUsers' => $fileUpdatedUsers,
+                'failed' => $this->failedRows,
+                'errors' => $fileFailedRows,
+                'invalidFile' => ($this->failedRows > 0 && is_file($this->sourceDir . '/' . $invalidFilename))
+                    ? $invalidFilename
+                    : null,
+            ];
+            $results['filesProcessed']++;
+            $results['totalRows'] += $this->processedRows;
+            $results['successfulRows'] += $this->processedRows - $this->failedRows;
+            $results['createdRows'] += $createdRows;
+            $results['updatedRows'] += $fileUpdatedRows;
+            $results['failedRows'] += $this->failedRows;
         }
 
         if ($this->dryMode) {
             DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
+            $results['exitCode'] = $totalFailed > 0 ? 1 : 0;
+            return $results;
         }
 
-        return $totalFailed > 0 ? 1 : 0;
+        $results['exitCode'] = $results['failedRows'] > 0 ? 1 : 0;
+        return $results;
     }
 }

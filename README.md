@@ -1,6 +1,6 @@
 # OJS CSV Import Plugin
 
-This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.4.X. This plugin operates exclusively via command-line interface (CLI).
+This plugin allows administrators to import users and issues with their associated metadata in CSV format into OJS 3.4.X via the web interface or command-line interface (CLI).
 
 ## Quick Start
 
@@ -24,8 +24,13 @@ php tools/importExport.php CSVImportExportPlugin --dry-mode issues [username] [p
 
 See [CLI Usage](docs/cli-usage.md) for parameter details and examples.
 
+## Web Interface
+
+Go to **Tools → Import/Export → CSV Import Export Plugin** to upload CSV or ZIP files, run data validation, and review results in a modal dialog. See [Web Interface Usage](docs/web-interface.md) for details.
+
 ## Documentation
 
+- [Web Interface Usage](docs/web-interface.md) — import from the OJS admin UI
 - [CLI Usage](docs/cli-usage.md) — import from the command line
 - [CSV Format](docs/csv-format.md) — column reference for users and issues CSVs
 - [Multi-Locale Support](docs/multi-locale.md) — import articles in multiple languages

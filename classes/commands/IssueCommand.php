@@ -112,22 +112,33 @@ class IssueCommand
     /** Validates the CSV files without persisting anything when true. */
     private bool $dryMode;
 
-    public function __construct(string $sourceDir, User $user, bool $dryMode = false)
+    private ?string $currentJournalPath;
+
+    public function __construct(string $sourceDir, User $user, bool $dryMode = false, ?string $currentJournalPath = null)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
         $this->sourceDir = $sourceDir;
         $this->user = $user;
         $this->dryMode = $dryMode;
+        $this->currentJournalPath = $currentJournalPath;
         $this->processedIssues = [];
         $this->processedArticles = [];
     }
 
-    /** @return int The exit code: 1 when at least one row failed, 0 otherwise. */
-    public function run(): int
+    public function run(): array
     {
         $totalFiles = 0;
         $totalPassed = 0;
         $totalFailed = 0;
+        $results = [
+            'filesProcessed' => 0,
+            'totalRows' => 0,
+            'successfulRows' => 0,
+            'createdRows' => 0,
+            'updatedRows' => 0,
+            'failedRows' => 0,
+            'perFile' => [],
+        ];
 
         foreach (new \DirectoryIterator($this->sourceDir) as $fileInfo) {
             if (!$fileInfo->isFile() || $fileInfo->getExtension() !== 'csv') {
@@ -249,6 +260,15 @@ class IssueCommand
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
 
                     InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
+
+                    if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
+                        throw new RowValidationException(__('plugins.importexport.csv.contextPathMismatch', [
+                            'contextType' => 'journal',
+                            'csvContextPath' => $data->journalPath,
+                            'currentContextPath' => $this->currentJournalPath,
+                        ]));
+                    }
+
                     InvalidRowValidations::validateJournalLocale($journal, $data->locale);
 
                     // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
@@ -582,9 +602,7 @@ class IssueCommand
                         $e->getMessage(),
                         $this->failedRows
                     );
-                    if ($this->dryMode) {
-                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
-                    }
+                    $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
 
                     continue;
                 } catch (\Throwable $e) {
@@ -605,9 +623,7 @@ class IssueCommand
                         $message,
                         $this->failedRows
                     );
-                    if ($this->dryMode) {
-                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $message];
-                    }
+                    $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $message];
 
                     continue;
                 }
@@ -635,17 +651,38 @@ class IssueCommand
                 $this->processedArticles = [];
             }
 
-            echo __('plugins.importexpot.csv.fileProcessFinished', [
+            echo __('plugins.importexport.csv.submissionFileProcessFinished', [
                 'filename' => $fileInfo->getFilename(),
                 'processedRows' => $this->processedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
+
+            $successful = $this->processedRows - $this->failedRows;
+            $invalidFilename = "invalid_{$basename}";
+            $results['perFile'][] = [
+                'filename' => $basename,
+                'rows' => $this->processedRows,
+                'successful' => $successful,
+                'created' => $successful,
+                'updated' => 0,
+                'failed' => $this->failedRows,
+                'errors' => $fileFailedRows,
+                'invalidFile' => ($this->failedRows > 0 && is_file($this->sourceDir . '/' . $invalidFilename))
+                    ? $invalidFilename
+                    : null,
+            ];
+            $results['filesProcessed']++;
+            $results['totalRows'] += $this->processedRows;
+            $results['successfulRows'] += $successful;
+            $results['createdRows'] += $successful;
+            $results['failedRows'] += $this->failedRows;
         }
 
         if ($this->dryMode) {
             DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
 
-            return $totalFailed > 0 ? 1 : 0;
+            $results['exitCode'] = $totalFailed > 0 ? 1 : 0;
+            return $results;
         }
 
         $this->syncCoverImagesForProcessedArticles();
@@ -654,7 +691,8 @@ class IssueCommand
         IssueProcessor::fillMissingIssueDates($this->processedIssues);
         IssueProcessor::reorderImportedIssues($this->processedIssues);
 
-        return $totalFailed > 0 ? 1 : 0;
+        $results['exitCode'] = $results['failedRows'] > 0 ? 1 : 0;
+        return $results;
     }
 
     /** Insert static data that will be used for the submission processing */
