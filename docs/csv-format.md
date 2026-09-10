@@ -16,9 +16,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 | email | Yes | User's email address | homer@example.com | No - keep original
 | affiliation | No | User's affiliation | University of British Columbia | Yes
 | country | No | Two-letter country code | CA | Yes
-| username | Yes | Username for login | hsimpson | Yes
-| tempPassword | Yes | Temporary password | temppassword123 | No - skip
-| roles | Yes | Semicolon-separated list of roles | Reader;Author | No - skip
+| username | Yes | Username for login | hsimpson | No
+| tempPassword | Yes | Temporary password | temppassword123 | No
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes
 | subscriptionType | No | Subscription type ID | 1 | Yes
 | startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes
@@ -32,7 +32,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
 
-> **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' can be the same as the 'email'.
+> **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' should not be the same as the 'email'.
 
 > **tempPassword:** You can enter a temporary password when filling out the CSV. If you don't, it will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using tempPassword. Upon first login, they will be prompted to update their password to their own password preference.
 
@@ -80,6 +80,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - The ORCID checksum is validated during import
 >  - Invalid ORCIDs will cause the row to be rejected
 >  - Leave empty if the user doesn't have an ORCID
+>  - ORCID iDs imported in this manner will appear as “unauthenticated” on the article landing pages. If the ORCID integration is enabled, these ORCID iDs will need to be either authenticated or deleted in order for the article or version to be published.
 >
 > Examples:
 >
@@ -92,9 +93,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 > **Updating user data via a CSV upload:**
 > It is possible to update certain data for existing OJS users by uploading a CSV via this tool. Specific fields that can be updated are indicated in the table above.
 > To make such an update:
->   -  Prepare a CSV file following the above format, only including the contacts that require an update.
+>   -  Prepare a CSV file following the above format.
 >   -  Ensure the existing email is listed for each existing user - this is how the system will identify the user to be updated. For the other fields, only include the values for the fields you want updated, keep the other fields empty.
->   -  Leave the password and roles value empty - these fields cannot be updated via the CSV import for security reasons.
+>   -  Username, password and roles will be left unchanged during an update — only new users receive password, username and role assignments.
 
 ## Issues CSV Format
 
@@ -127,8 +128,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
-| sectionTitle | No | Section name | Articles | Will be created if needed |
-| sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
+| sectionTitle | Yes | Section name | Articles | Will be created if needed |
+| sectionAbbrev | Yes | Section abbreviation | ART | Used if section is created |
 | issueTitle | No | Issue title | Vol 1, No 1 (2024) | |
 | issueVolume | No | Volume number | 1 | |
 | issueNumber | No | Issue number | 1 | |

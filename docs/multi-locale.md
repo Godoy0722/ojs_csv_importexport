@@ -100,7 +100,7 @@ The system will:
 - Files (galleys, supplementary) are shared across all locales
 
 
-For a comprehensive example of multi-locale articles with versions, see the [comprehensive locale version CSV file](../examples/issues/comprehensive_locale_version.csv).
+For a comprehensive example of multi-locale articles with versions, see the [Multi locale example under the Issue CSV file](../examples/issues).
 
 ## ORCiD in Multi-Locale and Multi-Version
 

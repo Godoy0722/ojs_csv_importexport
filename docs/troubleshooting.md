@@ -119,11 +119,11 @@
      - References files must be in plain text format
 
 ### General Troubleshooting Tips
-- Always back up your database before running imports
 - Test with a small CSV file first
-- Check the OJS error log for detailed error messages
 - Ensure your CSV file is saved with UTF-8 encoding
-- On Linux systems, check file permissions with `ls -l` and adjust with `chmod` if needed
-- For large imports, monitor server resources as the process may be memory-intensive
+- CLI: Always back up your database before running imports
+- CLI: Check the OJS error log for detailed error messages
+- CLI: On Linux systems, check file permissions with `ls -l` and adjust with `chmod` if needed
+- CLI: For large imports, monitor server resources as the process may be memory-intensive
 
 [← Prev: Dry Mode](dry-mode.md) | [README](../README.md)
