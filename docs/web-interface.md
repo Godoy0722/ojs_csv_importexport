@@ -4,7 +4,7 @@
 
 The plugin supports importing through the OJS web interface:
 
-1. Navigate to **Tools → Import/Export → CSV Import Export Plugin**
+1. Navigate to **Tools → Import/Export → CSV Import Plugin**
 2. Select the import type (**Issues** or **Users**)
 3. Upload your CSV file or a ZIP archive containing CSV files and associated assets
 4. Optionally enable **Data Validation** to validate without persisting changes

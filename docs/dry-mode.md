@@ -19,13 +19,13 @@ Usage:
 
 ```bash
 # Dry-mode for issues
-php tools/importExport.php CSVImportExportPlugin --dry-mode issues admin /path/to/csv_files/
+php tools/importExport.php CSVImportPlugin --dry-mode issues admin /path/to/csv_files/
 
 # Dry-mode for users
-php tools/importExport.php CSVImportExportPlugin --dry-mode users admin /path/to/csv_files/
+php tools/importExport.php CSVImportPlugin --dry-mode users admin /path/to/csv_files/
 
 # Dry-mode for users with sendWelcomeEmail (emails are NOT sent in dry-mode)
-php tools/importExport.php CSVImportExportPlugin --dry-mode users admin /path/to/csv_files/ true
+php tools/importExport.php CSVImportPlugin --dry-mode users admin /path/to/csv_files/ true
 ```
 
 The flag can be placed anywhere in the argument list; the positional arguments are read after it is removed.
@@ -64,10 +64,10 @@ The process exit code indicates the overall result:
 This allows dry-mode to be used in scripts and CI pipelines:
 
 ```bash
-php tools/importExport.php CSVImportExportPlugin --dry-mode issues admin /path/to/csv_files/
+php tools/importExport.php CSVImportPlugin --dry-mode issues admin /path/to/csv_files/
 if [ $? -eq 0 ]; then
     echo "All rows valid — safe to import"
-    php tools/importExport.php CSVImportExportPlugin issues admin /path/to/csv_files/
+    php tools/importExport.php CSVImportPlugin issues admin /path/to/csv_files/
 else
     echo "Validation errors found — check the output and invalid_*.csv files"
 fi
@@ -92,15 +92,15 @@ Real imports are not affected: they keep exiting with `0` regardless of failed r
 7. **Recommended workflow**:
    ```bash
    # Step 1: Validate with dry-mode
-   php tools/importExport.php CSVImportExportPlugin --dry-mode issues admin /path/to/csv_files/
+   php tools/importExport.php CSVImportPlugin --dry-mode issues admin /path/to/csv_files/
 
    # Step 2: Fix any errors in the CSV files based on the report
 
    # Step 3: Run dry-mode again to verify fixes
-   php tools/importExport.php CSVImportExportPlugin --dry-mode issues admin /path/to/csv_files/
+   php tools/importExport.php CSVImportPlugin --dry-mode issues admin /path/to/csv_files/
 
    # Step 4: When all rows pass, run the real import
-   php tools/importExport.php CSVImportExportPlugin issues admin /path/to/csv_files/
+   php tools/importExport.php CSVImportPlugin issues admin /path/to/csv_files/
    ```
 
 [← Prev: Supplementary Files Descriptions](supplementary-files.md) | [README](../README.md) | [Next: Troubleshooting →](troubleshooting.md)
