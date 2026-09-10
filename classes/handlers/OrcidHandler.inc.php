@@ -26,6 +26,8 @@
 
 namespace PKP\Plugins\ImportExport\CSV\Classes\Handlers;
 
+use PKP\Plugins\ImportExport\CSV\Classes\Exceptions\RowValidationException;
+
 class OrcidHandler
 {
     /**
@@ -71,35 +73,34 @@ class OrcidHandler
 
     /**
      * Validates the ORCID value including format and checksum.
-     * Returns error message if invalid, null if valid.
      *
      * @param string|null $orcid ORCID value to validate
      *
-     * @return string|null Error message or null if valid
+     * @return void
+     *
+     * @throws RowValidationException
      */
     public static function validate($orcid)
     {
         if (empty($orcid)) {
-            return null;
+            return;
         }
 
         $normalizedOrcid = self::normalize($orcid);
 
         if ($normalizedOrcid === null) {
-            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
+            throw new RowValidationException(__('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]));
         }
 
         $digits = preg_replace('/[^0-9X]/', '', $normalizedOrcid);
 
         if (strlen($digits) !== 16) {
-            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
+            throw new RowValidationException(__('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]));
         }
 
         if (!self::validateChecksum($digits)) {
-            return __('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]);
+            throw new RowValidationException(__('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]));
         }
-
-        return null;
     }
 
     /**

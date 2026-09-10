@@ -11,45 +11,47 @@
  *
  * @ingroup plugins_importexport_csv
  *
- * @brief Handles the issue import when the user uses the issue command
+ * @brief Handles CSV file read/write operations for invalid row output
  */
 
 namespace PKP\Plugins\ImportExport\CSV\Classes\Handlers;
 
-use PKP\Plugins\ImportExport\CSV\Classes\Validations\RequiredUserHeaders;
-
 class CSVFileHandler
 {
     /**
-     * Create a new readable SplFileObject. Return null if an error occurred.
-	 *
-	 * @param string $filePath
-	 *
-	 * @return \SplFileObject|null
+     * Create a new readable SplFileObject.
+     *
+     * @param string $filePath
+     *
+     * @return \SplFileObject
+     *
+     * @throws \Exception
      */
     public static function createReadableCSVFile($filePath)
     {
         try {
             $file = new \SplFileObject($filePath, 'r');
             $file->setFlags(\SplFileObject::READ_CSV);
+
             return $file;
         } catch (\Exception $e) {
-            echo __('plugins.importexport.csv.couldNotOpenFile', [
+            throw new \Exception(__('plugins.importexport.csv.couldNotOpenFile', [
                 'filePath' => $filePath,
                 'errorMessage' => $e->getMessage(),
-            ]) . "\n";
-            return null;
+            ]));
         }
     }
 
     /**
-     * Create a new writable SplFileObject for invalid rows from a unique CSV file. Return null if an error occurred.
-	 *
-	 * @param string $sourceDir
-	 * @param string $filename
-	 * @param array $requiredHeaders
-	 *
-	 * @return \SplFileObject|null
+     * Create a new writable SplFileObject for invalid rows from a unique CSV file.
+     *
+     * @param string $sourceDir
+     * @param string $filename
+     * @param array $requiredHeaders
+     *
+     * @return \SplFileObject
+     *
+     * @throws \Exception
      */
     public static function createCSVFileInvalidRows($sourceDir, $filename, $requiredHeaders)
     {
@@ -59,28 +61,28 @@ class CSVFileHandler
 
             return $invalidRowsFile;
         } catch (\Exception $e) {
-            echo $e->getMessage() . "\n\n";
-            echo __('plugins.importexport.csv.couldNotCreateFile', ['filename' => $sourceDir . '/' . $filename]) . "\n";
-            return null;
+            throw new \Exception(__('plugins.importexport.csv.couldNotCreateFile', ['filename' => $sourceDir . '/' . $filename]));
         }
-	}
+    }
 
     /**
      * Add a new row on the invalid csv file
-	 *
-	 * @param \SplFileObject &$invalidRowsCsvFile
-	 * @param array $fields
-	 * @param int $rowSize
-	 * @param string $reason
-	 * @param int &$failedRows
-	 *
-	 * @return void
+     *
+     * @param \SplFileObject &$invalidRowsCsvFile
+     * @param array $fields
+     * @param int $rowSize
+     * @param string $reason
+     * @param int &$failedRows
+     *
+     * @return void
+     *
+     * @throws \Exception
      */
     public static function processFailedRow(&$invalidRowsCsvFile, $fields, $rowSize, $reason, &$failedRows)
     {
-        if ($invalidRowsCsvFile !== null) {
-            $invalidRowsCsvFile->fputcsv(array_merge(array_pad($fields, $rowSize, null), [$reason]));
+        if (!$invalidRowsCsvFile->fputcsv(array_merge(array_pad($fields, $rowSize, null), [$reason]))) {
+            throw new \Exception(__('plugins.importexport.csv.couldNotWriteFile', ['filename' => $invalidRowsCsvFile->getFilename()]));
         }
-		++$failedRows;
-	}
+        ++$failedRows;
+    }
 }

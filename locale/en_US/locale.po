@@ -139,6 +139,21 @@ msgstr "Version is required when versionIdentifier is provided."
 msgid "plugins.importexport.csv.invalidVersionFields"
 msgstr "Version field must be a positive integer and is required when versionIdentifier is provided."
 
+msgid "plugins.importexport.csv.versionMustBePositiveInteger"
+msgstr "Version field must be a positive integer."
+
+msgid "plugins.importexport.csv.errorWhileCreatingPublication"
+msgstr "An error occurred while creating the publication for this row."
+
+msgid "plugins.importexport.csv.couldNotWriteFile"
+msgstr "Could not write to invalid rows file \"{$filename}\"."
+
+msgid "plugins.importexport.csv.rowImportFailed"
+msgstr "Row import failed: {$message}"
+
+msgid "plugins.importexport.csv.baseRowFailedForIdentifier"
+msgstr "A previous row with identifier \"{$identifier}\" failed. Fix the base row before importing subsequent versions or locales."
+
 msgid "plugins.importexport.csv.duplicateArticleVersionLocaleFound"
 msgstr "An article with identifier \"{$identifier}\", version \"{$version}\", and locale \"{$locale}\" already exists in this import. Please check the article's version and locale combination."
 
