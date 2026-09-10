@@ -17,6 +17,7 @@
 namespace APP\plugins\importexport\csv\classes\commands;
 
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\plugins\importexport\csv\classes\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\classes\handlers\CSVFileHandler;
 use APP\plugins\importexport\csv\classes\handlers\DryModeReporter;
 use APP\plugins\importexport\csv\classes\handlers\WelcomeEmailHandler;
@@ -50,9 +51,6 @@ class UserCommand
     /** Validates the CSV files without persisting anything when true. */
     private bool $dryMode;
 
-    /** @var array<int,array{row:int,reason:string}> Failures of the file being processed, for the dry-mode report */
-    private array $fileFailedRows;
-
     public function __construct(string $sourceDir, User $user, bool $sendWelcomeEmail, bool $dryMode = false)
     {
         $this->expectedRowSize = count(RequiredUserHeaders::$userHeaders);
@@ -60,7 +58,6 @@ class UserCommand
         $this->senderEmailUser = $user;
         $this->sendWelcomeEmail = $sendWelcomeEmail;
         $this->dryMode = $dryMode;
-        $this->fileFailedRows = [];
     }
 
     /** @return int The exit code: 1 when at least one row failed, 0 otherwise. */
@@ -82,18 +79,11 @@ class UserCommand
 
             $filePath = $fileInfo->getPathname();
             $file = CSVFileHandler::createReadableCSVFile($filePath);
-            if (is_null($file)) {
-                continue;
-            }
-
-            $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows($this->sourceDir, "invalid_{$basename}", RequiredUserHeaders::$userHeaders);
-            if (is_null($invalidCsvFile)) {
-                continue;
-            }
+            $invalidCsvFile = null;
 
             $this->processedRows = 0;
             $this->failedRows = 0;
-            $this->fileFailedRows = [];
+            $fileFailedRows = [];
 
             if ($this->dryMode) {
                 DB::statement('SET FOREIGN_KEY_CHECKS=0');
@@ -107,109 +97,118 @@ class UserCommand
 
                 ++$this->processedRows;
 
-                $reason = InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
-                if (!is_null($reason)) {
-                    $this->registerFailedRow($invalidCsvFile, $fields, $reason);
-                    continue;
-                }
+                try {
+                    InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
 
-                $fieldsList = array_pad(array_map('trim', $fields), $this->expectedRowSize, null);
-                $data = (object) array_combine(RequiredUserHeaders::$userHeaders, $fieldsList);
+                    $fieldsList = array_pad(array_map('trim', $fields), $this->expectedRowSize, null);
+                    $data = (object) array_combine(RequiredUserHeaders::$userHeaders, $fieldsList);
 
-                $reason = InvalidRowValidations::validateRowHasAllRequiredFields($data, [RequiredUserHeaders::class, 'validateRowHasAllRequiredFields']);
-                if (!is_null($reason)) {
-                    $this->registerFailedRow($invalidCsvFile, $fields, $reason);
-                    continue;
-                }
+                    InvalidRowValidations::validateRowHasAllRequiredFields($data, [RequiredUserHeaders::class, 'validateRowHasAllRequiredFields']);
 
-                $journal = CachedEntities::getCachedJournal($data->journalPath);
+                    $journal = CachedEntities::getCachedJournal($data->journalPath);
 
-                $reason = InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
-                if (!is_null($reason)) {
-                    $this->registerFailedRow($invalidCsvFile, $fields, $reason);
-                    continue;
-                }
+                    InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
 
-                $existingUserByEmail = CachedEntities::getCachedUserByEmail($data->email);
-                $isNewUser = is_null($existingUserByEmail);
+                    $existingUserByEmail = CachedEntities::getCachedUserByEmail($data->email);
+                    $isNewUser = is_null($existingUserByEmail);
 
-                if ($isNewUser) {
-                    if ($data->username) {
-                        $existingUserByUsername = CachedEntities::getCachedUserByUsername($data->username);
-                        if (!is_null($existingUserByUsername)) {
-                            $this->registerFailedRow($invalidCsvFile, $fields, __('plugins.importexport.csv.userAlreadyExistsWithUsername', ['username' => $data->username]));
-                            continue;
+                    if ($isNewUser) {
+                        if ($data->username) {
+                            InvalidRowValidations::validateUserAlreadyExistsWithThisUsername($data->username);
+                        }
+
+                        if (empty($data->username)) {
+                            $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
                         }
                     }
 
-                    if (empty($data->username)) {
-                        $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
-                    }
-                }
+                    $roles = array_map('trim', explode(';', $data->roles));
 
-                $roles = array_map('trim', explode(';', $data->roles));
-
-                if ($isNewUser) {
-                    $reason = InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
-                    if (!is_null($reason)) {
-                        $this->registerFailedRow($invalidCsvFile, $fields, $reason);
-                        continue;
-                    }
-                }
-
-                if (!empty($data->subscriptionType) || !empty($data->startDate) || !empty($data->endDate)) {
-					if (!RequiredUserHeaders::validateSubscriptionFields($data)) {
-						$reason = __('plugins.importexport.csv.missingSubscriptionFields', ['email' => $data->email]);
-						$this->registerFailedRow($invalidCsvFile, $fields, $reason);
-						continue;
-					}
-
-					$subscriptionType = CachedEntities::getCachedSubscriptionType($data->subscriptionType, $journal->getId());
-
-                    $reason = InvalidRowValidations::validateSubscriptionType($subscriptionType, $data->subscriptionType, $journal->getId());
-                    if (!is_null($reason)) {
-                        $this->registerFailedRow($invalidCsvFile, $fields, $reason);
-                        continue;
+                    if ($isNewUser) {
+                        InvalidRowValidations::validateAllUserGroupsAreValid($roles, $journal->getId(), $journal->getPrimaryLocale());
                     }
 
-					$reason = InvalidRowValidations::validateSubscriptionDates($data->startDate, $data->endDate);
-					if ($reason) {
-						$this->registerFailedRow($invalidCsvFile, $fields, $reason);
-						continue;
-					}
-                }
+                    if (!empty($data->subscriptionType) || !empty($data->startDate) || !empty($data->endDate)) {
+                        InvalidRowValidations::validateSubscriptionFields($data);
 
-                if (!empty($data->orcid)) {
-                    $reason = OrcidHandler::validate($data->orcid);
-                    if (!is_null($reason)) {
-                        $this->registerFailedRow($invalidCsvFile, $fields, $reason);
-                        continue;
+                        $subscriptionType = CachedEntities::getCachedSubscriptionType($data->subscriptionType, $journal->getId());
+
+                        InvalidRowValidations::validateSubscriptionType($subscriptionType, $data->subscriptionType);
+                        InvalidRowValidations::validateSubscriptionDates($data->startDate, $data->endDate);
                     }
-                }
 
-                if ($isNewUser && is_null($data->tempPassword)) {
-                    $data->tempPassword = Validation::generatePassword();
-                }
+                    if (!empty($data->orcid)) {
+                        OrcidHandler::validate($data->orcid);
+                    }
 
-                $user = UsersProcessor::process($data, $journal->getPrimaryLocale());
-                $userId = $user->getId();
-                $userInterests = array_map('trim', explode(';', $data->reviewInterests));
-                UserInterestsProcessor::process($userInterests, $userId);
+                    if ($isNewUser && is_null($data->tempPassword)) {
+                        $data->tempPassword = Validation::generatePassword();
+                    }
 
-                if ($isNewUser) {
-                    UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
-                }
+                    $user = UsersProcessor::process($data, $journal->getPrimaryLocale());
+                    $userId = $user->getId();
+                    $userInterests = array_map('trim', explode(';', $data->reviewInterests));
+                    UserInterestsProcessor::process($userInterests, $userId);
 
-                if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
-                    $dateFormat = 'Y-m-d';
-                    $startDate = \DateTime::createFromFormat($dateFormat, $data->startDate);
-                    $endDate = \DateTime::createFromFormat($dateFormat, $data->endDate);
+                    if ($isNewUser) {
+                        UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    }
 
-                    UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
-                }
+                    if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
+                        $dateFormat = 'Y-m-d';
+                        $startDate = \DateTime::createFromFormat($dateFormat, $data->startDate);
+                        $endDate = \DateTime::createFromFormat($dateFormat, $data->endDate);
 
-                if ($this->sendWelcomeEmail && !$this->dryMode && $isNewUser) {
-                    WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
+                        UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
+                    }
+
+                    if ($this->sendWelcomeEmail && !$this->dryMode && $isNewUser) {
+                        WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->senderEmailUser, $data->tempPassword);
+                    }
+                } catch (RowValidationException $e) {
+                    if (is_null($invalidCsvFile)) {
+                        $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
+                            $this->sourceDir,
+                            "invalid_{$basename}",
+                            RequiredUserHeaders::$userHeaders
+                        );
+                    }
+
+                    CSVFileHandler::processFailedRow(
+                        $invalidCsvFile,
+                        $fields,
+                        $this->expectedRowSize,
+                        $e->getMessage(),
+                        $this->failedRows
+                    );
+                    if ($this->dryMode) {
+                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $e->getMessage()];
+                    }
+
+                    continue;
+                } catch (\Throwable $e) {
+                    if (is_null($invalidCsvFile)) {
+                        $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
+                            $this->sourceDir,
+                            "invalid_{$basename}",
+                            RequiredUserHeaders::$userHeaders
+                        );
+                    }
+
+                    $message = __('plugins.importexport.csv.rowImportFailed', ['message' => $e->getMessage()]);
+
+                    CSVFileHandler::processFailedRow(
+                        $invalidCsvFile,
+                        $fields,
+                        $this->expectedRowSize,
+                        $message,
+                        $this->failedRows
+                    );
+                    if ($this->dryMode) {
+                        $fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $message];
+                    }
+
+                    continue;
                 }
             }
 
@@ -218,9 +217,9 @@ class UserCommand
             if ($this->dryMode) {
                 $passed = $this->processedRows - $this->failedRows;
                 DryModeReporter::printFileHeader($basename);
-                if (!empty($this->fileFailedRows)) {
+                if (!empty($fileFailedRows)) {
                     DryModeReporter::printTableHeader();
-                    foreach ($this->fileFailedRows as $failedRow) {
+                    foreach ($fileFailedRows as $failedRow) {
                         DryModeReporter::printFailedRow($failedRow['row'], $failedRow['reason']);
                     }
                 }
@@ -238,10 +237,6 @@ class UserCommand
                 'processedRows' => $this->processedRows,
                 'failedRows' => $this->failedRows,
             ]) . "\n";
-
-            if (!$this->failedRows) {
-                unlink($this->sourceDir . '/' . "invalid_{$basename}");
-            }
         }
 
         if ($this->dryMode) {
@@ -249,15 +244,5 @@ class UserCommand
         }
 
         return $totalFailed > 0 ? 1 : 0;
-    }
-
-    /** Writes a failed row to the invalid CSV file and, in dry mode, keeps it for the console report. */
-    private function registerFailedRow(\SplFileObject $invalidCsvFile, array $fields, string $reason): void
-    {
-        CSVFileHandler::processFailedRow($invalidCsvFile, $fields, $this->expectedRowSize, $reason, $this->failedRows);
-
-        if ($this->dryMode) {
-            $this->fileFailedRows[] = ['row' => $this->processedRows + 1, 'reason' => $reason];
-        }
     }
 }

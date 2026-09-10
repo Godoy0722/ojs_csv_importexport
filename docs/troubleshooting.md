@@ -29,6 +29,7 @@
 
 5. **Invalid Rows Output**
    - Failed rows are written to `invalid_[original-filename].csv` in the same directory, with an extra `error` column explaining the rejection.
+   - The file is only created when at least one row fails, and it is never removed automatically. Rows are appended, so delete it before re-running if you want a clean report.
    - Fix the rows and re-run the import. Files named `invalid_*.csv` are automatically skipped on subsequent runs.
 
 ### User Import Issues

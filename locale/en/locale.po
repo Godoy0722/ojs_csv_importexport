@@ -52,8 +52,17 @@ msgstr "Could not read file: \"{$filePath}\". Error: \"{$errorMessage}\"."
 msgid "plugins.importexport.csv.couldNotCreateFile"
 msgstr "Could not create the file \"{$filename}\"."
 
+msgid "plugins.importexport.csv.couldNotWriteFile"
+msgstr "Could not write to the file \"{$filename}\"."
+
 msgid "plugins.importexport.csv.rowDoesntContainAllFields"
 msgstr "Row doesn't contain all fields."
+
+msgid "plugins.importexport.csv.rowImportFailed"
+msgstr "Unexpected error while importing this row: {$message}"
+
+msgid "plugins.importexport.csv.invalidFileExtension"
+msgstr "The file extension is not supported."
 
 msgid "plugins.importexport.csv.verifyRequiredFieldsForThisRow"
 msgstr "Verify the required fields for this row."

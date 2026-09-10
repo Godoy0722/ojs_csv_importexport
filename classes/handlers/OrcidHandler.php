@@ -26,6 +26,8 @@
 
 namespace APP\plugins\importexport\csv\classes\handlers;
 
+use APP\plugins\importexport\csv\classes\exceptions\RowValidationException;
+
 class OrcidHandler
 {
     /**
@@ -64,31 +66,30 @@ class OrcidHandler
 
     /**
      * Validates the ORCID value including format and checksum.
-     * Returns error message if invalid, null if valid.
+     *
+     * @throws RowValidationException
      */
-    public static function validate(?string $orcid): ?string
+    public static function validate(?string $orcid): void
     {
         if (empty($orcid)) {
-            return null;
+            return;
         }
 
         $normalizedOrcid = static::normalize($orcid);
 
         if ($normalizedOrcid === null) {
-            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
+            throw new RowValidationException(__('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]));
         }
 
         $digits = preg_replace('/[^0-9X]/', '', $normalizedOrcid);
 
         if (mb_strlen($digits) !== 16) {
-            return __('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]);
+            throw new RowValidationException(__('plugins.importexport.csv.invalidOrcidFormat', ['orcid' => $orcid]));
         }
 
         if (!static::validateChecksum($digits)) {
-            return __('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]);
+            throw new RowValidationException(__('plugins.importexport.csv.invalidOrcidChecksum', ['orcid' => $orcid]));
         }
-
-        return null;
     }
 
     /**
