@@ -42,8 +42,10 @@
 5. **User Already Exists**
    - Error: `User already exists with email/username [value]`
    - Solution:
-     - Update existing users instead of creating new ones
-     - Ensure usernames and emails are unique across the system
+     - If the email already exists, the importer updates that user's profile data (name, affiliation, country, ORCID, etc.) instead of creating a duplicate account
+     - Username, password (`tempPassword`), and roles are not changed for existing users — leave those columns empty or omit their values when updating
+     - To reset an existing user's password, use the OJS user management interface; CSV import cannot change passwords for existing accounts
+     - Ensure usernames and emails are unique when creating **new** users
      - Check for case sensitivity in usernames/emails
 
 6. **Role or Subscription Issues**

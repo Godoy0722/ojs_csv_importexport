@@ -16,9 +16,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 | email | Yes | User's email address | homer@example.com | No - keep original
 | affiliation | No | User's affiliation | University of British Columbia | Yes
 | country | No | Two-letter country code | CA | Yes
-| username | Yes | Username for login | hsimpson | No
-| tempPassword | Yes | Temporary password | temppassword123 | No
-| roles | Yes | Semicolon-separated list of roles | Reader;Author | No
+| username | Yes | Username for login | hsimpson | No (new users only)
+| tempPassword | Yes | Temporary password | temppassword123 | No (new users only)
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No (new users only)
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes
 | subscriptionType | No | Subscription type ID | 1 | Yes
 | startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes
@@ -32,9 +32,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
 
-> **Username:** You can enter a username when filling out the CSV. If you don't, it will be generated automatically upon import. A 'username' should not be the same as the 'email'.
+> **Username:** For **new users**, you can enter a username in the CSV. If you don't, one will be generated automatically upon import. A `username` should not be the same as the `email`. For **existing users** (matched by email), the username is never changed.
 
-> **tempPassword:** You can enter a temporary password when filling out the CSV. If you don't, it will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using tempPassword. Upon first login, they will be prompted to update their password to their own password preference.
+> **tempPassword:** For **new users**, you can enter a temporary password in the CSV. If you don't, one will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using `tempPassword`. Upon first login, they will be prompted to update their password to their own password preference. For **existing users**, `tempPassword` is ignored — passwords cannot be changed via CSV import.
 
 > **Roles:** At least one role is mandatory. For the list of default available roles in OJS to select from, navigate to Users & Roles > Roles in your OJS journal or see the reference in the [Learning OJS Guide: Getting to Know Permissions and Role](https://docs.pkp.sfu.ca/learning-ojs/journal-managers/en/users#permissions-roles). Make sure to add a "Reader" role to each account as the minimum permission level granted to all users.
 
@@ -95,7 +95,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 > To make such an update:
 >   -  Prepare a CSV file following the above format.
 >   -  Ensure the existing email is listed for each existing user - this is how the system will identify the user to be updated. For the other fields, only include the values for the fields you want updated, keep the other fields empty.
->   -  Username, password and roles will be left unchanged during an update — only new users receive password, username and role assignments.
+>   -  Username, password (`tempPassword`), and roles are never changed during an update — even if those columns contain values. Only new users receive a username, password, and role assignments. To reset a password for an existing user, use the OJS user management interface instead.
 
 ## Issues CSV Format
 
