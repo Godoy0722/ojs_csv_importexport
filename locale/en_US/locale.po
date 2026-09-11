@@ -260,7 +260,7 @@ msgid "plugins.importexport.csv.results.updatedUsersSection"
 msgstr "UPDATED USERS"
 
 msgid "plugins.importexport.csv.results.updatedUsersExplanation"
-msgstr "Users marked as updated were found by email. Profile data (name, affiliation, country, email, ORCID) was updated. Password and roles were left unchanged — only new users receive password and role assignments."
+msgstr "Users marked as updated were found by email. Profile data (name, affiliation, country, email, ORCID) was updated. Password and roles were left unchanged — tempPassword in the CSV is ignored for existing users; only new users receive password and role assignments."
 
 msgid "plugins.importexport.csv.results.intro.issues"
 msgstr "This is the result of importing <b>issues and articles</b>. Every row of your CSV files was processed: rows that succeeded were saved to the journal, and any that failed are listed further down together with the reason they could not be imported."
@@ -269,10 +269,10 @@ msgid "plugins.importexport.csv.results.intro.issues.dryMode"
 msgstr "This is a <b>Data Validation</b> for <b>issues and articles</b> — nothing was saved to the journal. The summary below is a preview of what a real import would do: it shows which rows would be created and which would fail, along with the reason for each failure. When you are happy with the result, disable <b>Data Validation</b> and import again to apply the changes."
 
 msgid "plugins.importexport.csv.results.intro.users"
-msgstr "This is the result of importing <b>users</b>. Every row of your CSV files was processed: rows that succeeded were created as user accounts, and any that failed are listed further down together with the reason they could not be imported."
+msgstr "This is the result of importing <b>users</b>. Every row of your CSV files was processed: new emails created accounts (with password and roles); existing emails updated profile data only — password and roles were not changed. Failed rows are listed below with the reason they could not be imported."
 
 msgid "plugins.importexport.csv.results.intro.users.dryMode"
-msgstr "This is a <b>Data Validation</b> for <b>users</b> — no accounts were created. The summary below is a preview of what a real import would do: it shows which rows would be created and which would fail, along with the reason for each failure. When you are happy with the result, disable <b>Data Validation</b> and import again to apply the changes."
+msgstr "This is a <b>Data Validation</b> for <b>users</b> — no accounts were created or updated. The summary below is a preview of what a real import would do: which rows would be created, which would update existing users, and which would fail. When you are happy with the result, disable <b>Data Validation</b> and import again to apply the changes."
 
 msgid "plugins.importexport.csv.results.legend"
 msgstr "The counters below show the totals for this run, followed by a per-file breakdown. Each failed row is listed with its row number and the reason it failed, so you can fix it in the CSV and import again."
@@ -290,7 +290,7 @@ msgid "plugins.importexport.csv.form.examplesHelp"
 msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CSV files for issue imports here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_3_0/examples/issues\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for issues</a>."
 
 msgid "plugins.importexport.csv.form.userImportHelp"
-msgstr "<b>Users:</b> For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above."
+msgstr "<b>Users:</b> For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above. Rows with an email that already exists update that account (profile, interests, subscription); tempPassword and roles apply only when creating new users."
 
 msgid "plugins.importexport.csv.form.usersExamplesHelp"
 msgstr "<b>Need an example?</b> You can view and download ready-to-use sample user CSV files here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_3_0/examples/users\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for users</a>."

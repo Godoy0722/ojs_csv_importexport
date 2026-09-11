@@ -15,13 +15,15 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 | affiliation | No | User's affiliation | University of British Columbia |
 | country | No | Two-letter country code | CA |
 | username | Yes | Username for login | hsimpson |
-| tempPassword | No | Temporary password | temppassword123 | Auto-generated when empty for new users |
-| roles | No | Semicolon-separated list of roles | Reader;Author |
+| tempPassword | No | Temporary password for **new** users only | temppassword123 | Auto-generated when empty on create; ignored on update |
+| roles | No | Semicolon-separated list of roles | Reader;Author | Assigned only when creating a new user |
 | reviewInterests | No | Semicolon-separated interests | interest one;interest two |
 | subscriptionType | No | Subscription type ID | 1 |
-| start_date | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
-| end_date | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
+| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
+| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
 | orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
+
+> **Creating vs. updating users:** Rows are matched by **email**. If no account exists, a new user is created (password, roles, and optional welcome email apply). If an account already exists, profile fields are updated (name, affiliation, country, email, ORCID, review interests, subscription when provided). **Password and roles are never changed on update** — `tempPassword` and `roles` are ignored for existing users even when present in the CSV.
 
 > **User Interests:** User interests in the users CSV use a semicolon-separated format:
 >

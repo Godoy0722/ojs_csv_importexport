@@ -15,7 +15,7 @@ Parameters:
 - `pathToFolderWithCsvFiles`: Path to the folder containing user CSV files. Can be absolute or relative to the OJS root directory.
 
 Optional flags (must be placed before the `users`/`issues` positional argument):
-- `--sendWelcomeEmail`: Send welcome emails to imported users. The sender email will be the user retrieved by the username on the CLI command. No emails are sent when combined with `--dry-mode`.
+- `--sendWelcomeEmail`: Send welcome emails to **newly created** users only. The sender email will be the user retrieved by the username on the CLI command. No emails are sent when combined with `--dry-mode`, and no email is sent when a row updates an existing account matched by email.
 - `--dry-mode`: Validate the CSV without persisting any data. See [Dry Mode](dry-mode.md).
 
 The optional trailing `sendWelcomeEmail` positional argument (`true`/`false`) is also supported as an alternative to the flag.
@@ -24,6 +24,8 @@ Example:
 ```bash
 php tools/importExport.php CSVImportPlugin --sendWelcomeEmail users admin /path/to/folder_with_csv_user_files
 ```
+
+> **Note:** Rows with an email that already exists update that user (profile, interests, subscription). `tempPassword` and `roles` apply only on create — existing users keep their current password and roles.
 
 ## Importing Issues
 

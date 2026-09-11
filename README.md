@@ -37,6 +37,7 @@ See [CLI Usage](docs/cli-usage.md) for parameter details and examples.
 
 ## Important Notes
 
+> - **User imports:** Rows match existing accounts by email. New users receive `tempPassword` (or an auto-generated password) and role assignments. **Existing users are updated in place** (profile, interests, subscription) — password and roles are never changed on update, even if those columns are filled in the CSV.
 > - The user obtained through the username will be the same one assigned to the submission files. It's also recommended that a dedicated importUser is created for this purpose with the Author role so that it's separate from existing Journal Manager and editor user accounts.
 > - The last CLI attribute must be the path to the folder containing CSV files, and not directly the CSV file itself.
 > - The CSV file and any referenced files (PDFs, images) must be readable by the user running the CLI script.

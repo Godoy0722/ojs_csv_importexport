@@ -62,19 +62,21 @@
 
 ### User Import Issues
 
-8. **User Already Exists**
+8. **User Already Exists (new users only)**
    - Error: `User already exists with email/username [value]`
+   - When this appears: the row is treated as a **new** user, but the email or username is already taken.
    - Solution:
-     - Update existing users instead of creating new ones
-     - Ensure usernames and emails are unique across the system
+     - To **update** an existing account, keep the same **email** in the CSV — the import will update profile data instead of creating a duplicate
+     - For **new** users, choose a unique email and username
      - Check for case sensitivity in usernames/emails
+   - Note: When updating by email, `tempPassword` and `roles` are **not** applied — password and role assignments only run on create
 
 9. **Role or Subscription Issues**
    - Error: `Role "[role]" doesn't exist` or `Invalid subscription type with ID [id]`
    - Solution:
      - Verify role names exactly match those in the system
      - Check that subscription type IDs exist in the database
-     - Ensure required subscription fields (start_date, end_date) are provided
+     - Ensure required subscription fields (startDate, endDate) are provided
 
 10. **ORCID Issues**
     - Error: `Invalid ORCID format: [orcid]`
