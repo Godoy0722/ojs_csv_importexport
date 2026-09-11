@@ -260,7 +260,7 @@ class InvalidRowValidations
      *
      * @throws RowValidationException
      */
-    public static function validateUserAlreadyExistsWithEmail(string $email): void
+    public static function validateUserAlreadyExistsWithThisEmail(string $email): void
     {
         $existingUser = CachedEntities::getCachedUserByEmail($email);
         if (!is_null($existingUser)) {

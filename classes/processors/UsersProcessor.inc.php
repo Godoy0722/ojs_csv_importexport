@@ -3,8 +3,8 @@
 /**
  * @file plugins/importexport/csv/classes/processors/UsersProcessor.php
  *
- * Copyright (c) 2014-2025 Simon Fraser University
- * Copyright (c) 2003-2025 John Willinsky
+ * Copyright (c) 2014-2026 Simon Fraser University
+ * Copyright (c) 2003-2026 John Willinsky
  * Distributed under the GNU GPL v3. For full terms see the file docs/COPYING.
  *
  * @class UsersProcessor
@@ -16,6 +16,8 @@
 
 namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
+import('plugins.importexport.csv.classes.handlers.OrcidHandler');
+
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\OrcidHandler;
@@ -23,16 +25,32 @@ use PKP\Plugins\ImportExport\CSV\Classes\Handlers\OrcidHandler;
 class UsersProcessor
 {
     /**
-	 * Process data for Users
-	 *
-	 * @param object $data
-	 * @param string $locale
-	 *
-	 * @return \User
-	 */
-	public static function process($data, $locale)
+     * Create or update a user from CSV row data.
+     *
+     * @param object $data
+     * @param string $locale
+     *
+     * @return \User
+     */
+    public static function process($data, $locale)
     {
-		$userDao = CachedDaos::getUserDao();
+        $existing = CachedEntities::getCachedUserByEmail($data->email);
+        if ($existing) {
+            return static::update($existing, $data, $locale);
+        }
+
+        return static::create($data, $locale);
+    }
+
+    /**
+     * @param object $data
+     * @param string $locale
+     *
+     * @return \User
+     */
+    public static function create($data, $locale)
+    {
+        $userDao = CachedDaos::getUserDao();
 
         $user = $userDao->newDataObject();
         $user->setGivenName($data->firstname, $locale);
@@ -45,7 +63,7 @@ class UsersProcessor
         $user->setDateRegistered(\Core::getCurrentDate());
         $user->setPassword(\Validation::encryptCredentials($data->username, $data->tempPassword));
 
-		if (!empty($data->orcid)) {
+        if (!empty($data->orcid)) {
             $normalizedOrcid = OrcidHandler::normalize($data->orcid);
             if ($normalizedOrcid !== null) {
                 $user->setOrcid($normalizedOrcid);
@@ -55,16 +73,45 @@ class UsersProcessor
         $userDao->insertObject($user);
 
         return $user;
-	}
+    }
 
-	/**
-	 * Get a valid username for a user.
-	 *
-	 * @param string $firstname
-	 * @param string $lastname
-	 *
-	 * @return string|null
-	 */
+    /**
+     * @param \User $user
+     * @param object $data
+     * @param string $locale
+     *
+     * @return \User
+     */
+    public static function update($user, $data, $locale)
+    {
+        $userDao = CachedDaos::getUserDao();
+
+        $user->setGivenName($data->firstname, $locale);
+        $user->setFamilyName($data->lastname, $locale);
+        $user->setAffiliation($data->affiliation, $locale);
+        $user->setEmail($data->email);
+        $user->setCountry($data->country);
+
+        if (!empty($data->orcid)) {
+            $normalizedOrcid = OrcidHandler::normalize($data->orcid);
+            if ($normalizedOrcid !== null) {
+                $user->setOrcid($normalizedOrcid);
+            }
+        }
+
+        $userDao->updateObject($user);
+
+        return $userDao->getById($user->getId());
+    }
+
+    /**
+     * Get a valid username for a user.
+     *
+     * @param string $firstname
+     * @param string $lastname
+     *
+     * @return string
+     */
     public static function getValidUsername($firstname, $lastname)
     {
         $letters = range('a', 'z');

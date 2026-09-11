@@ -160,15 +160,20 @@ class UserCommand
                         ]));
                     }
 
-                    InvalidRowValidations::validateUserAlreadyExistsWithEmail($data->email);
+                    $existingUser = CachedEntities::getCachedUserByEmail($data->email);
+                    $isNewUser = is_null($existingUser);
 
-                    if ($data->username) {
-                        InvalidRowValidations::validateUserAlreadyExistsWithThisUsername($data->username);
-                    }
+                    if ($isNewUser) {
+                        InvalidRowValidations::validateUserAlreadyExistsWithThisEmail($data->email);
 
-                    import('plugins.importexport.csv.classes.processors.UsersProcessor');
-                    if (empty($data->username)) {
-                        $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                        if ($data->username) {
+                            InvalidRowValidations::validateUserAlreadyExistsWithThisUsername($data->username);
+                        }
+
+                        import('plugins.importexport.csv.classes.processors.UsersProcessor');
+                        if (empty($data->username)) {
+                            $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                        }
                     }
 
                     $roles = array_map('trim', explode(';', $data->roles));
@@ -188,10 +193,11 @@ class UserCommand
                         OrcidHandler::validate($data->orcid);
                     }
 
-                    if (empty($data->tempPassword)) {
+                    if ($isNewUser && empty($data->tempPassword)) {
                         $data->tempPassword = \Validation::generatePassword();
                     }
 
+                    import('plugins.importexport.csv.classes.processors.UsersProcessor');
                     $user = UsersProcessor::process($data, $journal->getPrimaryLocale());
                     $userId = $user->getId();
 
@@ -199,8 +205,13 @@ class UserCommand
                     $userInterests = array_map('trim', explode(';', $data->reviewInterests));
                     UserInterestsProcessor::process($userInterests, $userId);
 
-                    import('plugins.importexport.csv.classes.processors.UserGroupsProcessor');
-                    UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    if ($isNewUser) {
+                        import('plugins.importexport.csv.classes.processors.UserGroupsProcessor');
+                        UserGroupsProcessor::process($roles, $userId, $journal->getId(), $journal->getPrimaryLocale());
+                    } else {
+                        $fileUpdatedRows++;
+                        $fileUpdatedUsers[] = $data->email;
+                    }
 
                     if (!empty($data->subscriptionType) && !empty($data->startDate) && !empty($data->endDate)) {
                         $dateFormat = 'Y-m-d';
@@ -208,10 +219,10 @@ class UserCommand
                         $endDate = \DateTime::createFromFormat($dateFormat, $data->endDate);
 
                         import('plugins.importexport.csv.classes.processors.UserSubscriptionProcessor');
-                        UserSubscriptionProcessor::process($data, $user->getId(), $journal->getId(), $startDate, $endDate);
+                        UserSubscriptionProcessor::process((int) $data->subscriptionType, $user->getId(), $journal->getId(), $startDate, $endDate);
                     }
 
-                    if ($this->_sendWelcomeEmail && !$this->_dryMode) {
+                    if ($this->_sendWelcomeEmail && !$this->_dryMode && $isNewUser) {
                         import('plugins.importexport.csv.classes.handlers.WelcomeEmailHandler');
                         WelcomeEmailHandler::sendWelcomeEmail($journal, $user, $this->_senderEmailUser, $data->tempPassword);
                     }
