@@ -193,7 +193,7 @@ msgid "plugins.importexport.csv.results.updatedUsersSection"
 msgstr "UPDATED USERS"
 
 msgid "plugins.importexport.csv.results.updatedUsersExplanation"
-msgstr "Users marked as updated were found by email. Profile data (name, affiliation, country, email, ORCID) was updated. Password and roles were left unchanged — only new users receive password and role assignments."
+msgstr "Users marked as updated were found by email. Profile data (name, affiliation, country, email, ORCID) was updated. Username, password (`tempPassword`), and roles were left unchanged — only new users receive those assignments."
 
 msgid "plugins.importexport.csv.results.intro.issues"
 msgstr "This is the result of importing <b>issues and articles</b>. Every row of your CSV files was processed: rows that succeeded were saved to the journal, and any that failed are listed further down together with the reason they could not be imported."

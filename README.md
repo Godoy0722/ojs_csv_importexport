@@ -47,3 +47,4 @@ Go to **Tools → Import/Export → CSV Import Plugin** to upload CSV or ZIP fil
 > - The script must be executed from the OJS installation directory.
 > - Ensure you have proper permissions to execute PHP scripts and access the files.
 > - Files named `invalid_*.csv` are skipped during import. They are generated when rows fail validation so you can fix and re-import.
+> - Rows that match an existing user by `email` update profile data only. Password (`tempPassword`), username, and roles are never changed on update.

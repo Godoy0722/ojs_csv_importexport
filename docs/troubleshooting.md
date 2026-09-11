@@ -38,6 +38,7 @@
    - Error: `User already exists with username [value]` (new users only)
    - Existing users are matched by `email` and updated instead of created.
    - Usernames must be unique when creating new users.
+   - Passwords cannot be changed through CSV import for existing users; `tempPassword` is ignored on update. Reset passwords in **Users & Roles** instead.
 
 7. **Role or Subscription Issues**
    - Verify role names match those configured in the journal.

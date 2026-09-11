@@ -8,28 +8,30 @@ A sample user CSV file is available here — [users_example.csv](../examples/use
 
 Make sure to follow this CSV structure with all headers present, including non-required ones. Non-required fields may be empty as long as the header is present.
 
-| Column | Required | Description | Example |
-|--------|----------|-------------|---------|
-| journalPath | Yes | Path of the journal | liv |
-| firstname | Yes | User's first name | Homer |
-| lastname | No | User's last name | Simpson |
-| email | Yes | User's email address | homer@example.com |
-| affiliation | No | User's affiliation | University of British Columbia |
-| country | No | Two-letter country code | CA |
-| username | No | Username for login | hsimpson | Auto-generated when empty for new users |
-| tempPassword | No | Temporary password | temppassword123 | Auto-generated when empty for new users |
-| roles | Yes | Semicolon-separated list of roles | Reader;Author |
-| reviewInterests | No | Semicolon-separated interests | interest one;interest two |
-| subscriptionType | No | Subscription type ID | 1 |
-| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
-| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
-| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
+| Column | Required | Description | Example | Can be updated? |
+|--------|----------|-------------|---------|-----------------|
+| journalPath | Yes | Path of the journal | liv | n/a |
+| firstname | Yes | User's first name | Homer | Yes |
+| lastname | No | User's last name | Simpson | Yes |
+| email | Yes | User's email address | homer@example.com | No — used to identify the user |
+| affiliation | No | User's affiliation | University of British Columbia | Yes |
+| country | No | Two-letter country code | CA | Yes |
+| username | No | Username for login | hsimpson | No — new users only; auto-generated when empty |
+| tempPassword | No | Temporary password | temppassword123 | No — new users only; auto-generated when empty |
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No — new users only |
+| reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes |
+| subscriptionType | No | Subscription type ID | 1 | Yes |
+| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes |
+| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 | Yes |
+| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 | Yes |
+
+> **tempPassword:** Applies only when creating a new user. If omitted for a new user, a password is generated automatically and the user must change it on first login. For existing users matched by `email`, `tempPassword` is **ignored** — the import never changes their password.
+
+> **Updating existing users:** When a row's `email` matches an existing user, the importer updates that user instead of creating a new one. Updatable fields are listed in the **Can be updated?** column above. `username`, `tempPassword`, and `roles` are never changed on update — values in those columns are ignored. Use OJS user management to reset passwords or change roles.
 
 > **User Interests:** Semicolon-separated. Leading/trailing spaces are trimmed; empty values are ignored.
 
 > **ORCID:** Accepts full URL, dashed format (`0000-0002-1825-0097`), or numeric format (`0000000218250097`). Checksum is validated; invalid ORCIDs reject the row.
-
-> **Updating existing users:** When a row's `email` matches an existing user, the importer updates that user instead of creating a new one. Updatable fields: `firstname`, `lastname`, `affiliation`, `country`, `orcid`, `reviewInterests`, and subscription fields. Leave `roles` unchanged on update (roles are only assigned for new users). Leave `tempPassword` empty unless you intend to reset the password.
 
 ## Issues CSV Format
 

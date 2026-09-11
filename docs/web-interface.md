@@ -20,7 +20,7 @@ After the import completes, a modal dialog displays a summary of the run:
 - **Summary badges** — files processed, total rows, successful rows, created rows, updated rows, and failed rows
 - **Per-file sections** — one block per CSV file, showing:
   - A table of failed rows (row number, status, and error message) when applicable
-  - A table of updated users (for user imports) when applicable
+  - A table of updated users (for user imports) when applicable — profile data only; password and roles are not changed
   - A per-file result line (passed, created, updated, failed)
 - **Download links** — for each file that had failed rows, a link to download the corresponding `invalid_*.csv` file containing only the rejected rows
 
