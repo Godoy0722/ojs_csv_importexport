@@ -252,6 +252,9 @@ msgstr "Abstract is required for this section but not provided."
 msgid "plugins.importexport.csv.atLeastOneIssueFieldRequired"
 msgstr "At least one issue field (issueTitle, issueVolume, issueNumber, or issueYear) must be provided."
 
+msgid "plugins.importexport.csv.invalidAuthorEmail"
+msgstr "Invalid email \"{$email}\" for author {$authorIndex} (\"{$authorName}\") in the authors column. The third value of each author must be a valid email, or empty to use the journal contact email."
+
 msgid "plugins.importexport.csv.userAlreadyExistsWithEmail"
 msgstr "User already exists with email \"{$email}\"."
 

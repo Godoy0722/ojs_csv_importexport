@@ -23,7 +23,7 @@ When multiple CSV rows share the same `versionIdentifier` and `version` but use 
    - Additional locales: only `versionIdentifier`, `version`, and `locale` are strictly required; include other fields you want to translate
    - Fields not provided remain empty for that locale (no cross-locale inheritance), except cover images which inherit from the first locale when omitted
 
-3. **Localized Fields**: `articleTitle`, `articleSubtitle`, `articleAbstract`, `articlePrefix`, `coverage`, `copyrightHolder`, `keywords`, `subjects`, `categories`, author names/affiliations, `issueTitle`, `issueDescription`, `supportingAgencies`, `suppDescriptions`
+3. **Localized Fields**: `articleTitle`, `articleSubtitle`, `articleAbstract`, `articlePrefix`, `coverage`, `copyrightHolder`, `keywords`, `subjects`, `categories`, author names/affiliations/biography, `issueTitle`, `issueDescription`, `supportingAgencies`, `suppDescriptions`
 
 4. **Non-Localized Fields**: `copyrightYear`, `licenseUrl`, `doi`, `datePublished`, `startPage`, `endPage`, galleys, supplementary files, `funders`, `articleViews`
 

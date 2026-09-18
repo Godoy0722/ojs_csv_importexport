@@ -93,12 +93,14 @@ All 42 headers must be present in every issues CSV, even when values are empty.
 ### Authors Format
 
 ```
-GivenName,FamilyName,Email,ORCiD,Affiliation;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2
+GivenName,FamilyName,Email,ORCiD,Affiliation,Biography;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2,Biography2
 ```
 
 - Fields are separated by commas within each author; multiple authors by semicolons.
 - All fields except `GivenName` are optional.
 - If `Email` is empty, the journal's primary contact email is used.
+- If `Email` is provided, it must be a valid address (the same check used when adding a contributor in OJS). Invalid emails reject the row.
+- `Biography` is optional and stored per locale.
 
 ### Funders Format
 

@@ -39,16 +39,16 @@ class AuthorsProcessor
             return;
         }
 
-		$authorsString = array_map('trim', explode(';', $data->authors));
+		$authorsString = static::splitAuthorEntries($data->authors);
 
         foreach ($authorsString as $index => $authorString) {
-			$givenName = $familyName = $emailAddress = $orcid = $affiliation = null;
-			$authorParts = array_map('trim', explode(',', $authorString));
-			$givenName = $authorParts[0] ?? '';
-            $familyName = $authorParts[1] ?? '';
-            $emailAddress = $authorParts[2] ?? '';
-            $orcid = $authorParts[3] ?? '';
-            $affiliation = $authorParts[4] ?? '';
+			$authorParts = static::parseAuthorSubfields($authorString);
+			$givenName = $authorParts['givenName'];
+            $familyName = $authorParts['familyName'];
+            $emailAddress = $authorParts['emailAddress'];
+            $orcid = $authorParts['orcid'];
+            $affiliation = $authorParts['affiliation'];
+            $biography = $authorParts['biography'];
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
@@ -71,6 +71,10 @@ class AuthorsProcessor
             $normalizedOrcid = OrcidHandler::normalize($orcid);
             if (!empty($normalizedOrcid)) {
                 $author->setOrcid($normalizedOrcid);
+            }
+
+            if (!empty($biography)) {
+                $author->setBiography($biography, $data->locale);
             }
 
             $authorId = Repo::author()->add($author);
@@ -195,16 +199,17 @@ class AuthorsProcessor
             return;
         }
 
-        $authorsString = array_map('trim', explode(';', $data->authors));
+        $authorsString = static::splitAuthorEntries($data->authors);
         $existingAuthors = $publication->getData('authors');
 
         foreach ($authorsString as $index => $authorString) {
-            $givenName = $familyName = $emailAddress = $affiliation = null;
-            $authorParts = array_map('trim', explode(',', $authorString));
-            $givenName = $authorParts[0] ?? '';
-            $familyName = $authorParts[1] ?? '';
-            $emailAddress = $authorParts[2] ?? '';
-            $affiliation = $authorParts[3] ?? '';
+            $authorParts = static::parseAuthorSubfields($authorString);
+            $givenName = $authorParts['givenName'];
+            $familyName = $authorParts['familyName'];
+            $emailAddress = $authorParts['emailAddress'];
+            $orcid = $authorParts['orcid'];
+            $affiliation = $authorParts['affiliation'];
+            $biography = $authorParts['biography'];
 
             if (empty($emailAddress)) {
                 $emailAddress = $contactEmail;
@@ -228,6 +233,15 @@ class AuthorsProcessor
                     $existingAuthor->setAffiliation($affiliation, $data->locale);
                 }
 
+                $normalizedOrcid = OrcidHandler::normalize($orcid);
+                if (!empty($normalizedOrcid)) {
+                    $existingAuthor->setOrcid($normalizedOrcid);
+                }
+
+                if (!empty($biography)) {
+                    $existingAuthor->setBiography($biography, $data->locale);
+                }
+
                 Repo::author()->dao->update($existingAuthor);
             } else {
                 $author = static::addNewAuthor(
@@ -238,12 +252,45 @@ class AuthorsProcessor
                     $familyName,
                     $emailAddress,
                     $affiliation,
+                    $orcid,
+                    $biography,
                     $data
                 );
 
                 Repo::author()->add($author);
             }
         }
+    }
+
+    /**
+     * Split the authors CSV cell into individual author entries.
+     *
+     * @return string[]
+     */
+    public static function splitAuthorEntries(string $authors): array
+    {
+        return array_map('trim', explode(';', $authors));
+    }
+
+    /**
+     * Parse a single author CSV entry into subfields.
+     *
+     * Format: GivenName,FamilyName,Email,ORCiD,Affiliation,Biography
+     *
+     * @return array{givenName:string,familyName:string,emailAddress:string,orcid:string,affiliation:string,biography:string}
+     */
+    public static function parseAuthorSubfields(string $authorString): array
+    {
+        $authorParts = array_map('trim', explode(',', $authorString));
+
+        return [
+            'givenName' => $authorParts[0] ?? '',
+            'familyName' => $authorParts[1] ?? '',
+            'emailAddress' => $authorParts[2] ?? '',
+            'orcid' => $authorParts[3] ?? '',
+            'affiliation' => $authorParts[4] ?? '',
+            'biography' => $authorParts[5] ?? '',
+        ];
     }
 
     private static function addNewAuthor(
@@ -254,6 +301,8 @@ class AuthorsProcessor
         string $familyName,
         string $emailAddress,
         ?string $affiliation,
+        string $orcid,
+        string $biography,
         object $data
     ): Author {
         $author = Repo::author()->newDataObject();
@@ -266,6 +315,15 @@ class AuthorsProcessor
 
         if ($affiliation) {
             $author->setAffiliation($affiliation, $data->locale);
+        }
+
+        $normalizedOrcid = OrcidHandler::normalize($orcid);
+        if (!empty($normalizedOrcid)) {
+            $author->setOrcid($normalizedOrcid);
+        }
+
+        if (!empty($biography)) {
+            $author->setBiography($biography, $data->locale);
         }
 
         return $author;

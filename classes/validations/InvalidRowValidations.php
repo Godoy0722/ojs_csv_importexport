@@ -19,9 +19,11 @@ namespace APP\plugins\importexport\csv\classes\validations;
 use APP\journal\Journal;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\plugins\importexport\csv\classes\exceptions\RowValidationException;
+use APP\plugins\importexport\csv\classes\processors\AuthorsProcessor;
 use APP\plugins\importexport\csv\classes\processors\FundersProcessor;
 use APP\publication\Publication;
 use APP\subscription\SubscriptionType;
+use PKP\validation\ValidatorEmail;
 
 class InvalidRowValidations
 {
@@ -544,6 +546,47 @@ class InvalidRowValidations
     {
         if (!$publication) {
             throw new RowValidationException(__('plugins.importexport.csv.errorWhileCreatingPublication'));
+        }
+    }
+
+    /**
+     * Validates captured author emails (third subfield). Empty emails are allowed
+     * and later fall back to the journal contact email.
+     *
+     * Uses the same PKP ValidatorEmail / email_or_localhost rule as author forms
+     * and the author schema.
+     *
+     * @throws RowValidationException
+     */
+    public static function validateAuthorEmails(?string $authors): void
+    {
+        if ($authors === null || trim($authors) === '') {
+            return;
+        }
+
+        $emailValidator = new ValidatorEmail();
+
+        foreach (AuthorsProcessor::splitAuthorEntries($authors) as $index => $authorString) {
+            if (trim($authorString) === '') {
+                continue;
+            }
+
+            $parts = AuthorsProcessor::parseAuthorSubfields($authorString);
+            $capturedEmail = $parts['emailAddress'];
+
+            if ($capturedEmail === '') {
+                continue;
+            }
+
+            if (!$emailValidator->isValid($capturedEmail)) {
+                $authorName = trim($parts['givenName'] . ' ' . $parts['familyName']);
+
+                throw new RowValidationException(__('plugins.importexport.csv.invalidAuthorEmail', [
+                    'email' => $capturedEmail,
+                    'authorName' => $authorName !== '' ? $authorName : (string) ($index + 1),
+                    'authorIndex' => $index + 1,
+                ]));
+            }
         }
     }
 }

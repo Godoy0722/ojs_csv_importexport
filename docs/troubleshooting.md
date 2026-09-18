@@ -80,6 +80,10 @@
 15. **References File Issues**
     - References files must exist in the import directory and use a `.txt` extension.
 
+16. **Invalid Author Email**
+    - Error: `Invalid email "..." for author ... in the authors column`
+    - The third value of each author must be a valid email, or empty to use the journal contact email.
+
 ### General Tips
 
 - Back up your database before running imports.
