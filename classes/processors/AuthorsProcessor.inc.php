@@ -41,15 +41,15 @@ class AuthorsProcessor
         }
 
 		$authorDao = CachedDaos::getAuthorDao();
-		$authorsString = self::splitRespectingQuotes($data->authors, ';');
+		$authorsString = self::splitAuthorEntries($data->authors);
 
         foreach ($authorsString as $index => $authorString) {
-			$authorParts = self::splitRespectingQuotes($authorString, ',', true);
-            $givenName = $authorParts[0] ?? '';
-            $familyName = $authorParts[1] ?? '';
-            $emailAddress = $authorParts[2] ?? '';
-            $orcid = $authorParts[3] ?? '';
-            $affiliation = $authorParts[4] ?? '';
+			$authorParts = self::parseAuthorSubfields($authorString);
+            $givenName = $authorParts['givenName'];
+            $familyName = $authorParts['familyName'];
+            $emailAddress = $authorParts['emailAddress'];
+            $orcid = $authorParts['orcid'];
+            $affiliation = $authorParts['affiliation'];
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
@@ -215,6 +215,40 @@ class AuthorsProcessor
     }
 
 	/**
+	 * Split the authors CSV cell into individual author entries.
+	 *
+	 * @param string $authors
+	 *
+	 * @return string[]
+	 */
+	public static function splitAuthorEntries($authors)
+	{
+		return self::splitRespectingQuotes($authors, ';');
+	}
+
+	/**
+	 * Parse a single author CSV entry into subfields.
+	 *
+	 * Format: GivenName,FamilyName,Email,ORCiD,Affiliation
+	 *
+	 * @param string $authorString
+	 *
+	 * @return array{givenName:string,familyName:string,emailAddress:string,orcid:string,affiliation:string}
+	 */
+	public static function parseAuthorSubfields($authorString)
+	{
+		$authorParts = self::splitRespectingQuotes($authorString, ',', true);
+
+		return [
+			'givenName' => $authorParts[0] ?? '',
+			'familyName' => $authorParts[1] ?? '',
+			'emailAddress' => $authorParts[2] ?? '',
+			'orcid' => $authorParts[3] ?? '',
+			'affiliation' => $authorParts[4] ?? '',
+		];
+	}
+
+	/**
 	 * Split a string by a delimiter while respecting double-quoted regions.
 	 * Unlike str_getcsv, this handles quotes that appear mid-field (e.g., after
 	 * preceding unquoted content), which is needed for the authors format where
@@ -272,17 +306,18 @@ class AuthorsProcessor
             return; // No new author data to add
         }
 
-        $authorsString = self::splitRespectingQuotes($data->authors, ';');
+        $authorsString = self::splitAuthorEntries($data->authors);
         /** @var Author[] */
         $existingAuthors = $publication->getData('authors');
 
         foreach ($authorsString as $index => $authorString) {
             $givenName = $familyName = $emailAddress = $affiliation = null;
-            $authorParts = self::splitRespectingQuotes($authorString, ',', true);
-            $givenName = $authorParts[0] ?? '';
-            $familyName = $authorParts[1] ?? '';
-            $emailAddress = $authorParts[2] ?? '';
-            $affiliation = $authorParts[3] ?? '';
+            $authorParts = self::parseAuthorSubfields($authorString);
+            $givenName = $authorParts['givenName'];
+            $familyName = $authorParts['familyName'];
+            $emailAddress = $authorParts['emailAddress'];
+            $rawParts = self::splitRespectingQuotes($authorString, ',', true);
+            $affiliation = $rawParts[3] ?? '';
 
             if (empty($emailAddress)) {
                 $emailAddress = $contactEmail;

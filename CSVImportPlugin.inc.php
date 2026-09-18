@@ -193,39 +193,50 @@ class CSVImportPlugin extends \ImportExportPlugin
             ['plugin', $this->getName(), 'cleanup']
         );
 
-        $scriptUrl = $request->getBaseUrl() . '/' . $this->getPluginPath() . '/scripts/csvImportResults.js';
-        $templateMgr->addJavaScript('csvImportResults', $scriptUrl, [
+        $pluginPathUrl = $request->getBaseUrl() . '/' . $this->getPluginPath();
+        $templateMgr->addStyleSheet('csvImportResults', $pluginPathUrl . '/styles/csvImportResults.css', [
             'contexts' => ['backend'],
             'priority' => STYLE_SEQUENCE_LAST,
         ]);
-
-        $templateMgr->assign('csvImportPluginConfig', json_encode([
-            'formId' => FORM_CSV_IMPORT,
-            'downloadBaseUrl' => $downloadBaseUrl,
-            'cleanupUrl' => $cleanupUrl,
-            'labels' => [
-                'dryModeTitle' => __('plugins.importexport.csv.results.dryModeTitle'),
-                'importCompleteTitle' => __('plugins.importexport.csv.results.importCompleteTitle'),
-                'importType' => __('plugins.importexport.csv.results.importType'),
-                'filesProcessed' => __('plugins.importexport.csv.results.filesProcessed'),
-                'totalRows' => __('plugins.importexport.csv.results.totalRows'),
-                'successfulRows' => __('plugins.importexport.csv.results.successfulRows'),
-                'createdRows' => __('plugins.importexport.csv.results.createdRows'),
-                'updatedRows' => __('plugins.importexport.csv.results.updatedRows'),
-                'failedRows' => __('plugins.importexport.csv.results.failedRows'),
-                'updatedUsersSection' => __('plugins.importexport.csv.results.updatedUsersSection'),
-                'updatedUsersExplanation' => __('plugins.importexport.csv.results.updatedUsersExplanation'),
-                'invalidFiles' => __('plugins.importexport.csv.results.invalidFiles'),
-                'introIssues' => __('plugins.importexport.csv.results.intro.issues'),
-                'introIssuesDryMode' => __('plugins.importexport.csv.results.intro.issues.dryMode'),
-                'introUsers' => __('plugins.importexport.csv.results.intro.users'),
-                'introUsersDryMode' => __('plugins.importexport.csv.results.intro.users.dryMode'),
-                'legend' => __('plugins.importexport.csv.results.legend'),
-                'invalidFilesHint' => __('plugins.importexport.csv.results.invalidFilesHint'),
-                'importing' => __('plugins.importexport.csv.form.importing'),
-                'imported' => __('plugins.importexport.csv.form.imported'),
-            ],
-        ]));
+        $templateMgr->addJavaScript(
+            'csvImportPluginConfig',
+            'window.csvImportPluginConfig = ' . json_encode([
+                'formId' => FORM_CSV_IMPORT,
+                'downloadBaseUrl' => $downloadBaseUrl,
+                'cleanupUrl' => $cleanupUrl,
+                'labels' => [
+                    'dryModeTitle' => __('plugins.importexport.csv.results.dryModeTitle'),
+                    'importCompleteTitle' => __('plugins.importexport.csv.results.importCompleteTitle'),
+                    'importType' => __('plugins.importexport.csv.results.importType'),
+                    'filesProcessed' => __('plugins.importexport.csv.results.filesProcessed'),
+                    'totalRows' => __('plugins.importexport.csv.results.totalRows'),
+                    'successfulRows' => __('plugins.importexport.csv.results.successfulRows'),
+                    'createdRows' => __('plugins.importexport.csv.results.createdRows'),
+                    'updatedRows' => __('plugins.importexport.csv.results.updatedRows'),
+                    'failedRows' => __('plugins.importexport.csv.results.failedRows'),
+                    'updatedUsersSection' => __('plugins.importexport.csv.results.updatedUsersSection'),
+                    'updatedUsersExplanation' => __('plugins.importexport.csv.results.updatedUsersExplanation'),
+                    'invalidFiles' => __('plugins.importexport.csv.results.invalidFiles'),
+                    'introIssues' => __('plugins.importexport.csv.results.intro.issues'),
+                    'introIssuesDryMode' => __('plugins.importexport.csv.results.intro.issues.dryMode'),
+                    'introUsers' => __('plugins.importexport.csv.results.intro.users'),
+                    'introUsersDryMode' => __('plugins.importexport.csv.results.intro.users.dryMode'),
+                    'legend' => __('plugins.importexport.csv.results.legend'),
+                    'invalidFilesHint' => __('plugins.importexport.csv.results.invalidFilesHint'),
+                    'importing' => __('plugins.importexport.csv.form.importing'),
+                    'imported' => __('plugins.importexport.csv.form.imported'),
+                ],
+            ], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . ';',
+            [
+                'contexts' => ['backend'],
+                'inline' => true,
+                'priority' => STYLE_SEQUENCE_LATE,
+            ]
+        );
+        $templateMgr->addJavaScript('csvImportResults', $pluginPathUrl . '/scripts/csvImportResults.js', [
+            'contexts' => ['backend'],
+            'priority' => STYLE_SEQUENCE_LAST,
+        ]);
 
         $templateMgr->display($this->getTemplateResource('settingsForm.tpl'));
     }
@@ -237,8 +248,44 @@ class CSVImportPlugin extends \ImportExportPlugin
     private function _sendJsonResponse($data, $statusCode = 200)
     {
         http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
+        header('Content-Type: application/json; charset=utf-8');
+        $json = json_encode($this->_utf8ize($data), JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            $json = json_encode($this->_utf8ize($data), JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        }
+        echo $json === false ? '{"errorMessage":"Failed to encode import results."}' : $json;
+        exit;
+    }
+
+    /**
+     * Convert nested strings to UTF-8 so json_encode does not return false
+     * (common with Windows-1252 CSV/ZIP filenames).
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private function _utf8ize($value)
+    {
+        if (is_array($value)) {
+            $out = [];
+            foreach ($value as $key => $item) {
+                $out[$this->_utf8ize($key)] = $this->_utf8ize($item);
+            }
+            return $out;
+        }
+        if (!is_string($value) || $value === '') {
+            return $value;
+        }
+        if (preg_match('//u', $value)) {
+            return $value;
+        }
+        if (function_exists('mb_convert_encoding')) {
+            $converted = @mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+            if ($converted !== false && $converted !== '') {
+                return $converted;
+            }
+        }
+        return utf8_encode($value);
     }
 
     /**

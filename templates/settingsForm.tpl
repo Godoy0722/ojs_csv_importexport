@@ -31,6 +31,4 @@
 			@set="set"
 		/>
 	</div>
-
-	<script>window.csvImportPluginConfig = {$csvImportPluginConfig};</script>
 {/block}

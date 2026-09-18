@@ -19,6 +19,7 @@ namespace PKP\Plugins\ImportExport\CSV\Classes\Validations;
 
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 use PKP\Plugins\ImportExport\CSV\Classes\Exceptions\RowValidationException;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\AuthorsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\FundersProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Validations\RequiredUserHeaders;
 
@@ -560,6 +561,49 @@ class InvalidRowValidations
     {
         if (!$publication) {
             throw new RowValidationException(__('plugins.importexport.csv.errorWhileCreatingPublication'));
+        }
+    }
+
+    /**
+     * Validates captured author emails (third subfield). Empty emails are allowed
+     * and later fall back to the journal contact email.
+     *
+     * @throws RowValidationException
+     */
+    public static function validateAuthorEmails(?string $authors): void
+    {
+        if ($authors === null || trim($authors) === '') {
+            return;
+        }
+
+
+        import('plugins.importexport.csv.classes.processors.AuthorsProcessor');
+
+        foreach (AuthorsProcessor::splitAuthorEntries($authors) as $index => $authorString) {
+            if (trim($authorString) === '') {
+                continue;
+            }
+
+            $parts = AuthorsProcessor::parseAuthorSubfields($authorString);
+            $capturedEmail = $parts['emailAddress'];
+
+            if ($capturedEmail === '') {
+                continue;
+            }
+
+			import('lib.pkp.classes.validation.ValidatorEmail');
+
+			$emailValidator = new \ValidatorEmail();
+
+            if (!$emailValidator->isValid($capturedEmail)) {
+                $authorName = trim($parts['givenName'] . ' ' . $parts['familyName']);
+
+                throw new RowValidationException(__('plugins.importexport.csv.invalidAuthorEmail', [
+                    'email' => $capturedEmail,
+                    'authorName' => $authorName !== '' ? $authorName : (string) ($index + 1),
+                    'authorIndex' => $index + 1,
+                ]));
+            }
         }
     }
 }

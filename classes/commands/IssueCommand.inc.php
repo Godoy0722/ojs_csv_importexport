@@ -232,6 +232,8 @@ class IssueCommand
                         return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->_processedPublications);
                     });
 
+                    InvalidRowValidations::validateAuthorEmails($data->authors ?? null);
+
                     InvalidRowValidations::validateArticleVersioningFields($data);
 
                     if (!empty($data->versionIdentifier)) {

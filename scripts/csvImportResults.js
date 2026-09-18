@@ -1,11 +1,15 @@
 /**
  * CSV import results modal for OJS 3.3.
  *
- * OJS 3.3 uses vue-js-modal via
- * the Page component's openDialog() mixin method (pkp.registry._instances.app).
+ * Uses vue-js-modal as a content modal (not openDialog). Dialogs are
+ * vertically centered with translateY(-75%) and a 30rem max-width, which
+ * pushes a tall results report off-screen. Dialog.message also runs
+ * DOMPurify, which strips the inline styles this report needs.
  */
 (function() {
     var pluginConfig = null;
+    var currentUuid = null;
+    var MODAL_NAME = "csvImportResults";
 
     function init() {
         pluginConfig = window.csvImportPluginConfig;
@@ -13,10 +17,10 @@
             return;
         }
 
-        var currentUuid = null;
-
-        pkp.localeKeys["common.saving"] = pluginConfig.labels.importing || "Processing";
-        pkp.localeKeys["form.saved"] = pluginConfig.labels.imported || "Saved";
+        if (pkp.localeKeys) {
+            pkp.localeKeys["common.saving"] = pluginConfig.labels.importing || "Processing";
+            pkp.localeKeys["form.saved"] = pluginConfig.labels.imported || "Saved";
+        }
 
         pkp.eventBus.$on("form-success", function(fId, response) {
             if (fId !== pluginConfig.formId) {
@@ -24,39 +28,66 @@
             }
 
             var page = getPageInstance();
-            if (!page || typeof page.openDialog !== "function") {
+            if (!page || !page.$modal || typeof page.$modal.show !== "function") {
                 return;
             }
 
             currentUuid = response.uuid || null;
 
             var labels = pluginConfig.labels;
-            var downloadBaseUrl = pluginConfig.downloadBaseUrl;
-            var bodyHtml = buildModalContent(response, labels, downloadBaseUrl);
             var title = response.resultDryMode ? labels.dryModeTitle : labels.importCompleteTitle;
             var closeLabel = (pkp.localeKeys && pkp.localeKeys["common.close"]) || "Close";
 
-            page.openDialog({
-                modalName: "csvImportResults",
-                title: title,
-                message: bodyHtml,
-                confirmLabel: closeLabel,
-                callback: function() {
-                    callCleanup(currentUuid);
-                    currentUuid = null;
-                    page.$modal.hide("csvImportResults");
+            page.$modal.show(
+                ResultsModal,
+                {
+                    title: title,
+                    closeLabel: closeLabel,
+                    bodyHtml: buildModalContent(response, labels, pluginConfig.downloadBaseUrl),
+                    modalName: MODAL_NAME
                 },
-                closeCallback: function() {
-                    callCleanup(currentUuid);
-                    currentUuid = null;
+                {
+                    name: MODAL_NAME,
+                    height: "auto",
+                    scrollable: true,
+                    classes: "v--modal csv-import-results-modal",
+                    width: "75%",
+                    clickToClose: true
+                },
+                {
+                    closed: function() {
+                        callCleanup(currentUuid);
+                        currentUuid = null;
+                    }
                 }
-            }, {
-                scrollable: true
-            });
-
-            widenDialogPanel();
+            );
         });
     }
+
+    var ResultsModal = {
+        props: ["title", "closeLabel", "bodyHtml", "modalName"],
+        template:
+            '<div class="modal">' +
+                '<div class="modal__header">' +
+                    '<h2 class="modal__title">{{ title }}</h2>' +
+                    '<button class="modal__closeButton" type="button" @click="close">' +
+                        '<span aria-hidden="true">&times;</span>' +
+                        '<span class="-screenReader">{{ closeLabel }}</span>' +
+                    "</button>" +
+                "</div>" +
+                '<div class="modal__content">' +
+                    '<div v-html="bodyHtml"></div>' +
+                    '<div class="modal__footer">' +
+                        '<button class="pkpButton" type="button" @click="close">{{ closeLabel }}</button>' +
+                    "</div>" +
+                "</div>" +
+            "</div>",
+        methods: {
+            close: function() {
+                this.$modal.hide(this.modalName);
+            }
+        }
+    };
 
     function getPageInstance() {
         return pkp.registry && pkp.registry._instances
@@ -64,33 +95,9 @@
             : null;
     }
 
-    function widenDialogPanel() {
-        var attempts = 0;
-
-        function tryApply() {
-            attempts++;
-            var marker = document.querySelector("[data-csv-import-results]");
-            var panel = (marker && marker.closest(".v--modal"))
-                || document.querySelector(".v--modal-overlay:last-child .v--modal");
-
-            if (panel) {
-                panel.style.setProperty("width", "75%", "important");
-                panel.style.setProperty("max-width", "75%", "important");
-                return;
-            }
-
-            if (attempts < 60) {
-                requestAnimationFrame(tryApply);
-            }
-        }
-
-        requestAnimationFrame(tryApply);
-    }
-
     function buildModalContent(response, labels, downloadBaseUrl) {
         var html = "";
 
-        html += "<div data-csv-import-results style='display:none;'></div>";
         html += buildIntro(response, labels);
 
         html += "<div style='display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:1rem; background:rgba(234,237,238,0.3); border:1px solid #BBBBBB; border-radius:4px;'>";
@@ -224,7 +231,7 @@
 
     function escapeHtml(str) {
         var div = document.createElement("div");
-        div.appendChild(document.createTextNode(str));
+        div.appendChild(document.createTextNode(str == null ? "" : String(str)));
         return div.innerHTML;
     }
 
