@@ -50,6 +50,7 @@ class AuthorsProcessor
             $emailAddress = $authorParts['emailAddress'];
             $orcid = $authorParts['orcid'];
             $affiliation = $authorParts['affiliation'];
+            $biography = $authorParts['biography'];
 
 			if (empty($emailAddress)) {
 				$emailAddress = $contactEmail;
@@ -68,6 +69,10 @@ class AuthorsProcessor
 			$author->setEmail($emailAddress);
             $author->setAffiliation($affiliation, $data->locale);
 			$author->setData('publicationId', $publication->getId());
+
+			if (!empty($biography)) {
+				$author->setBiography($biography, $data->locale);
+			}
 
 			import('plugins.importexport.csv.classes.handlers.OrcidHandler');
 			$normalizedOrcid = OrcidHandler::normalize($orcid);
@@ -229,11 +234,11 @@ class AuthorsProcessor
 	/**
 	 * Parse a single author CSV entry into subfields.
 	 *
-	 * Format: GivenName,FamilyName,Email,ORCiD,Affiliation
+	 * Format: GivenName,FamilyName,Email,ORCiD,Affiliation,Biography
 	 *
 	 * @param string $authorString
 	 *
-	 * @return array{givenName:string,familyName:string,emailAddress:string,orcid:string,affiliation:string}
+	 * @return array{givenName:string,familyName:string,emailAddress:string,orcid:string,affiliation:string,biography:string}
 	 */
 	public static function parseAuthorSubfields($authorString)
 	{
@@ -245,6 +250,7 @@ class AuthorsProcessor
 			'emailAddress' => $authorParts[2] ?? '',
 			'orcid' => $authorParts[3] ?? '',
 			'affiliation' => $authorParts[4] ?? '',
+			'biography' => $authorParts[5] ?? '',
 		];
 	}
 
@@ -311,13 +317,12 @@ class AuthorsProcessor
         $existingAuthors = $publication->getData('authors');
 
         foreach ($authorsString as $index => $authorString) {
-            $givenName = $familyName = $emailAddress = $affiliation = null;
             $authorParts = self::parseAuthorSubfields($authorString);
             $givenName = $authorParts['givenName'];
             $familyName = $authorParts['familyName'];
             $emailAddress = $authorParts['emailAddress'];
-            $rawParts = self::splitRespectingQuotes($authorString, ',', true);
-            $affiliation = $rawParts[3] ?? '';
+            $affiliation = $authorParts['affiliation'];
+            $biography = $authorParts['biography'];
 
             if (empty($emailAddress)) {
                 $emailAddress = $contactEmail;
@@ -341,6 +346,10 @@ class AuthorsProcessor
                     $existingAuthor->setAffiliation($affiliation, $data->locale);
                 }
 
+                if (!empty($biography)) {
+                    $existingAuthor->setBiography($biography, $data->locale);
+                }
+
 				CachedDaos::getAuthorDao()->updateObject($existingAuthor);
 
                 continue;
@@ -359,6 +368,10 @@ class AuthorsProcessor
 
             if ($affiliation) {
                 $author->setAffiliation($affiliation, $data->locale);
+            }
+
+            if (!empty($biography)) {
+                $author->setBiography($biography, $data->locale);
             }
 
 			$authorDao->insertObject($author);

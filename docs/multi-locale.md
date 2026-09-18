@@ -47,6 +47,7 @@ The system will:
    - `categories` (category titles)
    - Author names (`givenName`, `familyName`)
    - Author affiliations
+   - Author biographies
    - `issueTitle`
    - `issueDescription`
 

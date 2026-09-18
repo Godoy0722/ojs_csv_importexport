@@ -100,7 +100,7 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 The `authors` field in the articles CSV must contain author information in the following format:
 
 ```
-GivenName,FamilyName,Email,ORCiD,Affiliation;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2
+GivenName,FamilyName,Email,ORCiD,Affiliation,Biography;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2,Biography2
 ```
 
 - Fields are separated by commas within each author
@@ -108,13 +108,14 @@ GivenName,FamilyName,Email,ORCiD,Affiliation;GivenName2,FamilyName2,Email2,ORCiD
 - All fields except `GivenName` are optional and can be left empty
 - If `Email` is empty, the primary contact email of the server will be used
 - `ORCiD` must be the author identifier and is optional; see input options below
+- `Biography` is optional and stored in the row locale. Quote it when it contains commas.
 
 Examples:
 
 ```
-"John,Doe,john@example.com,0000-0002-1825-0097,University of Example; Jane,Smith,,https://orcid.org/0000-0002-1694-233X,Another University"
-"Maria,Silva,maria@example.com,0000000218250097,"
-"Carlos,,carlos@example.com,,Example Corp"
+"John,Doe,john@example.com,0000-0002-1825-0097,University of Example,John is a researcher; Jane,Smith,,https://orcid.org/0000-0002-1694-233X,Another University"
+"Maria,Silva,maria@example.com,0000000218250097,,"
+"Carlos,,carlos@example.com,,Example Corp,\"Carlos writes about public health.\""
 ```
 
 **ORCiD Input Options** — you may provide the ORCiD in any of the following forms:
