@@ -170,7 +170,7 @@ msgid "plugins.importexport.csv.invalidOrcidChecksum"
 msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."
 
 msgid "plugins.importexport.csv.invalidAuthorEmail"
-msgstr "Invalid email \"{$email}\" for author {$authorIndex} (\"{$authorName}\") in the authors column. The third value of each author must be a valid email, or empty to use the journal contact email. Expected format: GivenName,FamilyName,Email,ORCiD,Affiliation"
+msgstr "Invalid email \"{$email}\" for author {$authorIndex} (\"{$authorName}\") in the authors column. The third value of each author must be a valid email, or empty to use the journal contact email."
 
 msgid "plugins.importexport.csv.form.submitButton"
 msgstr "Import"
