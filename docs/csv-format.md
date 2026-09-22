@@ -178,6 +178,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - All fields except `GivenName` are optional and can be left empty
 >  - If `Email` is empty, the primary contact email of the server will be used
 >  - `ORCiD` must be the author identifier and is optional; see input options below
+>  - For Affiliation it is recommended to only enter the institution's name. This will allow the ROR integration in OJS 3.5+ to make a match with the institution's name in ROR registry.
 >
 > Examples:
 >
