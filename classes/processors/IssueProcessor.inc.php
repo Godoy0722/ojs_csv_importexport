@@ -64,7 +64,7 @@ class IssueProcessor
             $issue->setShowVolume(!empty($data->issueVolume));
             $issue->setShowNumber(!empty($data->issueNumber));
             $issue->setShowYear(!empty($data->issueYear));
-            $issue->setShowTitle(!empty($data->issueTitles));
+            $issue->setShowTitle(!empty($data->issueTitle));
             $issue->setPublished(true);
             // A null date published flags the issue to have its date defined from its articles
             // at the end of the CSV file processing.
@@ -91,6 +91,9 @@ class IssueProcessor
             }
 
             $issueDao->insertObject($issue);
+        } elseif (!empty($data->issueTitle) && empty($issue->getShowTitle())) {
+            $issue->setShowTitle(1);
+            CachedDaos::getIssueDao()->updateObject($issue);
         }
 
         return $issue;
@@ -109,6 +112,7 @@ class IssueProcessor
     {
         if (!empty($data->issueTitle)) {
             $issue->setTitle($data->issueTitle, $data->locale);
+            $issue->setShowTitle(1);
         }
 
         if (!empty($data->issueDescription)) {
