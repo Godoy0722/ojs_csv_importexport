@@ -86,9 +86,9 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 | datePublished | Yes | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |
-| copyrightYear | No | Copyright year | 2025 | Defaults to system setting if not provided |
-| copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
-| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
+| copyrightYear | No | Copyright year | 2025 | Left unset when empty |
+| copyrightHolder | No | Copyright holder | Public Knowledge Project | Left unset when empty |
+| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Left unset when empty |
 | references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
 | username | No | Username of an existing OJS user | jsmith | Used as file uploader and optional primary author |
 | funders | No | Semicolon-separated funder entries | NSF,https://doi.org/10.13039/100000001,GR-123;NIH,, | Requires Funding plugin; format: Name,Identification,Award1\|Award2 |

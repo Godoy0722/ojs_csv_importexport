@@ -25,12 +25,11 @@ class PublicationProcessor
 	 *
 	 * @param \Submission $submission
 	 * @param object $data
-	 * @param \Journal $journal
 	 * @param string $sourceDir
 	 *
 	 * @return \Publication
 	 */
-    public static function process($submission, $data, $journal, $sourceDir)
+    public static function process($submission, $data, $sourceDir)
     {
 		$publicationDao = CachedDaos::getPublicationDao();
 		$sanitizedAbstract = \PKPString::stripUnsafeHtml($data->articleAbstract);
@@ -45,7 +44,6 @@ class PublicationProcessor
 		$publication->setData('datePublished', $data->datePublished);
 		$publication->setData('abstract', $sanitizedAbstract, $locale);
 		$publication->setData('title', $data->articleTitle, $locale);
-		$publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $locale), $locale);
 
         if ($data->articleSubtitle) {
             $publication->setData('subtitle', $data->articleSubtitle, $locale);
@@ -74,7 +72,18 @@ class PublicationProcessor
 			$citationDao->importCitations($publication->getId(), $publication->getData('citationsRaw'));
 		}
 
-		self::setCopyrightFromSystem($submission, $publication, $data);
+		if (!empty($data->copyrightHolder)) {
+			$publication->setData('copyrightHolder', $data->copyrightHolder, $locale);
+		}
+
+		if (!empty($data->copyrightYear)) {
+			$publication->setData('copyrightYear', $data->copyrightYear);
+		}
+
+		if (!empty($data->licenseUrl)) {
+			$publication->setData('licenseUrl', $data->licenseUrl);
+		}
+
 		$publicationDao->updateObject($publication);
 
         SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
@@ -287,40 +296,6 @@ class PublicationProcessor
         return $publication;
     }
 
-	/**
-	 * Set copyright data for the publication
-	 *
-	 * @param \Submission $submission
-	 * @param \Publication $publication
-	 * @param object $data
-	 *
-	 * @return void
-	 *
-	 */
-	private static function setCopyrightFromSystem($submission, &$publication, $data): void
-    {
-        $copyrightHolder = $data->copyrightHolder ?? $submission->_getContextLicenseFieldValue(
-            null,
-            PERMISSIONS_FIELD_COPYRIGHT_HOLDER,
-            $publication
-        );
-        $publication->setData('copyrightHolder', $copyrightHolder, $data->locale);
-
-        $copyrightYear = $data->copyrightYear ?? $submission->_getContextLicenseFieldValue(
-            null,
-            PERMISSIONS_FIELD_COPYRIGHT_YEAR,
-            $publication
-        );
-        $publication->setData('copyrightYear', $copyrightYear);
-
-        $licenseUrl =  $data->licenseUrl ?? $submission->_getContextLicenseFieldValue(
-            null,
-            PERMISSIONS_FIELD_LICENSE_URL,
-            $publication
-        );
-        $publication->setData('licenseUrl', $licenseUrl);
-    }
-
     /**
      * Copy galleys from a base publication to a new publication version
      * This mimics the behavior of OJS native versioning when creating new versions
@@ -393,14 +368,6 @@ class PublicationProcessor
             if (!empty($data->{$csvField})) {
                 self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
             }
-        }
-
-		$submission = CachedDaos::getSubmissionDao()->getById($publication->getData('submissionId'));
-
-        $server = CachedDaos::getJournalDao()->getById($submission->getData('contextId'));
-        if ($server) {
-            $publication->setData('copyrightNotice', $server->getLocalizedData('copyrightNotice', $data->locale));
-			CachedDaos::getPublicationDao()->updateObject($publication);
         }
 
         return $publication;

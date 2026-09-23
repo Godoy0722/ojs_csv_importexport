@@ -397,7 +397,7 @@ class IssueCommand
                 } else {
                     // New submission import
                     $submission = SubmissionProcessor::process($journal->getId(), $data);
-                    $publication = PublicationProcessor::process($submission, $data, $journal, $this->_sourceDir);
+                    $publication = PublicationProcessor::process($submission, $data, $this->_sourceDir);
                 }
 
                 InvalidRowValidations::validatePublicationWasSuccessfullyCreated($publication);
