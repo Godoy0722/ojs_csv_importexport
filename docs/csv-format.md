@@ -139,9 +139,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 | datePublished | Yes | Article publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |
-| copyrightYear | No | Copyright year | 2025 | Defaults to system setting if not provided |
-| copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting if not provided |
-| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting if not provided |
+| copyrightYear | No | Copyright year | 2025 | Left empty if not provided |
+| copyrightHolder | No | Copyright holder | Public Knowledge Project | Left empty if not provided |
+| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Left empty if not provided |
 | references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
 | username | No | Username of the submission author for this row | jdoe | Overrides the CLI/web user as the submission's assigned user. Must exist in the system |
 | funders | No | Semicolon-separated funder data | See [Funders Format](#funders-format) | Requires the Funding plugin to be enabled in the journal |
