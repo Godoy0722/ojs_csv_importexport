@@ -26,7 +26,9 @@ Make sure to follow this CSV structure with all headers present, including the n
 | orcid | No | User's ORCID identifier | 0000-0002-1825-0097 | Yes
 
 > **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
->
+
+> **Country Code:**  Look for the Country in the following [file](https://github.com/sokil/php-isocodes-db-only/blob/4.0/databases/iso_3166-1.json) and use the two letter-code listed beside 'alpha_2'
+
 >  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
 >  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
 >
@@ -155,6 +157,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
 
+> **Locales:** See OJS 3.4 Locales table below. 
+
 > **DOIs (`doi` column):** Only fill in this column if the article was **already published with a DOI assigned to it** (for example, it was previously hosted on another platform that minted the DOI). Enter that existing DOI exactly as it was registered.
 >
 >  - If your journal does **not** yet use DOIs and you are just starting out, **leave this column empty**. After migration you can enable and configure DOIs under **Settings → Distribution** (set your DOI prefix and pattern there), then open the **DOIs** page in the main menu and use its bulk **Assign** action to **batch-assign DOIs** to your articles at once. Letting OJS generate them keeps your DOIs consistent and avoids duplicates.
@@ -272,5 +276,79 @@ import_directory/
 If you put files inside a subfolder, you will need to make sure that the CSV points to the file's relative path (e.g., <em>galleys/article.pdf</em>).
 
 For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above.
+
+## OJS 3.4 Locales
+| Language | Locale |
+| --- | --- |
+| Arabic | ar |
+| Azerbaijani | az |
+| Belarusian | be@cyrillic |
+| Bulgarian | bg |
+| Bosnian | bs |
+| Catalan | ca |
+| (Kurdish (Central) | ckb |
+| Montenegrin| cnr |
+| Czech| cs |
+| Danish | da |
+| German | de |
+| Lower Sorbian | dsb |
+| Greek | el |
+| English | en |
+| Spanish | es |
+| Spanish (Mexico) | es_MX |
+| Basque | eu |
+| Persian | fa |
+| Finnish | fi |
+| French (Canada) | fr_CA |
+| French (fr_FR)() | fr_FR |
+| Gaelic | gd |
+| Galician | gl |
+| Hebrew| he |
+| Hindi | hi |
+| Croatian | hr |
+| Upper Sorbian | hsb |
+| Hungarian | hu |
+| Armenian | hy |
+| Indonesian | id) |
+| Icelandic | is|
+| Italian | it |
+| Japanese | ja |
+| Georgian | ka|
+| Kazakh | kk |
+| Korean | ko |
+| Kyrgyz | ky |
+| Mongo | lol |
+| Lithuanian | lt |
+| Latvian | lv |
+| Macedonian | mk |
+| Mongolian | mn |
+| Marathi() | mr |
+| Malay | ms |
+| Norwegian Bokmål | nb |
+| Dutch | nl|
+| Polish | pl |
+| Portuguese (Brazil) | pt_BR |
+| Portuguese (Portugal) | pt_PT |
+| Romanian | ro|
+| Russian | ru |
+| Sami (Northern) | se |
+| Slovak | sk |
+| Slovenian | sl |
+| Serbian (cyrillic) | sr@cyrillic|
+| Serbian (latin) | sr@latin |
+| Swedish | sv |
+| Swahili | sw |
+| Thai| th|
+| Tagalog | tl |
+| Turkish| tr |
+| Ukrainian | uk |
+| Urdu (Pakistan) | ur |
+| Uzbek | uz|
+| Uzbek cyrillic | uz@cyrillic |
+| Uzbek | uz@latin |
+| Vietnamese | vi |
+| Chinese (Simplified) | zh_CN |
+| Chinese (Simplified) | zh_Hans |
+| Chinese (Traditional) | zh_Hant|
 
 [← Prev: CLI Usage](cli-usage.md) | [README](../README.md) | [Next: Multi-Locale Support →](multi-locale.md)
