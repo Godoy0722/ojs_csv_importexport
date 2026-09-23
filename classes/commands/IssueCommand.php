@@ -371,11 +371,11 @@ class IssueCommand
                         $submission = $existingSubmission;
                         $publication = $basePublication;
 
-                        $publication = PublicationProcessor::processMultiLocalePublication($publication, $data, $journal);
+                        $publication = PublicationProcessor::processMultiLocalePublication($publication, $data);
                     } elseif ($existingSubmission && $basePublication) {
                         // New version import
                         $submission = $existingSubmission;
-                        $publication = PublicationProcessor::createPublicationVersion($basePublication, $data, $journal);
+                        $publication = PublicationProcessor::createPublicationVersion($basePublication, $data);
 
                         $publication = PublicationProcessor::processVersionedPublication($publication, $data, $basePublication, $this->sourceDir);
                     } else {

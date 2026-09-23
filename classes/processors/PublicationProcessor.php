@@ -92,9 +92,9 @@ class PublicationProcessor extends SharedPublicationProcessor
      * Create a new publication version manually to avoid CLI context dependency
      * This is a simplified version of Repo::publication()->version() without context dependencies
      */
-    public static function createPublicationVersion(Publication $basePublication, object $data, Journal $journal): Publication
+    public static function createPublicationVersion(Publication $basePublication, object $data): Publication
     {
-        $newPublication = parent::createPublicationVersionCommons($basePublication, $data, $journal, static::LOCALIZED_FIELDS, static::NON_LOCALIZED_FIELDS);
+        $newPublication = parent::createPublicationVersionCommons($basePublication, $data);
 
         $coverImage = $basePublication->getData('coverImage');
         if (!empty($coverImage)) {
@@ -149,8 +149,8 @@ class PublicationProcessor extends SharedPublicationProcessor
      * Process multi-locale publication data (adds new locale to existing publication)
      * This method updates an existing publication with data in a new locale
      */
-    public static function processMultiLocalePublication(Publication $publication, object $data, Journal $journal): Publication
+    public static function processMultiLocalePublication(Publication $publication, object $data): Publication
     {
-        return parent::processMultiLocalePublicationCommons($publication, $data, $journal, static::LOCALIZED_FIELDS, static::NON_LOCALIZED_FIELDS);
+        return parent::processMultiLocalePublicationCommons($publication, $data, static::LOCALIZED_FIELDS, static::NON_LOCALIZED_FIELDS);
     }
 }
