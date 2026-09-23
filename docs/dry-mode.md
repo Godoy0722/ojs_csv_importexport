@@ -2,7 +2,7 @@
 
 [← Prev: Supplementary Files Descriptions](supplementary-files.md) | [README](../README.md) | [Next: Troubleshooting →](troubleshooting.md)
 
-The plugin supports a `--dry-mode` flag that runs the full import pipeline without persisting any data. This allows operators to preview and fix issues in their CSV files before committing a real import.
+The plugin supports a `--dry-mode` flag that runs the full import validation pipeline without persisting any data to the database. This allows operators to preview and fix issues in their CSV files before committing a real import.
 
 ## How Dry Mode Works
 
@@ -11,12 +11,11 @@ When `--dry-mode` is passed, the plugin:
 1. **Reads and validates every CSV row** exactly the same way as a real import — structural checks (column count, required fields) and semantic checks (journal existence, locale support, ORCID format, funder validation, etc.)
 2. **Runs all processors inside a database transaction** — submissions, publications, authors, keywords, and all other entities are actually created in the database during processing, which means OJS-internal constraints (unique keys, foreign keys, etc.) are also validated
 3. **Rolls back the transaction** at the end of each file — all database changes are undone, leaving the database in its original state
-4. **Skips filesystem operations** — cover image uploads, galley file uploads, HTML galley uploads, and supplementary file uploads are not performed
+4. **Skips filesystem operations** — cover image uploads, galley file uploads, and supplementary file uploads are not performed
 5. **Produces a console report** — a per-file summary showing which rows passed and which failed, with the specific error reason for each failure
 6. **Creates `invalid_*.csv` files** — failed rows are written to invalid files just like in a normal import, so you can use the same re-import workflow
 
 Usage:
-
 ```bash
 # Dry-mode for issues
 php tools/importExport.php CSVImportPlugin --dry-mode issues admin /path/to/csv_files/
@@ -28,8 +27,6 @@ php tools/importExport.php CSVImportPlugin --dry-mode users admin /path/to/csv_f
 php tools/importExport.php CSVImportPlugin --dry-mode users admin /path/to/csv_files/ true
 ```
 
-The flag can be placed anywhere in the argument list; the positional arguments are read after it is removed.
-
 ## Dry Mode Console Report
 
 The console output follows this structure for each CSV file:
@@ -37,7 +34,7 @@ The console output follows this structure for each CSV file:
 ```
 === issues.csv ===
 ROW  | STATUS | ERROR
-   3  | FAILED | Unknown locale or locale not supported by this journal: "pt_BR"
+   3  | FAILED | Unknown locale or locale not supported by this journal: "pt_BR". Supported locales: en
    5  | FAILED | Verify the required fields for this row.
 Result: 8 passed, 2 failed (10 total)
 
@@ -64,6 +61,7 @@ The process exit code indicates the overall result:
 This allows dry-mode to be used in scripts and CI pipelines:
 
 ```bash
+# Example: run dry-mode and check the result
 php tools/importExport.php CSVImportPlugin --dry-mode issues admin /path/to/csv_files/
 if [ $? -eq 0 ]; then
     echo "All rows valid — safe to import"
@@ -72,8 +70,6 @@ else
     echo "Validation errors found — check the output and invalid_*.csv files"
 fi
 ```
-
-Real imports are not affected: they keep exiting with `0` regardless of failed rows.
 
 ## Important Dry Mode Notes
 
@@ -85,9 +81,9 @@ Real imports are not affected: they keep exiting with `0` regardless of failed r
 
 4. **Read-only lookups work normally**: Entity lookups (journals, sections, categories, genres, user groups, users) are performed against the real database so that validation results accurately reflect what would happen in a real import.
 
-5. **Multi-locale and multi-version detection works**: The same routing logic that detects multi-locale and multi-version rows in a real import also works in dry-mode. Tracking state is discarded between files, so each file is validated independently.
+5. **Multi-locale and multi-version detection works**: The same routing logic that detects multi-locale and multi-version rows in a real import also works in dry-mode. However, if a base row fails validation, subsequent multi-locale or multi-version rows for the same identifier will also fail with a descriptive message: *"Skipped: the base row for identifier 'X' failed validation earlier in this file."*
 
-6. **Invalid files are created**: Failed rows are written to `invalid_*.csv` files in the same directory, following the same format as a normal import. This means you can fix the errors and re-import using the same workflow. Since files named `invalid_*` are skipped on every run, delete or move them before re-running if you want a clean validation.
+6. **Invalid files are created**: Failed rows are written to `invalid_*.csv` files in the same directory, following the same format as a normal import. This means you can fix the errors and re-import using the same workflow.
 
 7. **Recommended workflow**:
    ```bash
@@ -102,5 +98,7 @@ Real imports are not affected: they keep exiting with `0` regardless of failed r
    # Step 4: When all rows pass, run the real import
    php tools/importExport.php CSVImportPlugin issues admin /path/to/csv_files/
    ```
+
+8. **`invalid_*` files from dry-mode**: Since dry-mode creates `invalid_*.csv` files, these will be automatically skipped on subsequent runs (both dry-mode and real imports). Delete or move them before re-running if you want a clean validation.
 
 [← Prev: Supplementary Files Descriptions](supplementary-files.md) | [README](../README.md) | [Next: Troubleshooting →](troubleshooting.md)

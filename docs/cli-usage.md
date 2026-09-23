@@ -1,56 +1,55 @@
 # CLI Usage
 
-[README](../README.md) | [Next: CSV Format →](csv-format.md)
+[← Prev: Web Interface Usage](web-interface.md) | [README](../README.md) | [Next: CSV Format →](csv-format.md)
 
 ## Importing Users
 
+To import users from a CSV file, use the following command:
+
 ```bash
-php tools/importExport.php CSVImportPlugin users [username] [pathToFolderWithCsvFiles] [sendWelcomeEmail]
+php tools/importExport.php CSVImportPlugin [--sendWelcomeEmail] [--dry-mode] users [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
-- `username`: The username of a valid journal manager. Used to validate that the command is run by an authorized user.
-- `pathToFolderWithCsvFiles`: Path to the folder containing user CSV files. Can be absolute or relative to the OJS root directory.
-- `sendWelcomeEmail`: (Optional) Set to `true` to send welcome emails to newly imported users. The sender is the user identified by `username`.
+- `username`: The username of a valid Journal manager. This username is used to validate that the command is running by a valid user as a security step.
+- `pathToFolderWithCsvFiles`: Path to the CSV file containing user data. Can be absolute or relative to the OJS root directory.
+
+Optional flags (must be placed before the `users`/`issues` positional argument):
+- `--sendWelcomeEmail`: Send welcome emails to imported users. The sender email will be the user retrieved by the username on the CLI command. No emails are sent when combined with `--dry-mode`.
+- `--dry-mode`: Validate the CSV without persisting any data. See [Dry Mode](dry-mode.md).
 
 Example:
-
 ```bash
-php tools/importExport.php CSVImportPlugin users ggodoy /path/to/folder_with_csv_user_files true
+php tools/importExport.php CSVImportPlugin --sendWelcomeEmail users admin /path/to/folder_with_csv_user_files
 ```
 
 ## Importing Issues
 
+To import issues from a CSV file, use the following command:
+
 ```bash
-php tools/importExport.php CSVImportPlugin issues [username] [pathToFolderWithCsvFiles]
+php tools/importExport.php CSVImportPlugin [--dry-mode] issues [username] [pathToFolderWithCsvFiles]
 ```
 
 Parameters:
-- `username`: The username of a valid journal manager. Used to validate that the command is run by an authorized user.
-- `pathToFolderWithCsvFiles`: Path to the folder containing issue CSV files. Can be absolute or relative to the OJS root directory.
+- `username`: The username of a valid Journal manager. This username is used to validate that the command is running by a valid user as a security step.
+- `pathToFolderWithCsvFiles`: Path to the CSV file containing issue data. Can be absolute or relative to the OJS root directory.
+
+Optional flags (must be placed before the `issues` positional argument):
+- `--dry-mode`: Validate the CSV without persisting any data. See [Dry Mode](dry-mode.md).
 
 Example:
-
 ```bash
-php tools/importExport.php CSVImportPlugin issues ggodoy /path/to/folder_with_csv_issue_files
+php tools/importExport.php CSVImportPlugin issues admin /path/to/folder_with_csv_issue_files
 ```
-
-## Validating Without Importing
-
-Both commands accept a `--dry-mode` flag that runs the whole pipeline and reports what would happen, without persisting anything:
-
-```bash
-php tools/importExport.php CSVImportPlugin --dry-mode issues ggodoy /path/to/folder_with_csv_issue_files
-```
-
-See [Dry Mode](dry-mode.md) for the report format and exit codes.
 
 > **Important Notes**
 >
-> - The CLI user is assigned as the uploader of submission files unless a row provides a `username` column with an existing OJS user.
-> - The last CLI argument must be the path to the folder containing CSV files, not a single CSV file.
-> - All CSV files in the folder are processed except files whose names start with `invalid_`.
-> - Referenced asset files (PDFs, images, etc.) must be readable by the user running the CLI script.
-> - Run the command from the OJS installation directory.
+>  - The user obtained through the username will be the same one assigned to the submission files. It's also recommended that a dedicated importUser is created for this purpose with the Author role so that it's separate from existing Journal Manager and editor user accounts.
+>  - The last CLI attribute must be the path to the CSV file, and not directly the CSV file itself.
+>  - The CSV file and any referenced files (PDFs, images) must be readable by the user running the CLI script.
+>  - The script must be executed from the OJS installation directory
+>  - Ensure you have proper permissions to execute PHP scripts and access the files
+>
 
-[README](../README.md) | [Next: CSV Format →](csv-format.md)
+[← Prev: Web Interface Usage](web-interface.md) | [README](../README.md) | [Next: CSV Format →](csv-format.md)
