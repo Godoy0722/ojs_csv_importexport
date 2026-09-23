@@ -79,9 +79,9 @@ All 42 headers must be present in every issues CSV, even when values are empty.
 | datePublished | Yes | Article publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |
-| copyrightYear | No | Copyright year | 2025 | Defaults to system setting |
-| copyrightHolder | No | Copyright holder | Public Knowledge Project | Defaults to system setting |
-| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Defaults to system setting |
+| copyrightYear | No | Copyright year | 2025 | Left unset when empty |
+| copyrightHolder | No | Copyright holder | Public Knowledge Project | Left unset when empty |
+| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Left unset when empty |
 | references | No | Path to references file (.txt) | references.txt | Must be in same directory as CSV |
 | username | No | Username of an existing OJS user | csvimportuser | Used as submission uploader and optional primary author |
 | funders | No | Semicolon-separated funder data | See [Funders Format](#funders-format) | Requires Funding plugin enabled in the journal |

@@ -351,7 +351,7 @@ class IssueCommand
                         // New submission import
                         $initialPublication = PublicationProcessor::createInitialPublication($data);
                         $submission = SubmissionProcessor::process($data, $initialPublication, $journal);
-                        $publication = PublicationProcessor::process($submission, $data, $journal, $this->sourceDir);
+                        $publication = PublicationProcessor::process($submission, $data, $this->sourceDir);
                     }
 
                     InvalidRowValidations::validatePublicationWasSuccessfullyCreated($publication);

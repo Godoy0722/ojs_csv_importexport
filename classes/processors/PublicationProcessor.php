@@ -17,8 +17,6 @@
 namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
-use APP\journal\Journal;
-use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\publication\Publication;
 use APP\submission\Submission;
 
@@ -45,14 +43,11 @@ class PublicationProcessor
     public static function process(
         Submission $submission,
         object $data,
-        Journal $journal,
         string $sourceDir,
         ?Publication $publication = null
     ): Publication {
         /** @var Publication */
         $submissionPublication = $publication ?? $submission->getCurrentPublication();
-
-        $submissionPublication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $data->locale));
 
         if (!empty($data->articleSubtitle)) {
             $submissionPublication->setData('subtitle', $data->articleSubtitle, $data->locale);
@@ -78,9 +73,19 @@ class PublicationProcessor
             }
         }
 
-        Repo::publication()->dao->update($submissionPublication);
+        if (!empty($data->copyrightHolder)) {
+            $submissionPublication->setData('copyrightHolder', $data->copyrightHolder, $data->locale);
+        }
 
-        static::setCopyrightFromSystem($submission, $submissionPublication, $data);
+        if (!empty($data->copyrightYear)) {
+            $submissionPublication->setData('copyrightYear', $data->copyrightYear);
+        }
+
+        if (!empty($data->licenseUrl)) {
+            $submissionPublication->setData('licenseUrl', $data->licenseUrl);
+        }
+
+        Repo::publication()->dao->update($submissionPublication);
 
         return $submissionPublication;
     }
@@ -127,35 +132,6 @@ class PublicationProcessor
     {
         $publication->setData($attribute, $data, $locale);
         Repo::publication()->dao->update($publication);
-    }
-
-	private static function setCopyrightFromSystem(
-        Submission $submission,
-        Publication &$publication,
-        object $data
-    ): void
-    {
-        $copyrightHolder = $data->copyrightHolder ?? $submission->_getContextLicenseFieldValue(
-            null,
-            Submission::PERMISSIONS_FIELD_COPYRIGHT_HOLDER,
-            $publication
-        );
-
-        static::updatePublicationAttribute($publication, 'copyrightHolder', $copyrightHolder, $data->locale);
-
-        $copyrightYear = $data->copyrightYear ?? $submission->_getContextLicenseFieldValue(
-            null,
-            Submission::PERMISSIONS_FIELD_COPYRIGHT_YEAR,
-            $publication
-        );
-        static::updatePublicationAttribute($publication, 'copyrightYear', $copyrightYear);
-
-        $licenseUrl =  $data->licenseUrl ?? $submission->_getContextLicenseFieldValue(
-            null,
-            Submission::PERMISSIONS_FIELD_LICENSE_URL,
-            $publication
-        );
-        static::updatePublicationAttribute($publication, 'licenseUrl', $licenseUrl);
     }
 
     /**
@@ -283,13 +259,6 @@ class PublicationProcessor
             if (!empty($data->{$nonLocaleField})) {
                 static::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
             }
-        }
-
-        $submission = Repo::submission()->get($publication->getData('submissionId'));
-        $journal = CachedDaos::getJournalDao()->getById($submission->getData('contextId'));
-        if ($journal) {
-            $publication->setData('copyrightNotice', $journal->getLocalizedData('copyrightNotice', $data->locale));
-            Repo::publication()->dao->update($publication);
         }
 
         return $publication;
