@@ -45,9 +45,9 @@ The system will:
    - `keywords`
    - `subjects`
    - `categories` (category titles)
+   - `supportingAgencies`
    - Author names (`givenName`, `familyName`)
    - Author affiliations
-   - Author biographies
    - `issueTitle`
    - `issueDescription`
 
@@ -57,8 +57,22 @@ The system will:
    - `licenseUrl`
    - `doi`
    - `datePublished`
+   - `issuePublicationDate`
    - `startPage` and `endPage`
    - File attachments (galleys and supplementary files)
+
+1. **Import Order**:
+   - Always import the primary/default locale first
+   - Then add additional locales in subsequent rows
+   - You can import all locales in a single CSV file
+
+2. **Consistency**:
+   - Keep `versionIdentifier` and `version` consistent across locales
+
+4. **Validation**:
+   - The system validates that `identifier` + `version` + `locale` is unique
+   - Duplicate combinations will be rejected with error message
+   - Check the `invalid_[filename].csv` file for any failed rows
 
 ## Multi-Locale Best Practices
 
@@ -70,7 +84,7 @@ The system will:
 2. **Consistency**:
    - Keep `versionIdentifier` and `version` consistent across locales
 
-3. **Validation**:
+4. **Validation**:
    - The system validates that `identifier` + `version` + `locale` is unique
    - Duplicate combinations will be rejected with error message
    - Check the `invalid_[filename].csv` file for any failed rows
@@ -85,11 +99,12 @@ The system will:
 - Non-localized fields (DOI, dates, etc.) remain the same across all locales
 - Files (galleys, supplementary) are shared across all locales
 
-For a comprehensive example of multi-locale articles with versions, see [comprehensive_locale_version.csv](../examples/issues/comprehensive_locale_version.csv).
 
-### ORCiD in Multi-Locale and Multi-Version
+For a comprehensive example of multi-locale articles with versions, see the [Multi locale example under the Issue CSV file](../examples/issues).
 
-- **Multi-Locale**: ORCiD is non-localized. When importing another locale for the same version, if an ORCiD is provided in that row, it updates the existing author matched by email. If omitted, the existing value is preserved.
-- **Multi-Version**: If the `authors` field is empty for a new version, authors (including ORCiD) are cloned from the previous version. If authors are provided, the ORCiD is read per author (as above) and saved for that version.
+## ORCiD in Multi-Locale and Multi-Version
+
+- Multi-Locale: ORCiD is non-localized. When importing another locale for the same version, if an ORCiD is provided in that row, it updates the existing author matched by email. If omitted, the existing value is preserved.
+- Multi-Version: If the `authors` field is empty for a new version, authors (including ORCiD) are cloned from the previous version. If authors are provided, the ORCiD is read per author (as above) and saved for that version.
 
 [← Prev: CSV Format](csv-format.md) | [README](../README.md) | [Next: Article Versions →](article-versions.md)

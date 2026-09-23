@@ -4,26 +4,58 @@
 
 ## Users CSV Format
 
-A sample user CSV file is available here — [User CSV file](../examples/users/users_example.csv).
+A sample user CSV file is available here - [User CSV file](../examples/users/users_example.csv).
 
-| Column | Required | Description | Example |
-|--------|----------|-------------|---------|
-| journalPath | Yes | Path of the journal | leo |
-| firstname | Yes | User's first name | Homer |
-| lastname | No | User's last name | Simpson |
-| email | Yes | User's email address | homer@example.com |
-| affiliation | No | User's affiliation | University of British Columbia |
-| country | No | Two-letter country code | CA |
-| username | Yes | Username for login | hsimpson |
-| tempPassword | No | Temporary password for **new** users only | temppassword123 | Auto-generated when empty on create; ignored on update |
-| roles | No | Semicolon-separated list of roles | Reader;Author | Assigned only when creating a new user |
-| reviewInterests | No | Semicolon-separated interests | interest one;interest two |
-| subscriptionType | No | Subscription type ID | 1 |
-| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 |
-| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 |
-| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 |
+Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
 
-> **Creating vs. updating users:** Rows are matched by **email**. If no account exists, a new user is created (password, roles, and optional welcome email apply). If an account already exists, profile fields are updated (name, affiliation, country, email, ORCID, review interests, subscription when provided). **Password and roles are never changed on update** — `tempPassword` and `roles` are ignored for existing users even when present in the CSV.
+| Column | Required | Description | Example | Can be updated? |
+|--------|----------|-------------|---------|---------|
+| journalPath | Yes | Path of the journal | leo | n/a
+| firstname | Yes | User's first name | Homer | Yes
+| lastname | No | User's last name | Simpson | Yes
+| email | Yes | User's email address | homer@example.com | No - keep original
+| affiliation | No | User's affiliation | University of British Columbia | Yes
+| country | No | Two-letter country code | CA | Yes
+| username | Yes | Username for login | hsimpson | No (new users only)
+| tempPassword | Yes | Temporary password | temppassword123 | No (new users only)
+| roles | Yes | Semicolon-separated list of roles | Reader;Author | No (new users only)
+| reviewInterests | No | Semicolon-separated interests | interest one;interest two | Yes
+| subscriptionType | No | Subscription type ID | 1 | Yes
+| startDate | If subscriptionType is set | Subscription start date (YYYY-MM-DD) | 2023-01-01 | Yes
+| endDate | If subscriptionType is set | Subscription end date (YYYY-MM-DD) | 2023-12-31 | Yes
+| orcid | No | User's ORCID identifier | 0000-0002-1825-0097 | Yes
+
+> **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
+>
+>  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
+>  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
+>
+>  - The journal must already exist in OJS; the importer does not create journals.
+
+> **Username:** For **new users**, you can enter a username in the CSV. If you don't, one will be generated automatically upon import. A `username` should not be the same as the `email`. For **existing users** (matched by email), the username is never changed.
+
+> **tempPassword:** For **new users**, you can enter a temporary password in the CSV. If you don't, one will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using `tempPassword`. Upon first login, they will be prompted to update their password to their own password preference. For **existing users**, `tempPassword` is ignored — passwords cannot be changed via CSV import.
+
+> **Roles:** At least one role is mandatory. For the list of default available roles in OJS to select from, navigate to Users & Roles > Roles in your OJS journal or see the reference in the [Learning OJS Guide: Getting to Know Permissions and Role](https://docs.pkp.sfu.ca/learning-ojs/journal-managers/en/users#permissions-roles). Make sure to add a "Reader" role to each account as the minimum permission level granted to all users.
+
+> **Subscription Types (`subscriptionType`, `startDate`, `endDate`):** The `subscriptionType` column expects the numeric ID of a subscription type that already exists in your journal. Subscription types define the paid access plans readers can purchase — each type has a name, cost, currency, duration, and format (Online, Print, or Print + Online).
+>
+> **Finding your Subscription Type ID:**
+>
+>  1. **From the admin area:** Go to **Payments → Subscription Types** (requires Manager, Site Admin, or Subscription Manager permissions). The page lists all subscription types for your journal. Click the edit button next to the type you want — the edit form opens. Look at your browser's address bar: you'll see a `typeId` parameter like `.../editSubscriptionType?typeId=3`. That number is your `subscriptionType`.
+>
+>  2. **From the database:** If you have database access, you can query the `subscription_types` table directly:
+>     ```sql
+>     SELECT type_id, cost, currency_code_alpha, duration, format
+>     FROM subscription_types
+>     WHERE journal_id = <your-journal-id>
+>     ORDER BY seq;
+>     ```
+>
+> Notes:
+>  - If the ID you provide doesn't exist for that journal, the row is rejected.
+>  - Leave `subscriptionType` empty if the user should not receive a subscription.
+>  - When `subscriptionType` is provided, `startDate` and `endDate` **must also be provided** (format: `YYYY-MM-DD`). All three or none.
 
 > **User Interests:** User interests in the users CSV use a semicolon-separated format:
 >
@@ -34,6 +66,7 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 >  - Leading/trailing spaces are automatically trimmed
 >  - Empty values are ignored
 >  - Each interest will be associated with the created user's profile
+>
 
 > **ORCID:** The ORCID field accepts multiple formats and will be automatically normalized to the standard URL format:
 >
@@ -47,8 +80,28 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 >  - The ORCID checksum is validated during import
 >  - Invalid ORCIDs will cause the row to be rejected
 >  - Leave empty if the user doesn't have an ORCID
+>  - ORCID iDs imported in this manner will appear as “unauthenticated” on the article landing pages. If the ORCID integration is enabled, these ORCID iDs will need to be either authenticated or deleted in order for the article or version to be published.
+>
+> Examples:
+>
+> ```
+> https://orcid.org/0000-0002-1825-0097
+> 0000-0001-5109-3700
+> 0000000256781235
+> ```
+
+> **Updating user data via a CSV upload:**
+> It is possible to update certain data for existing OJS users by uploading a CSV via this tool. Specific fields that can be updated are indicated in the table above.
+> To make such an update:
+>   -  Prepare a CSV file following the above format.
+>   -  Ensure the existing email is listed for each existing user - this is how the system will identify the user to be updated. For the other fields, only include the values for the fields you want updated, keep the other fields empty.
+>   -  Username, password (`tempPassword`), and roles are never changed during an update — even if those columns contain values. Only new users receive a username, password, and role assignments. To reset a password for an existing user, use the OJS user management interface instead.
 
 ## Issues CSV Format
+
+A sample issue CSV file is available here - [Issue CSV file](../examples/issues).
+
+Make sure to follow this CSV structure with all headers present, including the non-required ones. It is ok for non-required fields to have no values as long as the header is present.
 
 | Column | Required | Description | Example | Notes |
 |--------|----------|-------------|---------|-------|
@@ -56,7 +109,7 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 | locale | Yes | Article locale | en_US | Must be enabled in the journal |
 | versionIdentifier | No | Unique identifier for article versions | article-001 | Links versions together. Leave empty for single-version articles |
 | version | No | Version number | 1 | Required if versionIdentifier is provided. Must be positive integer |
-| articlePrefix | No | Article prefix | PREF | Optional |
+| articlePrefix | No | Article prefix | The | Optional |
 | articleTitle | Yes | Article title | My Research Paper | Required for version 1, optional for versions > 1 |
 | articleSubtitle | No | Article subtitle | A Study of... | Optional |
 | articleAbstract | No | Article abstract | This paper examines... | Optional |
@@ -70,67 +123,138 @@ A sample user CSV file is available here — [User CSV file](../examples/users/u
 | coverImageAltText | No | Alt text for cover | Journal Cover | Required if cover image used |
 | galleyFilenames | No | Semicolon-separated primary galley files | doc.docx;data.xlsx | Optional |
 | galleyLabels | No | Labels for primary galleys | DOC;XLS | Must match galleyFilenames count |
-| galleyViews | No | Semicolon-separated view counts per galley | 100;50 | Must match galleyLabels count; non-negative integers |
-| htmlGalley | No | Semicolon-separated HTML galley files | article.html;style.css;image.png | First file must be .html or .htm; remaining files are dependent assets |
+| galleyViews | No | Semicolon-separated view counts per galley | 120;45 | Must match galleyLabels count. Each value is a non-negative integer |
+| htmlGalley | No | Semicolon-separated HTML galley with dependent files | article.html;style.css;chart.svg | First file must be .html/.htm. See [HTML Galleys](#html-galleys) |
 | suppFilenames | No | Semicolon-separated supplementary files | supplement.pdf;data.csv | Optional |
 | suppLabels | No | Labels for supplementary files | Supplement;Dataset | Must match suppFilenames count |
 | suppDescriptions | No | Semicolon-separated descriptions for supplementary files | Supplementary analysis;Raw dataset (CSV) | Optional; if provided must match suppFilenames and suppLabels count |
-| sectionTitle | No | Section name | Articles | Will be created if needed |
-| sectionAbbrev | No | Section abbreviation | ART | Used if section is created |
+| sectionTitle | Yes | Section name | Articles | Will be created if needed |
+| sectionAbbrev | Yes | Section abbreviation | ART | Used if section is created |
 | issueTitle | No | Issue title | Vol 1, No 1 (2024) | |
 | issueVolume | No | Volume number | 1 | |
 | issueNumber | No | Issue number | 1 | |
 | issueYear | No | Publication year | 2024 | |
 | issueDescription | No | Issue description | Special Edition | Optional |
-| issuePublicationDate | No | Issue publication date | 2024-01-01 | Format: YYYY-MM-DD. When empty, the issue receives the most recent datePublished among its articles at the end of the CSV file processing |
-| datePublished | Yes | Publication date | 2024-01-15 | Format: YYYY-MM-DD |
+| issuePublicationDate | No | Issue publication date | 2024-01-01 | Format: YYYY-MM-DD. When provided, sets the issue's publication date. Defaults to the import date if left empty |
+| datePublished | Yes | Article publication date | 2024-01-15 | Format: YYYY-MM-DD |
 | startPage | No | First page | 1 | |
 | endPage | No | Last page | 15 | |
-| copyrightYear | No | Copyright year | 2025 | Left unset when empty |
-| copyrightHolder | No | Copyright holder | Public Knowledge Project | Left unset when empty |
-| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Left unset when empty |
+| copyrightYear | No | Copyright year | 2025 | Left empty if not provided |
+| copyrightHolder | No | Copyright holder | Public Knowledge Project | Left empty if not provided |
+| licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Left empty if not provided |
 | references | No | Path to references file (.txt) | references.txt | Optional file containing article references |
-| username | No | Username of an existing OJS user | jsmith | Used as file uploader and optional primary author |
-| funders | No | Semicolon-separated funder entries | NSF,https://doi.org/10.13039/100000001,GR-123;NIH,, | Requires Funding plugin; format: Name,Identification,Award1\|Award2 |
-| supportingAgencies | No | Semicolon-separated supporting agencies | Agency One;Agency Two | Stored per locale on the publication |
-| articleViews | No | Total abstract view count | 150 | Non-negative integer; imported into usage statistics |
+| username | No | Username of the submission author for this row | jdoe | Overrides the CLI/web user as the submission's assigned user. Must exist in the system |
+| funders | No | Semicolon-separated funder data | See [Funders Format](#funders-format) | Requires the Funding plugin to be enabled in the journal |
+| supportingAgencies | No | Semicolon-separated supporting agencies | NSF;ESA | Localized field — provide per locale in multi-locale rows |
+| articleViews | No | Total view count for the article | 256 | Must be a non-negative integer |
 
-### Authors Format
+> **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
+>
+>  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
+>  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
+>
+>  - The journal must already exist in OJS; the importer does not create journals.
 
-The `authors` field in the articles CSV must contain author information in the following format:
+> **DOIs (`doi` column):** Only fill in this column if the article was **already published with a DOI assigned to it** (for example, it was previously hosted on another platform that minted the DOI). Enter that existing DOI exactly as it was registered.
+>
+>  - If your journal does **not** yet use DOIs and you are just starting out, **leave this column empty**. After migration you can enable and configure DOIs under **Settings → Distribution** (set your DOI prefix and pattern there), then open the **DOIs** page in the main menu and use its bulk **Assign** action to **batch-assign DOIs** to your articles at once. Letting OJS generate them keeps your DOIs consistent and avoids duplicates.
+>  - Do **not** invent DOIs to fill the column — an unregistered DOI will not resolve.
+
+> **Sections & Categories:** These describe how your content is organized in the journal. If a section or category named here does not exist yet, the importer creates it for you.
+>
+>  - **`sectionTitle` / `sectionAbbrev`** — Sections are the divisions a journal uses to organize an issue's table of contents (for example `Articles`). You can see and manage your journal's sections under **Settings → Journal → Sections**. If the `sectionTitle` you provide does not match an existing section, the importer creates a new one, using `sectionAbbrev` as its abbreviation.
+>  - **`categories`** — Categories are an optional way to group submissions across the journal. You can see and manage them under **Settings → Journal → Categories**. Provide one or more as a semicolon-separated list; any category that does not exist yet is created during import.
+>  - If you only need a simple table of contents, set `sectionTitle` (e.g. `Articles`) and leave `categories` empty.
+
+> **Authors Format**
+> The `authors` field in the articles CSV must contain author information in the following format:
+>
+> ```
+> GivenName,FamilyName,Email,ORCiD,Affiliation;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2
+> ```
+>
+>  - Fields are separated by commas within each author
+>  - Multiple authors are separated by semicolons
+>  - All fields except `GivenName` are optional and can be left empty
+>  - If `Email` is empty, the primary contact email of the server will be used
+>  - `ORCiD` must be the author identifier and is optional; see input options below
+>
+> Examples:
+>
+> ```
+> "John,Doe,john@example.com,0000-0002-1825-0097,University of Example; Jane,Smith,,https://orcid.org/0000-0002-1694-233X,Another University"
+> "Maria,Silva,maria@example.com,0000000218250097,"
+> "Carlos,,carlos@example.com,,Example Corp"
+> ```
+
+> **ORCiD Input Options**
+> You may provide the ORCiD in any of the following forms:
+>  - Full URL: `https://orcid.org/0000-0002-1825-0097`
+>  - Hyphenated ID: `0000-0002-1825-0097`
+>  - Digits only: `0000000218250097`
+>
+> Notes:
+>  - The system normalizes the value to the canonical URL form `https://orcid.org/0000-0000-0000-0000`
+>  - The last character may be `X` (checksum), e.g., `0000-0002-1694-233X`
+>  - Invalid formats are ignored without blocking the import
+
+> **Funders Format**
+> The `funders` field accepts a semicolon-separated list of funders. Each funder uses commas to separate its fields, and a pipe character (`|`) to separate multiple awards for the same funder:
+>
+> ```
+> FunderName,FunderIdentification,Award1|Award2;FunderName2,FunderIdentification2,Award3
+> ```
+>
+>  - Funders are separated by `;`
+>  - Funder fields are separated by `,`
+>  - Multiple awards for the same funder are separated by `|`
+>  - `FunderName` is required; `FunderIdentification` and awards are optional
+>
+> Examples:
+>
+> ```
+> "National Science Foundation,https://doi.org/10.13039/100000001,NSF-1234|NSF-5678"
+> "European Space Agency,https://doi.org/10.13039/501100000844,"
+> "Some Funder,,"
+> ```
+>
+> Validation:
+>  - The Funding plugin must be enabled in the journal — rows with funder data are rejected otherwise
+>  - When the Funding plugin's `enableGrantIdValidation` setting is on, each `FunderIdentification` (when provided) must be a Crossref Funder Registry DOI matching `https://doi.org/10.13039/...`
+>  - Rows that fail funder validation are written to the `invalid_*.csv` file
+
+### HTML Galleys
+
+The `htmlGalley` column imports an HTML file as a galley, optionally bundled with dependent files such as CSS, JavaScript, SVGs, or images.
+
+**Format:** Semicolon-separated values — the first entry is the HTML galley, and all following entries are dependent files:
 
 ```
-GivenName,FamilyName,Email,ORCiD,Affiliation,Biography;GivenName2,FamilyName2,Email2,ORCiD2,Affiliation2,Biography2
+htmlFile.html;dependentFile1.css;dependentFile2.svg;dependentFile3.js
 ```
 
-- Fields are separated by commas within each author
-- Multiple authors are separated by semicolons
-- All fields except `GivenName` are optional and can be left empty
-- If `Email` is empty, the primary contact email of the server will be used
-- `ORCiD` must be the author identifier and is optional; see input options below
-- `Biography` is optional and stored in the row locale. Quote it when it contains commas.
+**Rules:**
+- The **first file** must be the HTML galley and must have a `.html` or `.htm` extension
+- All remaining files are treated as dependent files
+- Files should live in the same directory as the CSV (or a subfolder), referenced via relative path from the CSV directory
+  ```
+  galleys/article.html;galleys/styles.css;galleys/chart.svg
+  ```
 
-Examples:
-
+**Example:**
 ```
-"John,Doe,john@example.com,0000-0002-1825-0097,University of Example,John is a researcher; Jane,Smith,,https://orcid.org/0000-0002-1694-233X,Another University"
-"Maria,Silva,maria@example.com,0000000218250097,,"
-"Carlos,,carlos@example.com,,Example Corp,\"Carlos writes about public health.\""
+htmlGalley: article.html;styles.css;chart.svg;app.js;logo.png
 ```
 
-**ORCiD Input Options** — you may provide the ORCiD in any of the following forms:
-- Full URL: `https://orcid.org/0000-0002-1825-0097`
-- Hyphenated ID: `0000-0002-1825-0097`
-- Digits only: `0000000218250097`
+**Combining with regular galleys:** The `htmlGalley` and `galleyFilenames` columns can both be used in the same row. When an HTML galley is present, it always receives the label `HTML`. If `galleyViews` is provided, it must include a count for the HTML galley — dependent files do not count toward the view count entries.
 
-Notes:
-- The system normalizes the value to the canonical URL form `https://orcid.org/0000-0000-0000-0000`
-- The last character may be `X` (checksum), e.g., `0000-0002-1694-233X`
-- Invalid formats are ignored without blocking the import
+> **Known limitation:** Relative paths inside the HTML file itself (e.g., `<link href="styles.css">`) are not resolved at import time. When a reader downloads the galley, they receive the raw HTML file — there is no URL routing to serve the dependent files within the reader view.
 
-## Import File Structure
+> **Dependent file types:** Any file type is accepted for dependent files (CSS, SVG, PNG, JPEG, JS, fonts, etc.). Only the first file is required to be `.html` or `.htm`.
 
-When importing issues, keep all issue assets in the same directory as the CSV file so you only need to pass asset names instead of paths. Example structure:
+### Import File Structure
+
+When importing issues, it's important to keep all issue assets in the same directory as the CSV file, so you just need to pass the asset names instead of a path for the asset. Here's an example of the recommended structure:
 
 ```
 import_directory/
@@ -144,11 +268,5 @@ import_directory/
 ├── supplementary_data.csv
 ├── cover.jpg
 ```
-
-For the web interface, the same structure applies inside a ZIP archive. See [Web Interface Usage](web-interface.md).
-
-Example issue CSV files:
-- [single_version_issues.csv](../examples/issues/single_version_issues.csv)
-- [mixed_issues.csv](../examples/issues/mixed_issues.csv)
 
 [← Prev: CLI Usage](cli-usage.md) | [README](../README.md) | [Next: Multi-Locale Support →](multi-locale.md)

@@ -2,7 +2,7 @@
 
 [← Prev: Multi-Locale Support](multi-locale.md) | [README](../README.md) | [Next: Supplementary Files Descriptions →](supplementary-files.md)
 
-The CSV import plugin supports creating multiple versions of the same article in a single import operation. This feature allows you to track revisions, corrections, and updates to published articles while maintaining a complete version history.
+The CSV import plugin supports creating multiple versions of the same article in a single import operation. This feature allows you to track revisions, corrections, and updates to published articles while maintaining a complete version history
 
 ## How It Works
 
@@ -44,15 +44,16 @@ When you provide these fields in your CSV:
 
 ### Example 1: Single Article Without Versions
 
-For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty. See [single_version_issues.csv](../examples/issues/single_version_issues.csv).
+For articles that don't need version tracking, simply leave `versionIdentifier` and `version` empty. You can take a look at the [single version example under Issue CSV file](../examples/issues).
+
 
 ### Example 2: Multi Version Articles
 
-For articles with multiple versions, set the `versionIdentifier` and `version` fields. See [multi_version_issues.csv](../examples/issues/multi_version_issues.csv).
+For article with multiple versions, you'll need to set the `versionIdentifier` and `version` fields. The `versionIdentifier` tracks the same article and the `version` handles with the article different versions. See the [multi-version example under Issue CSV file](../examples/issues).
 
 ### Example 3: Mixed Articles
 
-You can mix single-version and multi-version articles in the same CSV file. See [mixed_issues.csv](../examples/issues/mixed_issues.csv).
+You can mix single-version and multi-version articles in the same CSV file. Take a look at [mixed CSV example under the Issue CSV file](../examples/issues).
 
 ## Important Notes
 
