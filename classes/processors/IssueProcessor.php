@@ -44,7 +44,7 @@ class IssueProcessor
             $issue->setShowVolume(!empty($data->issueVolume));
             $issue->setShowNumber(!empty($data->issueNumber));
             $issue->setShowYear(!empty($data->issueYear));
-            $issue->setShowTitle(!empty($data->issueTitles));
+            $issue->setShowTitle(!empty($data->issueTitle));
             $issue->setPublished(true);
             $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : Core::getCurrentDate());
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
@@ -70,6 +70,9 @@ class IssueProcessor
 
             $issueId = Repo::issue()->add($issue);
             $issue = Repo::issue()->get($issueId);
+        } elseif (!empty($data->issueTitle) && !$issue->getShowTitle()) {
+            $issue->setShowTitle(true);
+            Repo::issue()->edit($issue, []);
         }
 
         return $issue;
@@ -83,6 +86,7 @@ class IssueProcessor
     {
         if (!empty($data->issueTitle)) {
             $issue->setTitle($data->issueTitle, $data->locale);
+            $issue->setShowTitle(true);
         }
 
         if (!empty($data->issueDescription)) {
