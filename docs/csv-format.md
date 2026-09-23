@@ -178,6 +178,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - All fields except `GivenName` are optional and can be left empty
 >  - If `Email` is empty, the primary contact email of the server will be used
 >  - `ORCiD` must be the author identifier and is optional; see input options below
+>  - For Affiliation it is recommended to only enter the institution's name. This will allow the ROR integration in OJS 3.5+ to make a match with the institution's name in ROR registry.
 >
 > Examples:
 >
@@ -252,9 +253,9 @@ htmlGalley: article.html;styles.css;chart.svg;app.js;logo.png
 
 > **Dependent file types:** Any file type is accepted for dependent files (CSS, SVG, PNG, JPEG, JS, fonts, etc.). Only the first file is required to be `.html` or `.htm`.
 
-### Import File Structure
+## Import File Structure
 
-When importing issues, it's important to keep all issue assets in the same directory as the CSV file, so you just need to pass the asset names instead of a path for the asset. Here's an example of the recommended structure:
+When importing issues, it's important to keep all issue assets in the same directory as the CSV file, so you just need to pass the asset names instead of a path for the asset. Here's an example of the recommended structure for your import ZIP archive:
 
 ```
 import_directory/
@@ -268,5 +269,8 @@ import_directory/
 ├── supplementary_data.csv
 ├── cover.jpg
 ```
+If you put files inside a subfolder, you will need to make sure that the CSV points to the file's relative path (e.g., <em>galleys/article.pdf</em>).
+
+For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above.
 
 [← Prev: CLI Usage](cli-usage.md) | [README](../README.md) | [Next: Multi-Locale Support →](multi-locale.md)
