@@ -137,8 +137,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 | issueDescription | No | Issue description | Special Edition | Optional |
 | issuePublicationDate | No | Issue publication date | 2024-01-01 | Format: YYYY-MM-DD. When provided, sets the issue's publication date. Defaults to the import date if left empty |
 | datePublished | Yes | Article publication date | 2024-01-15 | Format: YYYY-MM-DD |
-| startPage | No | First page | 1 | |
-| endPage | No | Last page | 15 | |
+| startPage | No | First page | 1 | See [Pages](#pages) |
+| endPage | No | Last page | 15 | Optional. See [Pages](#pages) |
 | copyrightYear | No | Copyright year | 2025 | Left empty if not provided |
 | copyrightHolder | No | Copyright holder | Public Knowledge Project | Left empty if not provided |
 | licenseUrl | No | License URL | https://creativecommons.org/licenses/by/4.0 | Left empty if not provided |
@@ -223,6 +223,16 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  - The Funding plugin must be enabled in the journal — rows with funder data are rejected otherwise
 >  - When the Funding plugin's `enableGrantIdValidation` setting is on, each `FunderIdentification` (when provided) must be a Crossref Funder Registry DOI matching `https://doi.org/10.13039/...`
 >  - Rows that fail funder validation are written to the `invalid_*.csv` file
+
+### Pages
+
+`startPage` and `endPage` are optional. They are written together into the publication's pages field.
+
+- When both are filled, the value is saved as `startPage-endPage` (for example, `1-15`).
+- When only `startPage` is filled, that value is saved on its own, with no hyphen (for example, `12`).
+- When only `endPage` is filled, or both are left empty, the pages field is left empty.
+
+These fields are not localized. The same page values apply to every locale of the article.
 
 ### HTML Galleys
 
