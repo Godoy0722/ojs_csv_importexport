@@ -63,6 +63,8 @@ class PublicationProcessor
 
         if (!empty($data->startPage) && !empty($data->endPage)) {
             $submissionPublication->setData('pages', "{$data->startPage}-{$data->endPage}");
+        } elseif (!empty($data->startPage)) {
+            $submissionPublication->setData('pages', $data->startPage);
         }
 
         if (!empty($data->references)) {
