@@ -32,6 +32,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
 
+> **Country Code:**  Look for the Country in the following [file](https://github.com/sokil/php-isocodes-db-only/blob/4.0/databases/iso_3166-1.json) and use the two letter-code listed beside 'alpha_2'
+
 > **Username:** For **new users**, you can enter a username in the CSV. If you don't, one will be generated automatically upon import. A `username` should not be the same as the `email`. For **existing users** (matched by email), the username is never changed.
 
 > **tempPassword:** For **new users**, you can enter a temporary password in the CSV. If you don't, one will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using `tempPassword`. Upon first login, they will be prompted to update their password to their own password preference. For **existing users**, `tempPassword` is ignored — passwords cannot be changed via CSV import.
@@ -154,6 +156,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
+
+> **Locales:** See OJS 3.5 Locales table below. 
 
 > **DOIs (`doi` column):** Only fill in this column if the article was **already published with a DOI assigned to it** (for example, it was previously hosted on another platform that minted the DOI). Enter that existing DOI exactly as it was registered.
 >
@@ -282,5 +286,91 @@ import_directory/
 If you put files inside a subfolder, you will need to make sure that the CSV points to the file's relative path (e.g., <em>galleys/article.pdf</em>).
 
 For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above.
+
+## OJS 3.5 Locales
+
+| Language | Locale |
+| --- | --- |
+| Aragonese/Aragonese | an |
+| Albanian/shqip | sq |
+| Arabic/العربية | ar |
+| Armenian/հայերեն | hy |
+| Azerbaijani/azərbaycan | az |
+| Basque/euskara | eu |
+| Belarusian/беларуская | be |
+| Bosnian/bosanski | bs |
+| Bosnian/bosanski | bs_Latn |
+| Bulgarian/български | bg |
+| Catalan/català | ca |
+| Central Kurdish/کوردیی ناوەندی | ckb |
+| Chinese/中文 | zh_Hans |
+| Chinese/中文 * | zh_Hant |
+| Croatian/hrvatski | hr |
+| Czech/čeština | cs |
+| Danish/dansk | da |
+| Dutch/Nederlands | nl |
+| English/English | en |
+| Esperanto/Esperanto | eo |
+| Estonian/eesti | et |
+| Finnish/suomi | fi |
+| French/français | fr_CA |
+| French/français | fr |
+| Galician/galego | gl |
+| Georgian/ქართული | ka |
+| German/Deutsch | de |
+| Greek/Ελληνικά | el |
+| Hebrew/עברית | he |
+| Hindi/हिन्दी | hi |
+| Hungarian/magyar | hu |
+| Icelandic/íslenska | is |
+| Indonesian/Indonesia | id |
+| Italian/italiano | it |
+| Japanese/日本語 | ja |
+| Kabyle/Taqbaylit | kab |
+| Kazakh/қазақ тілі * | kk |
+| Korean/한국어 | ko |
+| Kyrgyz/кыргызча | ky |
+| Lao/ລາວ | lo |
+| Latvian/latviešu | lv |
+| Lithuanian/lietuvių | lt |
+| Lower Sorbian/dolnoserbšćina | dsb |
+| Macedonian/македонски | mk |
+| Malay/Melayu * | ms |
+| Marathi/मराठी | mr |
+| Mongo/Mongo | lol |
+| Mongolian/монгол | mn |
+| Montenegrin/Montenegrin | cnr |
+| Northern Sami/davvisámegiella | se |
+| Norwegian Bokmål/norsk bokmål | nb_NO |
+| Pashto/پښتو | ps |
+| Persian/فارسی | fa |
+| Polish/polski | pl |
+| Portuguese/português | pt_BR |
+| Portuguese/português | pt |
+| Portuguese/português (Portugal) | pt_PT |
+| Romanian/română | ro |
+| Russian/русский | ru |
+| Rusyn/Rusyn | rue |
+| Scottish Gaelic/Gàidhlig | gd |
+| Serbian/srpski | sr_Latn |
+| Serbian/српски | sr |
+| Serbian/српски | sr_Cyrl |
+| Sidamo/Sidamo | sid |
+| Slovak/slovenčina | sk |
+| Slovenian/slovenščina | sl |
+| Spanish/español | es |
+| Spanish/español (Mexico/México) | es_MX |
+| Swahili/Kiswahili | sw |
+| Swedish/svenska | sv |
+| Tagalog/Tagalog | tl |
+| Thai/ไทย | th |
+| Turkish/Türkçe | tr |
+| Ukrainian/українська | uk |
+| Unknown language/Unknown language | und |
+| Upper Sorbian/hornjoserbšćina | hsb |
+| Urdu/اردو | ur |
+| Uzbek/o‘zbek | uz |
+| Uzbek/o‘zbek | uz_Latn |
+| Vietnamese/Tiếng Việt | vi |
 
 [← Prev: CLI Usage](cli-usage.md) | [README](../README.md) | [Next: Multi-Locale Support →](multi-locale.md)
