@@ -32,6 +32,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
 
+> **Country Code:**  Look for the Country in the following [file](https://github.com/sokil/php-isocodes-db-only/blob/4.0/databases/iso_3166-1.json) and use the two letter-code listed beside 'alpha_2'
 > **Username:** For **new users**, you can enter a username in the CSV. If you don't, one will be generated automatically upon import. A `username` should not be the same as the `email`. For **existing users** (matched by email), the username is never changed.
 
 > **tempPassword:** For **new users**, you can enter a temporary password in the CSV. If you don't, one will be generated automatically upon import. If this password is shared with imported users outside of OJS, those users will be able to log in using `tempPassword`. Upon first login, they will be prompted to update their password to their own password preference. For **existing users**, `tempPassword` is ignored — passwords cannot be changed via CSV import.
@@ -154,6 +155,8 @@ Make sure to follow this CSV structure with all headers present, including the n
 >  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
+
+> **Locales:** See OJS 3.3 Locales table below. 
 
 > **DOIs (`doi` column):** Only fill in this column if the article was **already published with a DOI assigned to it** (for example, it was previously hosted on another platform that minted the DOI). Enter that existing DOI exactly as it was registered.
 >
@@ -282,5 +285,50 @@ import_directory/
 If you put files inside a subfolder, you will need to make sure that the CSV points to the file's relative path (e.g., <em>galleys/article.pdf</em>).
 
 For user imports, you can upload a single CSV file directly without zipping. If you have multiple CSV files, bundle them into a ZIP archive following the same structure rules described above.
+
+## OJS 3.3 Locales
+| Language  | Locale |
+| --- | --- |
+| Arabic | ar_IQ |
+|  Bosnian | bs_BA |
+| Catalan | ca_ES |
+| Czech | cs_CZ|
+| Danish | da_DK|
+| German | de_DE |
+| Greek | el_GR|
+| English  | en_US |
+| Finnish | fi_FI |
+| French (Canada) |fr_CA |
+| French (Canada) |fr_FR |
+| Gaelic | gd_GB |
+| Galician | gl_ES |
+| Hebrew | he_IL|
+| Hindi  | hi_IN |
+| Croatiian  | hr_HR |
+| Hungarian  | hu_HU |
+| Armenian  | hy_AM |
+| Indonesian | id_ID|
+| Icelandic | is_IS|
+| Italian | it_IT |
+| Japanese | ja_JP |
+| Kurdish | ku_IQ|
+| Macedonian  | mk_MK |
+| Norwegian Bokmål | nb_NO |
+| Polish | pl_PL |
+| Portuguese (Brazil) | pt_BR |
+| Portuguese (Portugall) | pt_PT|
+| Romanian | ro_RO |
+| Russian  | ru_RU |
+| Slovak | sk_SK|
+| Slovanian | sl_SI |
+| Serbian (cyrillic) | sr_RS@cyrillic  |
+| Serbian (latin) | sr_RS@latin |
+| Turkish | tr_TR |
+| Ukrainian | uk_UA |
+| Urdu (Pakistan) | ur_PK |
+| Uzbek | uz_UZ@latin|
+| Vietnamese | vi_VN |
+| Chinese (Simplified) | zh_CN |
+| Chinese (Traditional) | zh_TW |
 
 [← Prev: CLI Usage](cli-usage.md) | [README](../README.md) | [Next: Multi-Locale Support →](multi-locale.md)
