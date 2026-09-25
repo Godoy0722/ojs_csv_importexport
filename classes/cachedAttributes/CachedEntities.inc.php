@@ -195,17 +195,22 @@ class CachedEntities
      */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, string $locale, int $journalId)
     {
-			$customSectionKey = "{$sectionTitle}_{$sectionAbbrev}";
+			$normalizedAbbrev = mb_strtoupper(trim($sectionAbbrev));
+			$customSectionKey = trim($sectionTitle) . '_' . $normalizedAbbrev;
 
 			if (isset(self::$sections[$customSectionKey])) {
 				return self::$sections[$customSectionKey];
 			}
 
-			$sectionDao = CachedDaos::getSectionDao();
-			$sectionByAbbrev = $sectionDao->getByAbbrev($sectionAbbrev, $journalId);
+			$sections = CachedDaos::getSectionDao()->getByContextId($journalId)->toArray();
 
-			if ($sectionByAbbrev && $sectionByAbbrev->getTitle($locale) === $sectionTitle) {
-				return self::$sections[$customSectionKey] = $sectionByAbbrev;
+			foreach ($sections as $section) {
+				$existingTitle = self::_getLocalizedSettingValue($section->getTitle($locale), $locale);
+				$existingAbbrev = mb_strtoupper(self::_getLocalizedSettingValue($section->getAbbrev($locale), $locale));
+
+				if ($existingTitle === trim($sectionTitle) && $existingAbbrev === $normalizedAbbrev) {
+					return self::$sections[$customSectionKey] = $section;
+				}
 			}
 
 			return null;
@@ -236,9 +241,9 @@ class CachedEntities
 
         $section = CachedDaos::getSectionDao()->getById($baseSectionId, $journalId);
         $sectionTitle = self::_getLocalizedSettingValue($section->getTitle($locale), $locale);
-        $sectionAbbrev = self::_getLocalizedSettingValue($section->getAbbrev($locale), $locale);
+        $sectionAbbrev = mb_strtoupper(self::_getLocalizedSettingValue($section->getAbbrev($locale), $locale));
 
-        $customSectionKey = $sectionTitle . '_' . mb_strtoupper(trim($sectionAbbrev));
+        $customSectionKey = $sectionTitle . '_' . $sectionAbbrev;
         self::$sections[$customSectionKey] = $section;
 
         return $section;
