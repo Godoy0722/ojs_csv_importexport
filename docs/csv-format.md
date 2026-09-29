@@ -27,12 +27,12 @@ Make sure to follow this CSV structure with all headers present, including the n
 
 > **Finding your `journalPath`:** The `journalPath` is the journal's **Path** — the same value that appears in the journal's web address. You can find it in two easy ways:
 
-> **Country Code:**  Look for the Country in the following [file](https://github.com/sokil/php-isocodes-db-only/blob/4.0/databases/iso_3166-1.json) and use the two letter-code listed beside 'alpha_2'
-
 >  1. **From the URL:** Open the journal in your browser and look at the address bar. The path is the segment that identifies the journal in the URL — for example, in `https://example.com/index.php/leo/...` the `journalPath` is `leo`.
 >  2. **From the admin area:** Go to **Administration → Hosted Journals**. The list shows a **Path** column next to each journal's name — use that exact value.
 >
 >  - The journal must already exist in OJS; the importer does not create journals.
+
+>  **Country Code:**  Look for the Country in the following [file](https://github.com/sokil/php-isocodes-db-only/blob/4.0/databases/iso_3166-1.json) and use the two letter-code listed beside 'alpha_2'
 
 > **Username:** For **new users**, you can enter a username in the CSV. If you don't, one will be generated automatically upon import. A `username` should not be the same as the `email`. For **existing users** (matched by email), the username is never changed.
 
@@ -108,7 +108,7 @@ Make sure to follow this CSV structure with all headers present, including the n
 | Column | Required | Description | Example | Notes |
 |--------|----------|-------------|---------|-------|
 | journalPath | Yes | Path of the target journal | leo | Must exist in the system |
-| locale | Yes | Article locale | en_US | Must be enabled in the journal |
+| locale | Yes | Article locale | en | Must be enabled in the journal |
 | versionIdentifier | No | Unique identifier for article versions | article-001 | Links versions together. Leave empty for single-version articles |
 | version | No | Version number | 1 | Required if versionIdentifier is provided. Must be positive integer |
 | articlePrefix | No | Article prefix | The | Optional |
