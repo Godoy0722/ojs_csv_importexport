@@ -32,6 +32,9 @@ class CSVFileHandler
         try {
             $file = new \SplFileObject($filePath, 'r');
             $file->setFlags(\SplFileObject::READ_CSV);
+            // Disable PHP's backslash escape so quoted fields match what spreadsheets show.
+            // With the default escape, a value ending in "\" swallows the following columns.
+            $file->setCsvControl(',', '"', '');
 
             return $file;
         } catch (\Exception $e) {
@@ -57,6 +60,7 @@ class CSVFileHandler
     {
         try {
             $invalidRowsFile = new \SplFileObject($sourceDir . '/' . $filename, 'a+');
+            $invalidRowsFile->setCsvControl(',', '"', '');
             $invalidRowsFile->fputcsv(array_merge($requiredHeaders, ['error']));
 
             return $invalidRowsFile;
