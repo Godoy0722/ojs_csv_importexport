@@ -191,6 +191,17 @@ Make sure to follow this CSV structure with all headers present, including the n
 > "Maria,Silva,maria@example.com,0000000218250097,"
 > "Carlos,,carlos@example.com,,Example Corp"
 > ```
+> 
+> **How to add author's affiliation without providing their email and/ot ORCiD**
+> If you want to provide the Affiliation field but not an earlier one (for example, Email or ORCiD), you **must** still include the commas for the empty positions. Otherwise, the importer will read your value into the wrong field.
+>
+> What you want to enter:
+> GivenName + FamilyName + Affiliation (no email, no ORCiD)
+>
+> How to write it: `Maria,Silva,,,University of Example` 
+> The `,,,` marks positions 3 and 4 (Email and ORCiD) as empty.
+>
+> _**Common mistake:**_ Writing Maria,Silva,University of Example will **not** work. The importer will read University of Example as the Email, because it sits in position 3. To place a value in the Affiliation field, you must first "skip" the > Email and ORCiD positions with commas: Maria,Silva,,,University of Example.
 
 > **ORCiD Input Options**
 > You may provide the ORCiD in any of the following forms:
