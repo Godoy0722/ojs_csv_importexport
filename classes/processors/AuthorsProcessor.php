@@ -263,13 +263,13 @@ class AuthorsProcessor
     }
 
     /**
-     * Split the authors CSV cell into individual author entries.
+     * Split the authors cell into entries. A semicolon inside quotes stays in that entry.
      *
      * @return string[]
      */
     public static function splitAuthorEntries(string $authors): array
     {
-        return array_map('trim', explode(';', $authors));
+        return static::splitRespectingQuotes($authors, ';', false);
     }
 
     /**
@@ -281,7 +281,7 @@ class AuthorsProcessor
      */
     public static function parseAuthorSubfields(string $authorString): array
     {
-        $authorParts = array_map('trim', explode(',', $authorString));
+        $authorParts = static::splitRespectingQuotes($authorString, ',', true);
 
         return [
             'givenName' => $authorParts[0] ?? '',
@@ -291,6 +291,42 @@ class AuthorsProcessor
             'affiliation' => $authorParts[4] ?? '',
             'biography' => $authorParts[5] ?? '',
         ];
+    }
+
+    /**
+     * Split on a delimiter without breaking quoted regions.
+     * Quotes may start mid-field, which str_getcsv does not handle for this author format.
+     *
+     * @return string[]
+     */
+    private static function splitRespectingQuotes(string $input, string $delimiter, bool $stripQuotes = false): array
+    {
+        $parts = [];
+        $current = '';
+        $inQuotes = false;
+        $length = strlen($input);
+
+        for ($i = 0; $i < $length; $i++) {
+            if ($input[$i] === '"') {
+                $inQuotes = !$inQuotes;
+                if (!$stripQuotes) {
+                    $current .= $input[$i];
+                }
+                continue;
+            }
+
+            if (!$inQuotes && $input[$i] === $delimiter) {
+                $parts[] = trim($current);
+                $current = '';
+                continue;
+            }
+
+            $current .= $input[$i];
+        }
+
+        $parts[] = trim($current);
+
+        return $parts;
     }
 
     private static function addNewAuthor(
