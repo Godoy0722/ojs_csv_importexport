@@ -218,7 +218,7 @@ msgid "plugins.importexport.csv.form.examplesHelp"
 msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CSV files for issue imports here: <a href=\"https://github.com/Godoy0722/ojs_csv_importexport/tree/stable-3_5_0/examples/issues\" target=\"_blank\" rel=\"noopener noreferrer\">CSV examples for issues</a>."
 
 msgid "plugins.importexport.csv.invalidDateFormat"
-msgstr "Invalid date format for {$fieldName}. Expected format: YYYY-MM-DD (e.g., 2024-01-15)."
+msgstr "Invalid date format for {$fieldName}. Use YYYY-MM-DD (for example, 2024-01-15) or DD/MM/YYYY (for example, 15/01/2024)."
 
 msgid "plugins.importexport.csv.duplicateDoi"
 msgstr "The DOI \"{$doi}\" already exists in this journal."

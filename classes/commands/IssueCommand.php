@@ -209,6 +209,7 @@ class IssueCommand
                     });
 
                     InvalidRowValidations::validateContextVersioningFields($data);
+                    InvalidRowValidations::validateAuthors($data->authors ?? null);
 
                     if (!empty($data->versionIdentifier)) {
                         InvalidRowValidations::validateNoDuplicateVersion($data, $this->processedArticles);
@@ -248,8 +249,8 @@ class IssueCommand
                     InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
                     InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
 
-                    InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
-                    InvalidRowValidations::validateDateFormat($data->issuePublicationDate ?? null, 'issuePublicationDate', false);
+                    $data->datePublished = InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
+                    $data->issuePublicationDate = InvalidRowValidations::validateDateFormat($data->issuePublicationDate ?? null, 'issuePublicationDate', false);
 
                     if ($data->suppFilenames) {
                         InvalidRowValidations::validateSupplementaryFiles(
