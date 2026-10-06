@@ -164,8 +164,6 @@ class UserCommand
                     $isNewUser = is_null($existingUser);
 
                     if ($isNewUser) {
-                        InvalidRowValidations::validateUserAlreadyExistsWithThisEmail($data->email);
-
                         if ($data->username) {
                             InvalidRowValidations::validateUserAlreadyExistsWithThisUsername($data->username);
                         }

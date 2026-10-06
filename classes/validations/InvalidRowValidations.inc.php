@@ -32,14 +32,52 @@ class InvalidRowValidations
     static array $coverImageAllowedTypes = ['gif', 'jpg', 'png', 'webp'];
 
     /**
+     * Validates that a resolved file path stays within the source directory.
+     *
+     * @throws RowValidationException
+     * @return string
+     */
+    public static function validatePathWithinSourceDir(string $filename, string $sourceDir): string
+    {
+        $resolvedSourceDir = realpath($sourceDir);
+        if ($resolvedSourceDir === false) {
+            throw new RowValidationException(__('plugins.importexport.csv.invalidSourceDir'));
+        }
+
+        $hasNullByte = strpos($filename, "\0") !== false;
+        $hasTraversal = preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $filename) === 1;
+        $isAbsolute = preg_match('#^([a-zA-Z]:)?[\\\\/]#', $filename) === 1;
+
+        if ($hasNullByte || $hasTraversal || $isAbsolute) {
+            throw new RowValidationException(__('plugins.importexport.csv.filePathEscapesSourceDir', ['filename' => $filename]));
+        }
+
+        $candidatePath = "{$resolvedSourceDir}/{$filename}";
+        $resolvedPath = realpath($candidatePath);
+        $sourcePrefix = $resolvedSourceDir . DIRECTORY_SEPARATOR;
+
+        if ($resolvedPath !== false && substr($resolvedPath, 0, strlen($sourcePrefix)) !== $sourcePrefix) {
+            throw new RowValidationException(__('plugins.importexport.csv.filePathEscapesSourceDir', ['filename' => $filename]));
+        }
+
+        return $resolvedPath !== false ? $resolvedPath : $candidatePath;
+    }
+
+    /**
      * Validates whether the CSV row contains all fields.
      *
      * @throws RowValidationException
      */
     public static function validateRowContainAllFields(array $fields, int $expectedSize): void
     {
-        if (count($fields) < $expectedSize) {
+        $fieldCount = count($fields);
+
+        if ($fieldCount < $expectedSize) {
             throw new RowValidationException(__('plugins.importexport.csv.rowDoesntContainAllFields'));
+        }
+
+        if ($fieldCount > $expectedSize) {
+            throw new RowValidationException(__('plugins.importexport.csv.rowContainsTooManyFields'));
         }
     }
 
@@ -62,6 +100,7 @@ class InvalidRowValidations
      */
     public static function validateCoverImageIsValid(string $coverImageFilename, string $sourceDir): void
     {
+        static::validatePathWithinSourceDir($coverImageFilename, $sourceDir);
         $articleCoverImagePath = "{$sourceDir}/{$coverImageFilename}";
 
         if (!is_readable($articleCoverImagePath)) {
@@ -82,14 +121,15 @@ class InvalidRowValidations
      */
     public static function validateArticleGalleys(string $galleyFilenames, string $galleyLabels, string $sourceDir): void
     {
-        $galleyFilenamesArray = explode(';', $galleyFilenames);
-        $galleyLabelsArray = explode(';', $galleyLabels);
+        $galleyFilenamesArray = array_map('trim', explode(';', $galleyFilenames));
+        $galleyLabelsArray = array_map('trim', explode(';', $galleyLabels));
 
         if (count($galleyFilenamesArray) !== count($galleyLabelsArray)) {
             throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndGalleys'));
         }
 
         foreach($galleyFilenamesArray as $galleyFilename) {
+            static::validatePathWithinSourceDir($galleyFilename, $sourceDir);
             $galleyPath = "{$sourceDir}/{$galleyFilename}";
             if (!is_readable($galleyPath)) {
                 throw new RowValidationException(__('plugins.importexport.csv.invalidGalleyFile', ['filename' => $galleyFilename]));
@@ -124,6 +164,7 @@ class InvalidRowValidations
         }
 
         foreach ($htmlGalleyFiles as $file) {
+            static::validatePathWithinSourceDir($file, $sourceDir);
             $filePath = "{$sourceDir}/{$file}";
             if (!is_readable($filePath)) {
                 throw new RowValidationException(__('plugins.importexport.csv.invalidHtmlGalleyFile', ['filename' => $file]));
@@ -138,14 +179,15 @@ class InvalidRowValidations
      */
     public static function validateSupplementaryFiles(string $suppFilenames, string $suppLabels, string $sourceDir): void
     {
-        $suppFilenamesArray = explode(';', $suppFilenames);
-        $suppLabelsArray = explode(';', $suppLabels);
+        $suppFilenamesArray = array_map('trim', explode(';', $suppFilenames));
+        $suppLabelsArray = array_map('trim', explode(';', $suppLabels));
 
         if (count($suppFilenamesArray) !== count($suppLabelsArray)) {
             throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles'));
         }
 
         foreach($suppFilenamesArray as $suppFilename) {
+            static::validatePathWithinSourceDir($suppFilename, $sourceDir);
             $suppPath = "{$sourceDir}/{$suppFilename}";
             if (!is_readable($suppPath)) {
                 throw new RowValidationException(__('plugins.importexport.csv.invalidSupplementaryFile', ['filename' => $suppFilename]));
@@ -385,6 +427,7 @@ class InvalidRowValidations
             return; // References file is optional
         }
 
+        static::validatePathWithinSourceDir($referencesFilename, $sourceDir);
         $referencesFilePath = "{$sourceDir}/{$referencesFilename}";
 
         if (!is_readable($referencesFilePath)) {
@@ -604,6 +647,101 @@ class InvalidRowValidations
                     'authorIndex' => $index + 1,
                 ]));
             }
+        }
+    }
+
+    /**
+     * Accepts Y-m-d, or d/m/Y which is converted to Y-m-d.
+     * Empty values pass only when the field is optional.
+     *
+     * @throws RowValidationException
+     */
+    public static function validateDateFormat(?string $date, string $fieldName, bool $required = true): ?string
+    {
+        $date = trim((string) $date);
+
+        if ($date === '') {
+            if ($required) {
+                throw new RowValidationException(__('plugins.importexport.csv.invalidDateFormat', ['fieldName' => $fieldName]));
+            }
+
+            return null;
+        }
+
+        $normalized = static::convertCsvDate($date);
+        if ($normalized === null) {
+            throw new RowValidationException(__('plugins.importexport.csv.invalidDateFormat', ['fieldName' => $fieldName]));
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Converts a CSV date to Y-m-d. Accepts Y-m-d and d/m/Y.
+     */
+    private static function convertCsvDate(string $date): ?string
+    {
+        foreach (['Y-m-d', 'd/m/Y'] as $format) {
+            $dateObj = \DateTime::createFromFormat('!' . $format, $date);
+            $errors = \DateTime::getLastErrors();
+            $hasErrors = is_array($errors) && (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0);
+
+            if ($dateObj && !$hasErrors) {
+                return $dateObj->format('Y-m-d');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalizes a DOI to the https://doi.org/ URL form.
+     */
+    public static function normalizeVorDoi(?string $vorDoi): ?string
+    {
+        if (empty($vorDoi)) {
+            return null;
+        }
+
+        $vorDoi = trim($vorDoi);
+
+        if (preg_match('/^https?:\/\/(dx\.)?doi\.org\/10\.\d{4,}(\.\d+)*\/\S+$/i', $vorDoi)) {
+            return preg_replace('/^https?:\/\/(dx\.)?doi\.org\//i', 'https://doi.org/', $vorDoi);
+        }
+
+        if (preg_match('/^doi:(10\.\d{4,}(\.\d+)*\/\S+)$/i', $vorDoi, $matches)) {
+            return 'https://doi.org/' . $matches[1];
+        }
+
+        if (preg_match('/^10\.\d{4,}(\.\d+)*\/\S+$/', $vorDoi)) {
+            return 'https://doi.org/' . $vorDoi;
+        }
+
+        return null;
+    }
+
+    /**
+     * Rejects a DOI that already exists in the journal or earlier in this import.
+     * Empty DOIs and values that cannot be normalized are ignored.
+     *
+     * @param array<string,bool> $existingDois
+     * @param array<string,bool> $importedDois
+     *
+     * @throws RowValidationException
+     */
+    public static function validateDoiNotDuplicate(?string $doi, array $existingDois, array $importedDois): void
+    {
+        if (empty(trim($doi ?? ''))) {
+            return;
+        }
+
+        $normalized = static::normalizeVorDoi($doi);
+        if ($normalized === null) {
+            return;
+        }
+
+        if (isset($importedDois[$normalized]) || isset($existingDois[$normalized])) {
+            throw new RowValidationException(__('plugins.importexport.csv.duplicateDoi', ['doi' => $doi]));
         }
     }
 }

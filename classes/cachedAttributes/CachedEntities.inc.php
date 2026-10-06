@@ -17,6 +17,9 @@
 
 namespace PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes;
 
+use Illuminate\Database\Capsule\Manager as Capsule;
+use PKP\Plugins\ImportExport\CSV\Classes\Validations\InvalidRowValidations;
+
 class CachedEntities
 {
     /** @var \Journal[] */
@@ -45,6 +48,9 @@ class CachedEntities
 
     /** @var \SubscriptionType[] */
     static array $subscriptionTypes = [];
+
+    /** @var array<int, array<string, bool>> */
+    static array $existingDoisByJournal = [];
 
     /**
      * Retrieves a cached Journal by its path. Returns null if an error occurs.
@@ -189,31 +195,44 @@ class CachedEntities
     }
 
     /**
-     * Retrieves a cached Section by sectionTitle, sectionAbbrev, and journalId. Returns null if an error occurs.
-	 *
-	 * @return \Section|null
+     * Retrieves a Section of the journal matching the fields the CSV row provides.
+     * A row may carry the title, the abbreviation, or both; whichever it carries has to match.
+     * When more than one section matches, the one with the lowest ID wins.
+     *
+     * @return \Section|null
      */
     static function getCachedSection(string $sectionTitle, string $sectionAbbrev, string $locale, int $journalId)
     {
-			$normalizedAbbrev = mb_strtoupper(trim($sectionAbbrev));
-			$customSectionKey = trim($sectionTitle) . '_' . $normalizedAbbrev;
+        $sectionTitle = trim($sectionTitle);
+        $sectionAbbrev = mb_strtoupper(trim($sectionAbbrev));
 
-			if (isset(self::$sections[$customSectionKey])) {
-				return self::$sections[$customSectionKey];
-			}
+        if ($sectionTitle === '' && $sectionAbbrev === '') {
+            return null;
+        }
 
-			$sections = CachedDaos::getSectionDao()->getByContextId($journalId)->toArray();
+        $customSectionKey = $sectionTitle . '_' . $sectionAbbrev;
 
-			foreach ($sections as $section) {
-				$existingTitle = self::_getLocalizedSettingValue($section->getTitle($locale), $locale);
-				$existingAbbrev = mb_strtoupper(self::_getLocalizedSettingValue($section->getAbbrev($locale), $locale));
+        if (isset(self::$sections[$customSectionKey])) {
+            return self::$sections[$customSectionKey];
+        }
 
-				if ($existingTitle === trim($sectionTitle) && $existingAbbrev === $normalizedAbbrev) {
-					return self::$sections[$customSectionKey] = $section;
-				}
-			}
+        $sections = CachedDaos::getSectionDao()->getByContextId($journalId)->toArray();
+        usort($sections, function ($a, $b) {
+            return $a->getId() <=> $b->getId();
+        });
 
-			return null;
+        foreach ($sections as $section) {
+            $existingTitle = self::_getLocalizedSettingValue($section->getTitle($locale), $locale);
+            $existingAbbrev = mb_strtoupper(self::_getLocalizedSettingValue($section->getAbbrev($locale), $locale));
+            $titleMatches = $sectionTitle === '' || $existingTitle === $sectionTitle;
+            $abbrevMatches = $sectionAbbrev === '' || $existingAbbrev === $sectionAbbrev;
+
+            if ($titleMatches && $abbrevMatches) {
+                return self::$sections[$customSectionKey] = $section;
+            }
+        }
+
+        return null;
     }
 
 	/**
@@ -279,6 +298,35 @@ class CachedEntities
 		}
 
     /**
+     * Publication DOIs already stored for the journal, keyed by the normalized DOI URL.
+     *
+     * @return array<string, bool>
+     */
+    static function getExistingDois(int $journalId): array
+    {
+        if (isset(self::$existingDoisByJournal[$journalId])) {
+            return self::$existingDoisByJournal[$journalId];
+        }
+
+        $values = Capsule::table('publication_settings as ps')
+            ->join('publications as p', 'p.publication_id', '=', 'ps.publication_id')
+            ->join('submissions as s', 's.submission_id', '=', 'p.submission_id')
+            ->where('s.context_id', $journalId)
+            ->where('ps.setting_name', 'pub-id::doi')
+            ->pluck('ps.setting_value');
+
+        $map = [];
+        foreach ($values as $doi) {
+            $normalized = InvalidRowValidations::normalizeVorDoi((string) $doi);
+            if ($normalized !== null) {
+                $map[$normalized] = true;
+            }
+        }
+
+        return self::$existingDoisByJournal[$journalId] = $map;
+    }
+
+    /**
      * Reset all cached entities (used after dry-mode rollbacks).
      */
     static function reset()
@@ -292,5 +340,6 @@ class CachedEntities
         self::$issues = [];
         self::$users = [];
         self::$subscriptionTypes = [];
+        self::$existingDoisByJournal = [];
     }
 }
