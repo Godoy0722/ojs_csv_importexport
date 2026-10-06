@@ -77,14 +77,25 @@ class RequiredIssueHeaders
     }
 
     /**
-     * A row is a subsequent version or locale of an article already processed in this run.
-     * Such rows inherit the metadata of the base row, so required-field rules don't apply to them.
+     * Later versions, and an extra locale of a version already imported in this run,
+     * inherit metadata from the base row. Required-field rules do not apply to them.
      */
     public static function isMultiVersionOrLocale(object $row, array $processedArticles = []): bool
     {
-        return !empty($row->versionIdentifier)
-            && !empty($row->version)
-            && isset($processedArticles[$row->versionIdentifier]);
+        if (!empty($row->version) && !empty($row->versionIdentifier) && (int) $row->version > 1) {
+            return true;
+        }
+
+        if (!empty($row->versionIdentifier) && !empty($row->version)) {
+            $identifier = $row->versionIdentifier;
+            $version = (int) $row->version;
+
+            if (isset($processedArticles[$identifier][$version]) && !empty($processedArticles[$identifier][$version])) {
+                return !isset($processedArticles[$identifier][$version][$row->locale]);
+            }
+        }
+
+        return false;
     }
 
     public static function validateRowHasAllRequiredFields(object $row, array $processedArticles = []): bool
