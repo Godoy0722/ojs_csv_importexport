@@ -112,7 +112,7 @@ class UserCommand
                 ++$this->processedRows;
 
                 try {
-                    InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
+                    InvalidRowValidations::validateRowContainAllFields($fields, RequiredUserHeaders::$userHeaders);
 
                     $fieldsList = array_pad(array_map('trim', $fields), $this->expectedRowSize, null);
                     $data = (object) array_combine(RequiredUserHeaders::$userHeaders, $fieldsList);

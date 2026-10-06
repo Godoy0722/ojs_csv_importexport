@@ -109,6 +109,12 @@ class IssueCommand
      */
     private array $processedArticles;
 
+    /** @var array<string,bool> Version identifiers whose base row failed in this run */
+    private array $failedIdentifiers;
+
+    /** @var array<string,bool> DOIs already accepted in this run, keyed by normalized DOI */
+    private array $importedDois;
+
     /** Validates the CSV files without persisting anything when true. */
     private bool $dryMode;
 
@@ -123,6 +129,8 @@ class IssueCommand
         $this->currentJournalPath = $currentJournalPath;
         $this->processedIssues = [];
         $this->processedArticles = [];
+        $this->failedIdentifiers = [];
+        $this->importedDois = [];
     }
 
     public function run(): array
@@ -173,12 +181,23 @@ class IssueCommand
                 ++$this->processedRows;
 
                 try {
-                    InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
+                    InvalidRowValidations::validateRowContainAllFields($fields, RequiredIssueHeaders::$issueHeaders);
 
                     $data = (object) array_combine(
                         RequiredIssueHeaders::$issueHeaders,
                         array_pad(array_map('trim', $fields), $this->expectedRowSize, null)
                     );
+
+                    if (
+                        !empty($data->versionIdentifier)
+                        && !empty($data->version)
+                        && !isset($this->processedArticles[$data->versionIdentifier])
+                        && isset($this->failedIdentifiers[$data->versionIdentifier])
+                    ) {
+                        throw new RowValidationException(__('plugins.importexport.csv.baseRowFailedForIdentifier', [
+                            'identifier' => $data->versionIdentifier,
+                        ]));
+                    }
 
                     InvalidRowValidations::validateRowHasAllRequiredFields($data, function($row) {
                         return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->processedArticles);
@@ -202,6 +221,9 @@ class IssueCommand
                             throw new RowValidationException(__('plugins.importexport.csv.atLeastOneIssueFieldRequired'));
                         }
                     }
+
+                    $data->datePublished = InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
+                    $data->issuePublicationDate = InvalidRowValidations::validateDateFormat($data->issuePublicationDate ?? null, 'issuePublicationDate', false);
 
                     if ($data->galleyFilenames) {
                         InvalidRowValidations::validateArticleGalleys(
@@ -262,6 +284,12 @@ class IssueCommand
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
 
                     InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
+
+                    InvalidRowValidations::validateDoiNotDuplicate(
+                        $data->doi ?? null,
+                        CachedEntities::getExistingDois($journal->getId()),
+                        $this->importedDois
+                    );
 
                     if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
                         throw new RowValidationException(__('plugins.importexport.csv.contextPathMismatch', [
@@ -588,7 +616,19 @@ class IssueCommand
                     if (!empty($data->versionIdentifier)) {
                         $this->trackProcessedArticle($data, $submission, $publication);
                     }
+
+                    if (!empty(trim($data->doi ?? ''))) {
+                        $normalizedDoi = InvalidRowValidations::normalizeVorDoi($data->doi);
+                        if ($normalizedDoi !== null) {
+                            $this->importedDois[$normalizedDoi] = true;
+                        }
+                    }
                 } catch (RowValidationException $e) {
+                    $failedIdentifier = isset($fields[2]) ? trim((string) $fields[2]) : '';
+                    if ($failedIdentifier !== '') {
+                        $this->failedIdentifiers[$failedIdentifier] = true;
+                    }
+
                     if (is_null($invalidCsvFile)) {
                         $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
                             $this->sourceDir,
@@ -608,6 +648,11 @@ class IssueCommand
 
                     continue;
                 } catch (\Throwable $e) {
+                    $failedIdentifier = isset($fields[2]) ? trim((string) $fields[2]) : '';
+                    if ($failedIdentifier !== '') {
+                        $this->failedIdentifiers[$failedIdentifier] = true;
+                    }
+
                     if (is_null($invalidCsvFile)) {
                         $invalidCsvFile = CSVFileHandler::createCSVFileInvalidRows(
                             $this->sourceDir,
@@ -651,6 +696,7 @@ class IssueCommand
                 CachedEntities::reset();
                 $this->processedIssues = [];
                 $this->processedArticles = [];
+                $this->failedIdentifiers = [];
             }
 
             echo __('plugins.importexport.csv.submissionFileProcessFinished', [

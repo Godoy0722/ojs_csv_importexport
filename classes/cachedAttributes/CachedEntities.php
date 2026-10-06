@@ -20,8 +20,10 @@ namespace APP\plugins\importexport\csv\classes\cachedAttributes;
 use APP\facades\Repo;
 use APP\issue\Issue;
 use APP\journal\Journal;
+use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\section\Section;
 use APP\subscription\SubscriptionType;
+use Illuminate\Support\Facades\DB;
 use PKP\category\Category;
 use PKP\security\Role;
 use PKP\user\User;
@@ -59,6 +61,9 @@ class CachedEntities
     /** @var array<string,SubscriptionType|null> */
     static array $subscriptionTypes = [];
 
+    /** @var array<int,array<string,bool>> Normalized DOIs already stored for a journal */
+    static array $existingDoisByJournal = [];
+
     /** Resets all cached entities. Used after dry-mode rollback to clear stale IDs. */
     public static function reset(): void
     {
@@ -72,6 +77,7 @@ class CachedEntities
         static::$issues = [];
         static::$users = [];
         static::$subscriptionTypes = [];
+        static::$existingDoisByJournal = [];
     }
 
     /** Retrieves a cached Journal by its path. Returns null if an error occurs. */
@@ -318,5 +324,33 @@ class CachedEntities
         $retrievedType = $subscriptionTypeDao->getById((int) $subscriptionType, $journalId);
 
         return static::$subscriptionTypes[$subscriptionType] = $retrievedType;
+    }
+
+    /**
+     * DOIs already stored for the journal, keyed by the normalized DOI URL.
+     *
+     * @return array<string,bool>
+     */
+    static function getExistingDois(int $journalId): array
+    {
+        if (isset(static::$existingDoisByJournal[$journalId])) {
+            return static::$existingDoisByJournal[$journalId];
+        }
+
+        $dois = DB::table('dois')
+            ->where('context_id', $journalId)
+            ->whereNotNull('doi')
+            ->distinct()
+            ->pluck('doi');
+
+        $map = [];
+        foreach ($dois as $doi) {
+            $normalized = InvalidRowValidations::normalizeVorDoi((string) $doi);
+            if ($normalized !== null) {
+                $map[$normalized] = true;
+            }
+        }
+
+        return static::$existingDoisByJournal[$journalId] = $map;
     }
 }

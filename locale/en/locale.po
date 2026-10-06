@@ -57,6 +57,27 @@ msgstr "Could not write to the file \"{$filename}\"."
 msgid "plugins.importexport.csv.rowDoesntContainAllFields"
 msgstr "Row doesn't contain all fields."
 
+msgid "plugins.importexport.csv.rowContainsTooManyFields"
+msgstr "Row contains more fields than expected."
+
+msgid "plugins.importexport.csv.invalidDateFormat"
+msgstr "Invalid date format for {$fieldName}. Use YYYY-MM-DD (for example, 2024-01-15) or DD/MM/YYYY (for example, 15/01/2024)."
+
+msgid "plugins.importexport.csv.duplicateDoi"
+msgstr "The DOI \"{$doi}\" already exists in this journal."
+
+msgid "plugins.importexport.csv.invalidSourceDir"
+msgstr "The source directory is invalid or does not exist."
+
+msgid "plugins.importexport.csv.filePathEscapesSourceDir"
+msgstr "File path \"{$filename}\" escapes the source directory. Filenames must not contain path traversal sequences."
+
+msgid "plugins.importexport.csv.baseRowFailedForIdentifier"
+msgstr "A previous row with identifier \"{$identifier}\" failed. Fix the base row before importing subsequent versions or locales."
+
+msgid "plugins.importexport.csv.errorWhileCreatingPublication"
+msgstr "An error occurred while creating the publication for this row."
+
 msgid "plugins.importexport.csv.rowImportFailed"
 msgstr "Unexpected error while importing this row: {$message}"
 
