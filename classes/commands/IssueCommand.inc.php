@@ -423,8 +423,7 @@ class IssueCommand
                                 $galleyFile,
                                 $journal->getId(),
                                 $submission->getId(),
-                                __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile]),
-                                $this->_sourceDir
+                                __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile])
                             );
                             $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
                         }
