@@ -19,6 +19,7 @@ namespace APP\plugins\importexport\csv\classes\processors;
 use APP\facades\Repo;
 use APP\publication\Publication;
 use APP\submission\Submission;
+use Illuminate\Support\Facades\DB;
 
 class PublicationProcessor
 {
@@ -89,6 +90,10 @@ class PublicationProcessor
 
         Repo::publication()->dao->update($submissionPublication);
 
+        if (!empty($data->doi)) {
+            static::storePublicationDoi($submissionPublication, $data->doi);
+        }
+
         return $submissionPublication;
     }
 
@@ -134,6 +139,30 @@ class PublicationProcessor
     {
         $publication->setData($attribute, $data, $locale);
         Repo::publication()->dao->update($publication);
+    }
+
+    /**
+     * Writes the article DOI into publication_settings. dao->update() drops
+     * pub-id::doi when that property is not on the publication schema.
+     */
+    public static function storePublicationDoi(Publication $publication, string $doi): void
+    {
+        $doi = trim($doi);
+        if ($doi === '') {
+            return;
+        }
+
+        $publication->setData('pub-id::doi', $doi);
+        DB::table('publication_settings')->updateOrInsert(
+            [
+                'publication_id' => (int) $publication->getId(),
+                'locale' => '',
+                'setting_name' => 'pub-id::doi',
+            ],
+            [
+                'setting_value' => $doi,
+            ]
+        );
     }
 
     /**
@@ -216,7 +245,7 @@ class PublicationProcessor
         }
 
         if (!empty($data->doi)) {
-            static::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
+            static::storePublicationDoi($publication, $data->doi);
         }
 
         if (!empty($data->references)) {
@@ -261,6 +290,10 @@ class PublicationProcessor
             if (!empty($data->{$nonLocaleField})) {
                 static::updatePublicationAttribute($publication, $nonLocaleField, $data->{$nonLocaleField});
             }
+        }
+
+        if (!empty($data->doi) && empty($publication->getData('pub-id::doi'))) {
+            static::storePublicationDoi($publication, $data->doi);
         }
 
         return $publication;

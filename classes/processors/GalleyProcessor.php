@@ -32,10 +32,6 @@ class GalleyProcessor
         $galley->setData('publicationId', $publicationId);
         $galley->setName(mb_strtoupper($extension), $data->locale);
 
-        if (!empty($data->doi)) {
-            $galley->setStoredPubId('doi', $data->doi);
-        }
-
         return Repo::galley()->add($galley);
     }
 }
