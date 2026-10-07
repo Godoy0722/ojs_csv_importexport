@@ -88,6 +88,10 @@ class PublicationProcessor
 
 		$publicationDao->updateObject($publication);
 
+		if (!empty($data->doi)) {
+			self::storePublicationDoi($publication, $data->doi);
+		}
+
         SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
 
         return $publication;
@@ -183,6 +187,26 @@ class PublicationProcessor
         $publicationDao->updateObject($publication);
     }
 
+    /**
+     * Writes the article DOI with changePubId so the value is stored even when
+     * pub-id::doi is not part of the publication schema.
+     *
+     * @param \Publication $publication
+     * @param string $doi
+     *
+     * @return void
+     */
+    public static function storePublicationDoi($publication, $doi)
+    {
+        $doi = trim((string) $doi);
+        if ($doi === '') {
+            return;
+        }
+
+        $publication->setData('pub-id::doi', $doi);
+        CachedDaos::getPublicationDao()->changePubId($publication->getId(), 'doi', $doi);
+    }
+
 	/**
      * Create a new publication version manually to avoid CLI context dependency
 	 *
@@ -272,7 +296,7 @@ class PublicationProcessor
         }
 
         if (!empty($data->doi)) {
-            self::updatePublicationAttribute($publication, 'pub-id::doi', $data->doi);
+            self::storePublicationDoi($publication, $data->doi);
         }
 
 		$citationsToImport = null;
@@ -370,6 +394,10 @@ class PublicationProcessor
             if (!empty($data->{$csvField})) {
                 self::updatePublicationAttribute($publication, $field, $data->{$csvField}, $data->locale);
             }
+        }
+
+        if (!empty($data->doi) && empty($publication->getData('pub-id::doi'))) {
+            self::storePublicationDoi($publication, $data->doi);
         }
 
         return $publication;

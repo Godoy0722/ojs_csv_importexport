@@ -45,10 +45,6 @@ class GalleyProcessor
         $galley->setSequence(REALLY_BIG_NUMBER);
         $galley->setName(mb_strtoupper($extension), $data->locale);
 
-        if ($data->doi) {
-            $galley->setStoredPubId('doi', $data->doi);
-        }
-
         $galleyDao->insertObject($galley);
         return $galley->getId();
     }
