@@ -233,6 +233,9 @@ class IssueProcessor
             $sequence++;
         }
 
+        // The first issue is the most recent. OJS 3.5 stores it on the journal.
+        Repo::issue()->updateCurrent($journalId, $allIssues[0]);
+
         // Resequence to ensure proper ordering
         $issueDao->resequenceCustomIssueOrders($journalId);
     }
