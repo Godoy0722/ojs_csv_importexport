@@ -46,7 +46,7 @@ class IssueProcessor
             $issue->setShowYear(!empty($data->issueYear));
             $issue->setShowTitle(!empty($data->issueTitle));
             $issue->setPublished(true);
-            $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : Core::getCurrentDate());
+            $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : null);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
             $issue->setData('locale', $data->locale);
@@ -77,6 +77,29 @@ class IssueProcessor
 
         return $issue;
 	}
+
+    /**
+     * Sets issue publication dates for issues imported without issuePublicationDate,
+     * using the most recent datePublished among their articles.
+     */
+    public static function fillMissingIssueDates(array $processedIssues): void
+    {
+        foreach ($processedIssues as $processedIssue) {
+            /** @var Issue $issue */
+            $issue = $processedIssue['issue'];
+
+            if (!empty($issue->getDatePublished())) {
+                continue;
+            }
+
+            $result = DB::table('publications')
+                ->where('issue_id', $issue->getId())
+                ->max('date_published');
+
+            $issue->setDatePublished($result ?: Core::getCurrentDate());
+            Repo::issue()->edit($issue, []);
+        }
+    }
 
     /**
      * Process multi-locale issue data (adds new locale to existing issue)

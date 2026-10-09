@@ -787,6 +787,7 @@ class IssueCommand
         $this->syncCoverImagesForProcessedArticles();
         $this->setCurrentVersionsForProcessedArticles();
 
+        IssueProcessor::fillMissingIssueDates($this->processedIssues);
         IssueProcessor::reorderImportedIssues($this->processedIssues);
 
         $results['exitCode'] = $results['failedRows'] > 0 ? 1 : 0;
