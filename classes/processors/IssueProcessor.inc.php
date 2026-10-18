@@ -176,16 +176,15 @@ class IssueProcessor
             return;
         }
 
-        // Get all unique journal IDs from the processed issues
-        $journalIds = [];
+        $importedIssueIdsByJournal = [];
         foreach ($processedIssues as $processedIssue) {
             $journalId = $processedIssue['journalId'];
-            $journalIds[$journalId] = $journalId;
+            $issueId = $processedIssue['issue']->getId();
+            $importedIssueIdsByJournal[$journalId][$issueId] = true;
         }
 
-        // Reorder all issues for each journal that had imported issues
-        foreach ($journalIds as $journalId) {
-            self::reorderAllIssuesForJournal($journalId);
+        foreach ($importedIssueIdsByJournal as $journalId => $importedIssueIds) {
+            self::reorderAllIssuesForJournal($journalId, $importedIssueIds);
         }
     }
 
@@ -193,10 +192,11 @@ class IssueProcessor
      * Reorder all issues for a specific journal (not just imported ones)
 	 *
 	 * @param int $journalId
+	 * @param array<int, true> $importedIssueIds Issue ids created or updated by this import
 	 *
 	 * @return void
      */
-    public static function reorderAllIssuesForJournal($journalId)
+    public static function reorderAllIssuesForJournal($journalId, array $importedIssueIds = [])
     {
         $issueDao = CachedDaos::getIssueDao();
 
@@ -275,16 +275,83 @@ class IssueProcessor
         }
 
         $mostRecentIssue = $allIssues[0];
-        $issueDao->update(
-            'UPDATE issues SET current = 0 WHERE journal_id = ? AND current = 1',
-            [(int) $journalId]
-        );
-        $issueDao->update(
-            'UPDATE issues SET current = 1 WHERE issue_id = ?',
-            [(int) $mostRecentIssue->getId()]
-        );
+        if (!self::importedIssueWouldReplaceNewerExisting($mostRecentIssue, $allIssues, $importedIssueIds)) {
+            $issueDao->update(
+                'UPDATE issues SET current = 0 WHERE journal_id = ? AND current = 1',
+                [(int) $journalId]
+            );
+            $issueDao->update(
+                'UPDATE issues SET current = 1 WHERE issue_id = ?',
+                [(int) $mostRecentIssue->getId()]
+            );
+        }
         $issueDao->resequenceCustomIssueOrders($journalId);
         $issueDao->flushCache();
+    }
+
+    /**
+     * True when the issue that would become current came from this import,
+     * and an issue already in the journal was published later.
+     *
+     * @param \Issue $candidate
+     * @param \Issue[] $allIssues
+     * @param array<int, true> $importedIssueIds
+     *
+     * @return bool
+     */
+    private static function importedIssueWouldReplaceNewerExisting($candidate, array $allIssues, array $importedIssueIds)
+    {
+        if ($importedIssueIds === [] || !isset($importedIssueIds[$candidate->getId()])) {
+            return false;
+        }
+
+        $latestImported = null;
+        $latestExisting = null;
+
+        foreach ($allIssues as $issue) {
+            $date = self::normalizePublishedDate($issue->getDatePublished());
+            if ($date === null) {
+                continue;
+            }
+
+            if (isset($importedIssueIds[$issue->getId()])) {
+                if ($latestImported === null || strcmp($date, $latestImported) > 0) {
+                    $latestImported = $date;
+                }
+                continue;
+            }
+
+            if ($latestExisting === null || strcmp($date, $latestExisting) > 0) {
+                $latestExisting = $date;
+            }
+        }
+
+        if ($latestExisting === null) {
+            return false;
+        }
+
+        if ($latestImported === null) {
+            return true;
+        }
+
+        return strcmp($latestExisting, $latestImported) > 0;
+    }
+
+    /**
+     * Compare publication dates on their YYYY-MM-DD[ HH:MM:SS] prefix.
+     *
+     * @param string|null $date
+     *
+     * @return string|null
+     */
+    private static function normalizePublishedDate($date)
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        $date = substr((string) $date, 0, 19);
+        return $date === '' ? null : $date;
     }
 
     /**
