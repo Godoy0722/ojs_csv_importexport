@@ -136,23 +136,24 @@ class IssueProcessor
             return;
         }
 
-        // Get all unique journal IDs from the processed issues
-        $journalIds = [];
+        $importedIssueIdsByJournal = [];
         foreach ($processedIssues as $processedIssue) {
             $journalId = $processedIssue['journalId'];
-            $journalIds[$journalId] = $journalId;
+            $issueId = $processedIssue['issue']->getId();
+            $importedIssueIdsByJournal[$journalId][$issueId] = true;
         }
 
-        // Reorder all issues for each journal that had imported issues
-        foreach ($journalIds as $journalId) {
-            self::reorderAllIssuesForJournal($journalId);
+        foreach ($importedIssueIdsByJournal as $journalId => $importedIssueIds) {
+            self::reorderAllIssuesForJournal($journalId, $importedIssueIds);
         }
     }
 
     /**
-     * Reorder all issues for a specific journal (not just imported ones)
+     * Reorder all issues for a specific journal (not just imported ones).
+     *
+     * @param array<int, true> $importedIssueIds Issue ids created or updated by this import
      */
-    public static function reorderAllIssuesForJournal(int $journalId): void
+    public static function reorderAllIssuesForJournal(int $journalId, array $importedIssueIds = []): void
     {
         $issueDao = Repo::issue()->dao;
 
@@ -233,11 +234,72 @@ class IssueProcessor
             $sequence++;
         }
 
-        // The first issue is the most recent. OJS 3.5 stores it on the journal.
-        Repo::issue()->updateCurrent($journalId, $allIssues[0]);
+        // The first issue is the most recent by year, volume, and number.
+        $candidate = $allIssues[0];
+        if (!self::importedIssueWouldReplaceNewerExisting($candidate, $allIssues, $importedIssueIds)) {
+            Repo::issue()->updateCurrent($journalId, $candidate);
+        }
 
         // Resequence to ensure proper ordering
         $issueDao->resequenceCustomIssueOrders($journalId);
+    }
+
+    /**
+     * True when the issue that would become current came from this import,
+     * and an issue already in the journal was published later.
+     *
+     * @param Issue[] $allIssues
+     * @param array<int, true> $importedIssueIds
+     */
+    private static function importedIssueWouldReplaceNewerExisting(Issue $candidate, array $allIssues, array $importedIssueIds): bool
+    {
+        if ($importedIssueIds === [] || !isset($importedIssueIds[$candidate->getId()])) {
+            return false;
+        }
+
+        $latestImported = null;
+        $latestExisting = null;
+
+        foreach ($allIssues as $issue) {
+            $date = self::normalizePublishedDate($issue->getDatePublished());
+            if ($date === null) {
+                continue;
+            }
+
+            if (isset($importedIssueIds[$issue->getId()])) {
+                if ($latestImported === null || strcmp($date, $latestImported) > 0) {
+                    $latestImported = $date;
+                }
+                continue;
+            }
+
+            if ($latestExisting === null || strcmp($date, $latestExisting) > 0) {
+                $latestExisting = $date;
+            }
+        }
+
+        if ($latestExisting === null) {
+            return false;
+        }
+
+        if ($latestImported === null) {
+            return true;
+        }
+
+        return strcmp($latestExisting, $latestImported) > 0;
+    }
+
+    /**
+     * Compare publication dates on their YYYY-MM-DD[ HH:MM:SS] prefix.
+     */
+    private static function normalizePublishedDate($date): ?string
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        $date = substr((string) $date, 0, 19);
+        return $date === '' ? null : $date;
     }
 
     /**
