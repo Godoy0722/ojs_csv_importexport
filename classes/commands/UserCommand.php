@@ -20,6 +20,7 @@ use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\plugins\importexport\csv\classes\processors\UserSubscriptionProcessor;
 use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\classes\validations\RequiredUserHeaders;
+use APP\plugins\importexport\csv\shared\exceptions\CsvEncodingException;
 use APP\plugins\importexport\csv\shared\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\shared\handlers\CSVFileHandler;
 use APP\plugins\importexport\csv\shared\handlers\DryModeReporter;
@@ -89,7 +90,25 @@ class UserCommand
             }
 
             $filePath = $fileInfo->getPathname();
-            $file = CSVFileHandler::createReadableCSVFile($filePath);
+            try {
+                $file = CSVFileHandler::createReadableCSVFile($filePath);
+            } catch (CsvEncodingException $e) {
+                echo $e->getMessage() . "\n";
+                $results['perFile'][] = [
+                    'filename' => $basename,
+                    'rows' => 0,
+                    'successful' => 0,
+                    'created' => 0,
+                    'updated' => 0,
+                    'updatedUsers' => [],
+                    'failed' => 1,
+                    'errors' => [['row' => 0, 'reason' => $e->getMessage()]],
+                    'invalidFile' => null,
+                ];
+                $results['filesProcessed']++;
+                $results['failedRows']++;
+                continue;
+            }
             if (is_null($file)) {
                 continue;
             }
