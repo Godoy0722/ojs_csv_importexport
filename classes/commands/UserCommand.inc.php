@@ -18,8 +18,10 @@ namespace PKP\Plugins\ImportExport\CSV\Classes\Commands;
 
 import('plugins.importexport.csv.classes.validations.RequiredUserHeaders');
 import('plugins.importexport.csv.classes.exceptions.RowValidationException');
+import('plugins.importexport.csv.classes.exceptions.CsvEncodingException');
 
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
+use PKP\Plugins\ImportExport\CSV\Classes\Exceptions\CsvEncodingException;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\CSVFileHandler;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeReporter;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\OrcidHandler;
@@ -117,7 +119,25 @@ class UserCommand
 
             $filePath = $fileInfo->getPathname();
 
-            $file = CSVFileHandler::createReadableCSVFile($filePath);
+            try {
+                $file = CSVFileHandler::createReadableCSVFile($filePath);
+            } catch (CsvEncodingException $e) {
+                echo $e->getMessage() . "\n";
+                $results['perFile'][] = [
+                    'filename' => $basename,
+                    'rows' => 0,
+                    'successful' => 0,
+                    'created' => 0,
+                    'updated' => 0,
+                    'updatedUsers' => [],
+                    'failed' => 1,
+                    'errors' => [['row' => 0, 'reason' => $e->getMessage()]],
+                    'invalidFile' => null,
+                ];
+                $results['filesProcessed']++;
+                $results['failedRows']++;
+                continue;
+            }
 
             $this->_currentFileBasename = $basename;
             $invalidCsvFile = null;
