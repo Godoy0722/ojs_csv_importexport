@@ -22,6 +22,7 @@ use APP\facades\Repo;
 use APP\file\PublicFileManager;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
+use APP\plugins\importexport\csv\classes\exceptions\CsvEncodingException;
 use APP\plugins\importexport\csv\classes\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\classes\handlers\CSVFileHandler;
 use APP\plugins\importexport\csv\classes\handlers\DryModeReporter;
@@ -161,7 +162,22 @@ class IssueCommand
             }
 
             $filePath = $fileInfo->getPathname();
-            $file = CSVFileHandler::createReadableCSVFile($filePath);
+            try {
+                $file = CSVFileHandler::createReadableCSVFile($filePath);
+            } catch (CsvEncodingException $e) {
+                echo $e->getMessage() . "\n";
+                $results['perFile'][] = [
+                    'filename' => $basename,
+                    'rows' => 0,
+                    'successful' => 0,
+                    'failed' => 1,
+                    'errors' => [['row' => 0, 'reason' => $e->getMessage()]],
+                    'invalidFile' => null,
+                ];
+                $results['filesProcessed']++;
+                $results['failedRows']++;
+                continue;
+            }
             $invalidCsvFile = null;
 
             $this->processedRows = 0;

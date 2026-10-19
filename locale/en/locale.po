@@ -45,6 +45,21 @@ msgstr "Unknown User: \"{$username}\". Exiting."
 msgid "plugins.importexport.csv.unknownSourceDir"
 msgstr "Invalid source dir: \"{$sourceDir}\". Please verify this param on CLI. Exiting."
 
+msgid "plugins.importexport.csv.encodingUnreadableFile"
+msgstr "Could not read the CSV file for encoding validation: \"{$filePath}\"."
+
+msgid "plugins.importexport.csv.encodingUndetectable"
+msgstr "The CSV file \"{$filePath}\" is not valid UTF-8 and its character encoding could not be determined. Save the file as UTF-8 and try again."
+
+msgid "plugins.importexport.csv.encodingConversionFailed"
+msgstr "The CSV file \"{$filePath}\" could not be converted from {$sourceEncoding} to UTF-8."
+
+msgid "plugins.importexport.csv.fileConvertedToUtf8"
+msgstr "Converted CSV file \"{$filePath}\" from {$sourceEncoding} to UTF-8."
+
+msgid "plugins.importexport.csv.fileUtf8BomRemoved"
+msgstr "Removed UTF-8 byte-order mark from CSV file \"{$filePath}\"."
+
 msgid "plugins.importexport.csv.couldNotOpenFile"
 msgstr "Could not read file: \"{$filePath}\". Error: \"{$errorMessage}\"."
 
