@@ -145,6 +145,15 @@ class CSVImportPlugin extends ImportExportPlugin
             default:
                 throw new NotFoundHttpException();
         }
+
+        if ($this->isResultManaged) {
+            if ($this->result !== '') {
+                header('Content-Type: application/json');
+                return $this->result;
+            }
+
+            return false;
+        }
     }
 
     private function displayImportForm(PKPRequest $request): void
@@ -213,12 +222,47 @@ class CSVImportPlugin extends ImportExportPlugin
         $templateMgr->display($this->getTemplateResource('settingsForm.tpl'));
     }
 
+    private function resolveTemporaryFileId(PKPRequest $request): ?int
+    {
+        $importFile = $request->getUserVar('importFile');
+
+        if (is_array($importFile) && !empty($importFile['temporaryFileId'])) {
+            return (int) $importFile['temporaryFileId'];
+        }
+
+        if (is_object($importFile) && isset($importFile->temporaryFileId)) {
+            return (int) $importFile->temporaryFileId;
+        }
+
+        if (is_numeric($importFile)) {
+            return (int) $importFile;
+        }
+
+        if (is_string($importFile) && $importFile !== '') {
+            $decoded = json_decode($importFile, true);
+            if (is_array($decoded) && !empty($decoded['temporaryFileId'])) {
+                return (int) $decoded['temporaryFileId'];
+            }
+        }
+
+        $temporaryFileId = $request->getUserVar('temporaryFileId');
+
+        return $temporaryFileId ? (int) $temporaryFileId : null;
+    }
+
     private function sendJsonResponse(array $data, int $statusCode = 200): void
     {
         http_response_code($statusCode);
-        header('Content-Type: application/json');
-        $this->result = json_encode($data);
-        echo $this->result;
+        try {
+            $this->result = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            error_log('CSV import: failed to encode JSON response: ' . $e->getMessage());
+            $this->result = json_encode(
+                ['errorMessage' => __('plugins.importexport.csv.uploadFailed')],
+                JSON_THROW_ON_ERROR
+            );
+            http_response_code(500);
+        }
         $this->isResultManaged = true;
     }
 
@@ -234,10 +278,11 @@ class CSVImportPlugin extends ImportExportPlugin
             return;
         }
 
-        $importFile = $request->getUserVar('importFile');
-        $temporaryFileId = is_array($importFile) ? ($importFile['temporaryFileId'] ?? null) : $request->getUserVar('temporaryFileId');
+        $temporaryFileId = $this->resolveTemporaryFileId($request);
         $temporaryFileManager = new TemporaryFileManager();
-        $temporaryFile = $temporaryFileManager->getFile($temporaryFileId, $user->getId());
+        $temporaryFile = $temporaryFileId
+            ? $temporaryFileManager->getFile($temporaryFileId, $user->getId())
+            : null;
 
         if (!$temporaryFile) {
             $this->sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.uploadFailed')], 400);
@@ -248,16 +293,16 @@ class CSVImportPlugin extends ImportExportPlugin
             set_time_limit(1200);
 
             $filePath = $temporaryFile->getFilePath();
-            $extension = strtolower(pathinfo($temporaryFile->getOriginalFileName(), PATHINFO_EXTENSION));
+            $originalFileName = $temporaryFile->getOriginalFileName();
 
-            if ($extension === 'zip') {
+            if (ZipExtractor::isZipArchive($filePath, $originalFileName)) {
                 $extractor = new ZipExtractor();
                 $extractDir = $extractor->extract($filePath);
                 $sourceDir = ZipExtractor::resolveSourceDir($extractDir);
             } else {
                 $sourceDir = sys_get_temp_dir() . '/csv_import_' . bin2hex(random_bytes(16));
                 mkdir($sourceDir, 0700, true);
-                copy($filePath, $sourceDir . '/' . $temporaryFile->getOriginalFileName());
+                copy($filePath, $sourceDir . '/' . $originalFileName);
             }
 
             ob_start();
@@ -290,18 +335,34 @@ class CSVImportPlugin extends ImportExportPlugin
                 'sourceDir' => $sourceDir,
             ]);
 
+            $createdRows = (int) ($result['createdRows'] ?? 0);
+            $updatedRows = (int) ($result['updatedRows'] ?? 0);
+            if (!isset($result['createdRows'], $result['updatedRows'])) {
+                $createdRows = 0;
+                $updatedRows = 0;
+                foreach ($result['perFile'] as $fileResult) {
+                    $fileUpdated = (int) ($fileResult['updated'] ?? 0);
+                    $fileSuccessful = (int) ($fileResult['successful'] ?? 0);
+                    $createdRows += (int) ($fileResult['created'] ?? ($fileSuccessful - $fileUpdated));
+                    $updatedRows += $fileUpdated;
+                }
+            }
+
             $this->sendJsonResponse([
                 'uuid' => $uuid,
                 'resultImportType' => $importType,
                 'resultDryMode' => $dryMode,
-                'resultFilesProcessed' => $result['filesProcessed'],
-                'resultTotalRows' => $result['totalRows'],
-                'resultSuccessfulRows' => $result['successfulRows'],
-                'resultCreatedRows' => $result['createdRows'] ?? 0,
-                'resultUpdatedRows' => $result['updatedRows'] ?? 0,
-                'resultFailedRows' => $result['failedRows'],
+                'resultFilesProcessed' => (int) $result['filesProcessed'],
+                'resultTotalRows' => (int) $result['totalRows'],
+                'resultSuccessfulRows' => (int) $result['successfulRows'],
+                'resultCreatedRows' => $createdRows,
+                'resultUpdatedRows' => $updatedRows,
+                'resultFailedRows' => (int) $result['failedRows'],
                 'resultInvalidFiles' => $invalidFiles,
                 'resultPerFile' => $result['perFile'],
+                'resultWarning' => (int) $result['filesProcessed'] === 0
+                    ? __('plugins.importexport.csv.results.noCsvFilesFound')
+                    : null,
             ]);
 
         } catch (ImportLockException $e) {
