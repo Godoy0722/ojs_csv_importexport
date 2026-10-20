@@ -45,4 +45,12 @@ class ZipExtractionException extends \Exception
     {
         return new self(__('plugins.importexport.csv.zipPathTraversal', ['entry' => $entryName]));
     }
+
+    /**
+     * @return ZipExtractionException
+     */
+    public static function invalidLayout()
+    {
+        return new self(__('plugins.importexport.csv.zipInvalidLayout'));
+    }
 }

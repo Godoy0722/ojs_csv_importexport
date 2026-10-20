@@ -245,6 +245,38 @@ class CSVImportPlugin extends \ImportExportPlugin
      * @param array $data
      * @param int $statusCode
      */
+    /**
+     * @param \PKPRequest $request
+     * @return int|null
+     */
+    private function _resolveTemporaryFileId($request)
+    {
+        $importFile = $request->getUserVar('importFile');
+
+        if (is_array($importFile) && !empty($importFile['temporaryFileId'])) {
+            return (int) $importFile['temporaryFileId'];
+        }
+
+        if (is_object($importFile) && isset($importFile->temporaryFileId)) {
+            return (int) $importFile->temporaryFileId;
+        }
+
+        if (is_numeric($importFile)) {
+            return (int) $importFile;
+        }
+
+        if (is_string($importFile) && $importFile !== '') {
+            $decoded = json_decode($importFile, true);
+            if (is_array($decoded) && !empty($decoded['temporaryFileId'])) {
+                return (int) $decoded['temporaryFileId'];
+            }
+        }
+
+        $temporaryFileId = $request->getUserVar('temporaryFileId');
+
+        return $temporaryFileId ? (int) $temporaryFileId : null;
+    }
+
     private function _sendJsonResponse($data, $statusCode = 200)
     {
         http_response_code($statusCode);
@@ -303,12 +335,13 @@ class CSVImportPlugin extends \ImportExportPlugin
             return;
         }
 
-        $importFile = $request->getUserVar('importFile');
-        $temporaryFileId = is_array($importFile) ? ($importFile['temporaryFileId'] ?? null) : $request->getUserVar('temporaryFileId');
+        $temporaryFileId = $this->_resolveTemporaryFileId($request);
 
         import('lib.pkp.classes.file.TemporaryFileManager');
         $temporaryFileManager = new \TemporaryFileManager();
-        $temporaryFile = $temporaryFileManager->getFile($temporaryFileId, $user->getId());
+        $temporaryFile = $temporaryFileId
+            ? $temporaryFileManager->getFile($temporaryFileId, $user->getId())
+            : null;
 
         if (!$temporaryFile) {
             $this->_sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.uploadFailed')], 400);
@@ -324,19 +357,20 @@ class CSVImportPlugin extends \ImportExportPlugin
             import('plugins.importexport.csv.classes.validations.InvalidRowValidations');
             import('plugins.importexport.csv.classes.cachedAttributes.CachedEntities');
 
-            $filePath = $temporaryFile->getFilePath();
-            $extension = strtolower(pathinfo($temporaryFile->getOriginalFileName(), PATHINFO_EXTENSION));
+            import('plugins.importexport.csv.classes.handlers.ZipExtractor');
+            import('plugins.importexport.csv.classes.exceptions.ZipExtractionException');
 
-            if ($extension === 'zip') {
-                import('plugins.importexport.csv.classes.handlers.ZipExtractor');
-                import('plugins.importexport.csv.classes.exceptions.ZipExtractionException');
+            $filePath = $temporaryFile->getFilePath();
+            $originalFileName = $temporaryFile->getOriginalFileName();
+
+            if (ZipExtractor::isZipArchive($filePath, $originalFileName)) {
                 $extractor = new ZipExtractor();
                 $extractDir = $extractor->extract($filePath);
                 $sourceDir = ZipExtractor::resolveSourceDir($extractDir);
             } else {
                 $sourceDir = sys_get_temp_dir() . '/csv_import_' . bin2hex(random_bytes(16));
                 mkdir($sourceDir, 0700, true);
-                copy($filePath, $sourceDir . '/' . $temporaryFile->getOriginalFileName());
+                copy($filePath, $sourceDir . '/' . $originalFileName);
             }
 
             ob_start();
@@ -376,18 +410,34 @@ class CSVImportPlugin extends \ImportExportPlugin
                 'sourceDir' => $sourceDir,
             ]);
 
+            $createdRows = (int) (isset($result['createdRows']) ? $result['createdRows'] : 0);
+            $updatedRows = (int) (isset($result['updatedRows']) ? $result['updatedRows'] : 0);
+            if (!isset($result['createdRows'], $result['updatedRows'])) {
+                $createdRows = 0;
+                $updatedRows = 0;
+                foreach ($result['perFile'] as $fileResult) {
+                    $fileUpdated = (int) (isset($fileResult['updated']) ? $fileResult['updated'] : 0);
+                    $fileSuccessful = (int) (isset($fileResult['successful']) ? $fileResult['successful'] : 0);
+                    $createdRows += (int) (isset($fileResult['created']) ? $fileResult['created'] : ($fileSuccessful - $fileUpdated));
+                    $updatedRows += $fileUpdated;
+                }
+            }
+
             $this->_sendJsonResponse([
                 'uuid' => $uuid,
                 'resultImportType' => $importType,
                 'resultDryMode' => $dryMode,
-                'resultFilesProcessed' => $result['filesProcessed'],
-                'resultTotalRows' => $result['totalRows'],
-                'resultSuccessfulRows' => $result['successfulRows'],
-                'resultCreatedRows' => $result['createdRows'] ?? 0,
-                'resultUpdatedRows' => $result['updatedRows'] ?? 0,
-                'resultFailedRows' => $result['failedRows'],
+                'resultFilesProcessed' => (int) $result['filesProcessed'],
+                'resultTotalRows' => (int) $result['totalRows'],
+                'resultSuccessfulRows' => (int) $result['successfulRows'],
+                'resultCreatedRows' => $createdRows,
+                'resultUpdatedRows' => $updatedRows,
+                'resultFailedRows' => (int) $result['failedRows'],
                 'resultInvalidFiles' => $invalidFiles,
                 'resultPerFile' => $result['perFile'],
+                'resultWarning' => (int) $result['filesProcessed'] === 0
+                    ? __('plugins.importexport.csv.results.noCsvFilesFound')
+                    : null,
             ]);
         } catch (ZipExtractionException $e) {
             $this->_sendJsonResponse(['errorMessage' => __('plugins.importexport.csv.zipExtractionFailed', ['reason' => $e->getMessage()])], 400);

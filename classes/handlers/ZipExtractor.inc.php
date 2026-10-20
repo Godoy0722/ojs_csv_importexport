@@ -20,7 +20,7 @@ use PKP\Plugins\ImportExport\CSV\Classes\Exceptions\ZipExtractionException;
 
 class ZipExtractor
 {
-    const MAX_TOTAL_BYTES = 524288000;
+    const MAX_TOTAL_BYTES = 2147483648;
     const MAX_RATIO = 100;
     const MAX_ENTRIES = 10000;
 
@@ -58,7 +58,7 @@ class ZipExtractor
 
                 $name = $stat['name'];
 
-                if (strpos($name, '..') !== false || (isset($name[0]) && $name[0] === '/')) {
+                if (self::zipEntryNameIsUnsafe($name)) {
                     throw ZipExtractionException::pathTraversal($name);
                 }
 
@@ -95,32 +95,55 @@ class ZipExtractor
     /**
      * @param string $extractDir
      * @return string
+     * @throws ZipExtractionException
      */
     public static function resolveSourceDir($extractDir)
     {
-        $entries = array_diff(scandir($extractDir), ['.', '..']);
-
-        $hasCsvAtRoot = false;
-        $subdirectories = [];
-
-        foreach ($entries as $entry) {
-            $fullPath = $extractDir . '/' . $entry;
-            if (is_dir($fullPath)) {
-                $subdirectories[] = $fullPath;
-            } elseif (preg_match('/\.csv$/i', $entry)) {
-                $hasCsvAtRoot = true;
-            }
-        }
-
-        if ($hasCsvAtRoot) {
+        if (self::directoryContainsCsvFile($extractDir)) {
             return $extractDir;
         }
 
-        if (count($subdirectories) === 1) {
-            return $subdirectories[0];
+        $contentSubdirs = [];
+        foreach (array_diff(scandir($extractDir), ['.', '..']) as $entry) {
+            $fullPath = $extractDir . '/' . $entry;
+            if (!is_dir($fullPath) || self::shouldSkipArchiveDirectory($entry)) {
+                continue;
+            }
+            $contentSubdirs[] = $fullPath;
         }
 
-        return $extractDir;
+        if (count($contentSubdirs) !== 1) {
+            throw ZipExtractionException::invalidLayout();
+        }
+
+        $wrapperDir = $contentSubdirs[0];
+        if (!self::directoryContainsCsvFile($wrapperDir)) {
+            throw ZipExtractionException::invalidLayout();
+        }
+
+        return $wrapperDir;
+    }
+
+    /**
+     * @param string $filePath
+     * @param string $originalFileName
+     * @return bool
+     */
+    public static function isZipArchive($filePath, $originalFileName = '')
+    {
+        if (strtolower(pathinfo($originalFileName, PATHINFO_EXTENSION)) === 'zip') {
+            return true;
+        }
+
+        $handle = @fopen($filePath, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $magic = fread($handle, 4);
+        fclose($handle);
+
+        return $magic === "PK\x03\x04";
     }
 
     /**
@@ -143,5 +166,43 @@ class ZipExtractor
         }
 
         rmdir($dir);
+    }
+
+    /**
+     * @param string $name
+     * @return bool
+     */
+    private static function zipEntryNameIsUnsafe($name)
+    {
+        if ((isset($name[0]) && $name[0] === '/') || strpos($name, "\0") !== false) {
+            return true;
+        }
+
+        return preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $name) === 1;
+    }
+
+    /**
+     * @param string $name
+     * @return bool
+     */
+    private static function shouldSkipArchiveDirectory($name)
+    {
+        return in_array($name, ['__MACOSX', '.git', 'node_modules'], true)
+            || (isset($name[0]) && $name[0] === '.');
+    }
+
+    /**
+     * @param string $dir
+     * @return bool
+     */
+    private static function directoryContainsCsvFile($dir)
+    {
+        foreach (new \DirectoryIterator($dir) as $fileInfo) {
+            if ($fileInfo->isFile() && strtolower($fileInfo->getExtension()) === 'csv') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
