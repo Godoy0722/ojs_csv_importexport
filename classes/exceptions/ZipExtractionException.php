@@ -39,4 +39,9 @@ class ZipExtractionException extends Exception
     {
         return new self(__('plugins.importexport.csv.zipExtensionMissing'));
     }
+
+    public static function invalidLayout(): self
+    {
+        return new self(__('plugins.importexport.csv.zipInvalidLayout'));
+    }
 }

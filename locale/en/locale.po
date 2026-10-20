@@ -195,6 +195,9 @@ msgstr "ZIP archive rejected: entry \"{$entry}\" contains a path traversal seque
 msgid "plugins.importexport.csv.zipExtensionMissing"
 msgstr "ZIP import requires the PHP zip extension (ZipArchive). Ask your server administrator to install and enable php-zip."
 
+msgid "plugins.importexport.csv.zipInvalidLayout"
+msgstr "ZIP archive rejected: expected CSV file(s) at the top level of the archive, or inside a single top-level folder (not nested deeper and not in multiple folders)."
+
 msgid "plugins.importexport.csv.results.dryModeTitle"
 msgstr "Data Validation Results"
 
@@ -248,6 +251,9 @@ msgstr "The counters below show the totals for this run, followed by a per-file 
 
 msgid "plugins.importexport.csv.results.invalidFilesHint"
 msgstr "For every CSV that had failed rows, a downloadable copy named <b>invalid_&lt;your-file&gt;.csv</b> is generated containing only those failed rows. Click the file name shown below each error table to download it, fix the rows, and import again."
+
+msgid "plugins.importexport.csv.results.noCsvFilesFound"
+msgstr "No CSV files were found in the uploaded package. Upload a .csv file or a .zip that contains at least one .csv (often in a single subfolder). If you uploaded a large ZIP, wait for extraction to finish and check that it is under the size limit."
 
 msgid "plugins.importexport.csv.form.zipHelp"
 msgstr "Upload a ZIP that contains your issues CSV and the files it references. <a href=\"https://github.com/Godoy0722/csvImportPluginDocs/blob/main/docs/csv-format.md#import-file-structure\" target=\"_blank\" rel=\"noopener noreferrer\">Click here to see how to create the ZIP file</a>. <a href=\"https://github.com/Godoy0722/csvImportPluginDocs/blob/main/docs/csv-format.md#issues-csv-format\" target=\"_blank\" rel=\"noopener noreferrer\">Click here to see how to fill the CSV file</a>."

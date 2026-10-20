@@ -22,6 +22,16 @@
                 return;
             }
 
+            response = normalizeImportResponse(response);
+
+            if (!response.uuid && response.resultImportType === undefined) {
+                pkp.eventBus.$emit(
+                    "notify",
+                    response.errorMessage || "Import failed."
+                );
+                return;
+            }
+
             var labels = pluginConfig.labels;
             var downloadBaseUrl = pluginConfig.downloadBaseUrl;
             var bodyHtml = buildModalContent(response, labels, downloadBaseUrl);
@@ -40,6 +50,28 @@
 
             openResultsModal(getPageInstance(), title, bodyHtml, closeLabel, closeOnce);
         });
+    }
+
+    function normalizeImportResponse(response) {
+        if (typeof response === "string") {
+            try {
+                response = JSON.parse(response);
+            } catch (e) {
+                return {};
+            }
+        }
+        if (!response || typeof response !== "object") {
+            return {};
+        }
+        if (
+            response.status === true &&
+            response.content &&
+            typeof response.content === "object" &&
+            !Array.isArray(response.content)
+        ) {
+            response = Object.assign({}, response, response.content);
+        }
+        return response;
     }
 
     function getPageInstance() {
@@ -193,12 +225,19 @@
         html += buildIntro(response, labels);
 
         html += "<div style='display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:1rem; background:rgba(234,237,238,0.3); border:1px solid #BBBBBB; border-radius:4px;'>";
-        html += summaryBadge(labels.filesProcessed, response.resultFilesProcessed, "#222222");
-        html += summaryBadge(labels.totalRows, response.resultTotalRows, "#222222");
-        html += summaryBadge(labels.successfulRows, response.resultSuccessfulRows, "#00B24E");
-        html += summaryBadge(labels.createdRows, response.resultCreatedRows || 0, "#006798");
-        html += summaryBadge(labels.updatedRows, response.resultUpdatedRows || 0, "#0082BF");
-        html += summaryBadge(labels.failedRows, response.resultFailedRows, response.resultFailedRows > 0 ? "#D00A6C" : "#222222");
+        var filesProcessed = response.resultFilesProcessed ?? 0;
+        var totalRows = response.resultTotalRows ?? 0;
+        var successfulRows = response.resultSuccessfulRows ?? 0;
+        var createdRows = response.resultCreatedRows ?? 0;
+        var updatedRows = response.resultUpdatedRows ?? 0;
+        var failedRows = response.resultFailedRows ?? 0;
+
+        html += summaryBadge(labels.filesProcessed, filesProcessed, "#222222");
+        html += summaryBadge(labels.totalRows, totalRows, "#222222");
+        html += summaryBadge(labels.successfulRows, successfulRows, "#00B24E");
+        html += summaryBadge(labels.createdRows, createdRows, "#006798");
+        html += summaryBadge(labels.updatedRows, updatedRows, "#0082BF");
+        html += summaryBadge(labels.failedRows, failedRows, failedRows > 0 ? "#D00A6C" : "#222222");
         html += "</div>";
 
         if (response.resultPerFile && response.resultPerFile.length > 0) {
@@ -221,7 +260,8 @@
             intro = isDryMode ? labels.introIssuesDryMode : labels.introIssues;
         }
 
-        var accent = isDryMode ? "#0082BF" : (response.resultFailedRows > 0 ? "#D00A6C" : "#00B24E");
+        var failedRows = response.resultFailedRows ?? 0;
+        var accent = isDryMode ? "#0082BF" : (failedRows > 0 ? "#D00A6C" : "#00B24E");
         var hasInvalidFiles = response.resultInvalidFiles && response.resultInvalidFiles.length > 0;
 
         var html = "";
@@ -230,6 +270,9 @@
         html += "<p style='margin:0; color:#505050;'>" + labels.legend + "</p>";
         if (hasInvalidFiles) {
             html += "<p style='margin:0.75rem 0 0; color:#505050;'>" + labels.invalidFilesHint + "</p>";
+        }
+        if (response.resultWarning) {
+            html += "<p style='margin:0.75rem 0 0; padding:0.5rem 0.75rem; background:#FFF3E0; border-left:3px solid #D97706; border-radius:2px; color:#5C3D00; font-size:0.8125rem; line-height:1.4rem;'>" + escapeHtml(response.resultWarning) + "</p>";
         }
         if (isUsers && (response.resultUpdatedRows || 0) > 0 && labels.updatedUsersExplanation) {
             html += "<p style='margin:0.75rem 0 0; padding:0.5rem 0.75rem; background:#E6F2F8; border-left:3px solid #0082BF; border-radius:2px; color:#002C40; font-size:0.8125rem; line-height:1.4rem;'>" + labels.updatedUsersExplanation + "</p>";

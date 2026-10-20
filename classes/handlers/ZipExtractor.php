@@ -20,8 +20,11 @@ use APP\plugins\importexport\csv\classes\exceptions\ZipExtractionException;
 
 class ZipExtractor
 {
-    public const MAX_TOTAL_BYTES = 524288000;
+    /** Maximum total uncompressed size allowed (2 GB) */
+    public const MAX_TOTAL_BYTES = 2147483648;
+
     public const MAX_RATIO = 100;
+
     public const MAX_ENTRIES = 10000;
 
     public static function isAvailable(): bool
@@ -62,7 +65,7 @@ class ZipExtractor
 
                 $name = $stat['name'];
 
-                if (str_contains($name, '..') || (isset($name[0]) && $name[0] === '/')) {
+                if (self::zipEntryNameIsUnsafe($name)) {
                     throw ZipExtractionException::pathTraversal($name);
                 }
 
@@ -96,31 +99,77 @@ class ZipExtractor
         return $extractDir;
     }
 
-    public static function resolveSourceDir(string $extractDir): string
+    private static function zipEntryNameIsUnsafe(string $name): bool
     {
-        $entries = array_diff(scandir($extractDir), ['.', '..']);
-
-        $hasCsvAtRoot = false;
-        $subdirectories = [];
-
-        foreach ($entries as $entry) {
-            $fullPath = $extractDir . '/' . $entry;
-            if (is_dir($fullPath)) {
-                $subdirectories[] = $fullPath;
-            } elseif (preg_match('/\.csv$/i', $entry)) {
-                $hasCsvAtRoot = true;
-            }
+        if (str_starts_with($name, '/') || str_contains($name, "\0")) {
+            return true;
         }
 
-        if ($hasCsvAtRoot) {
+        return preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $name) === 1;
+    }
+
+    /**
+     * @throws ZipExtractionException When the layout does not match the allowed ZIP structure.
+     */
+    public static function resolveSourceDir(string $extractDir): string
+    {
+        if (self::directoryContainsCsvFile($extractDir)) {
             return $extractDir;
         }
 
-        if (count($subdirectories) === 1) {
-            return $subdirectories[0];
+        $contentSubdirs = [];
+        foreach (array_diff(scandir($extractDir), ['.', '..']) as $entry) {
+            $fullPath = $extractDir . '/' . $entry;
+            if (!is_dir($fullPath) || self::shouldSkipArchiveDirectory($entry)) {
+                continue;
+            }
+            $contentSubdirs[] = $fullPath;
         }
 
-        return $extractDir;
+        if (count($contentSubdirs) !== 1) {
+            throw ZipExtractionException::invalidLayout();
+        }
+
+        $wrapperDir = $contentSubdirs[0];
+        if (!self::directoryContainsCsvFile($wrapperDir)) {
+            throw ZipExtractionException::invalidLayout();
+        }
+
+        return $wrapperDir;
+    }
+
+    public static function isZipArchive(string $filePath, string $originalFileName = ''): bool
+    {
+        if (strtolower(pathinfo($originalFileName, PATHINFO_EXTENSION)) === 'zip') {
+            return true;
+        }
+
+        $handle = @fopen($filePath, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $magic = fread($handle, 4);
+        fclose($handle);
+
+        return $magic === "PK\x03\x04";
+    }
+
+    private static function shouldSkipArchiveDirectory(string $name): bool
+    {
+        return in_array($name, ['__MACOSX', '.git', 'node_modules'], true)
+            || str_starts_with($name, '.');
+    }
+
+    private static function directoryContainsCsvFile(string $dir): bool
+    {
+        foreach (new \DirectoryIterator($dir) as $fileInfo) {
+            if ($fileInfo->isFile() && strtolower($fileInfo->getExtension()) === 'csv') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function deleteDirectory(string $dir): void
