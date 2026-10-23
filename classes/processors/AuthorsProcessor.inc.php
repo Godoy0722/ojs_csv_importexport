@@ -235,8 +235,7 @@ class AuthorsProcessor
 	 * Parse a single author CSV entry into subfields.
 	 *
 	 * Format: GivenName,FamilyName,Email,ORCiD,Affiliation,Biography
-	 * Commas inside quotes stay in that field. Anything after the affiliation
-	 * is biography, including unquoted commas.
+	 * Commas inside quotes stay in that field.
 	 *
 	 * @param string $authorString
 	 *
@@ -252,7 +251,7 @@ class AuthorsProcessor
 			'emailAddress' => $authorParts[2] ?? '',
 			'orcid' => $authorParts[3] ?? '',
 			'affiliation' => $authorParts[4] ?? '',
-			'biography' => implode(', ', array_slice($authorParts, 5)),
+			'biography' => $authorParts[5] ?? '',
 		];
 	}
 
