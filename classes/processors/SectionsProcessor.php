@@ -65,6 +65,13 @@ class SectionsProcessor extends SharedSectionsProcessor
             return;
         }
 
+        $sectionAbbrev = static::resolveSectionAbbrev(
+            $sectionTitle,
+            (string) ($data->sectionAbbrev ?? ''),
+            $contextId,
+            $data->locale
+        );
+
         $section = Repo::section()->newDataObject();
 
         $section->setContextId($contextId);
@@ -78,7 +85,7 @@ class SectionsProcessor extends SharedSectionsProcessor
         $section->setHideAuthor(false);
         $section->setIsInactive(false);
         $section->setTitle($sectionTitle, $data->locale);
-        $section->setAbbrev(mb_strtoupper(trim($data->sectionAbbrev)), $data->locale);
+        $section->setAbbrev($sectionAbbrev, $data->locale);
         $section->setIdentifyType('', $data->locale);
         $section->setPolicy('', $data->locale);
 
