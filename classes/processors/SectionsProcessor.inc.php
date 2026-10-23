@@ -21,6 +21,53 @@ use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 
 class SectionsProcessor
 {
+    public static function abbrevBaseFromSectionTitle($sectionTitle)
+    {
+        return mb_strtoupper(mb_substr(trim($sectionTitle), 0, 3));
+    }
+
+    /**
+     * @param string[] $existingAbbrevs
+     */
+    public static function generateUniqueSectionAbbrevFromTitle($sectionTitle, array $existingAbbrevs)
+    {
+        $base = self::abbrevBaseFromSectionTitle($sectionTitle);
+        $existing = [];
+        foreach ($existingAbbrevs as $abbrev) {
+            $existing[mb_strtoupper(trim($abbrev))] = true;
+        }
+
+        $candidate = $base;
+        $suffix = 0;
+        while (isset($existing[$candidate])) {
+            $suffix++;
+            $candidate = $base . '_' . $suffix;
+        }
+
+        return $candidate;
+    }
+
+    public static function resolveSectionAbbrev($sectionTitle, $sectionAbbrevFromCsv, $contextId, $locale)
+    {
+        $sectionAbbrevFromCsv = trim($sectionAbbrevFromCsv);
+        if ($sectionAbbrevFromCsv !== '') {
+            return mb_strtoupper($sectionAbbrevFromCsv);
+        }
+
+        $existingAbbrevs = [];
+        $sectionDao = CachedDaos::getSectionDao();
+        $sections = $sectionDao->getByContextId($contextId)->toArray();
+
+        foreach ($sections as $section) {
+            $abbrev = $section->getAbbrev($locale);
+            if (is_string($abbrev) && $abbrev !== '') {
+                $existingAbbrevs[] = $abbrev;
+            }
+        }
+
+        return self::generateUniqueSectionAbbrevFromTitle($sectionTitle, $existingAbbrevs);
+    }
+
     /**
 	 * Processes data for Sections
 	 *
@@ -49,6 +96,14 @@ class SectionsProcessor
 			return $section;
 		}
 
+        $sectionTitle = trim($data->sectionTitle ?? '') ?: trim($data->sectionAbbrev ?? '');
+        $sectionAbbrev = self::resolveSectionAbbrev(
+            $sectionTitle,
+            (string) ($data->sectionAbbrev ?? ''),
+            $journalId,
+            $data->locale
+        );
+
         $sectionDao = CachedDaos::getSectionDao();
 
 		/** @var \Section $section */
@@ -63,8 +118,8 @@ class SectionsProcessor
 		$section->setHideTitle(false);
 		$section->setHideAuthor(false);
 		$section->setIsInactive(false);
-		$section->setTitle($data->sectionTitle, $data->locale);
-		$section->setAbbrev(mb_strtoupper(trim($data->sectionAbbrev)), $data->locale);
+		$section->setTitle($sectionTitle, $data->locale);
+		$section->setAbbrev($sectionAbbrev, $data->locale);
 		$section->setIdentifyType('', $data->locale);
 		$section->setPolicy('', $data->locale);
 
