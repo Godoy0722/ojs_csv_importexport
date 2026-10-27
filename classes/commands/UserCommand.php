@@ -159,7 +159,7 @@ class UserCommand
                         }
 
                         if (empty($data->username)) {
-                            $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                            $data->username = Validation::suggestUsername($data->firstname, $data->lastname);
                         }
                     }
 

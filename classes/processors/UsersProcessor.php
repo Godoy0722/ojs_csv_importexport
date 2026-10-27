@@ -79,22 +79,4 @@ class UsersProcessor
 
         return Repo::user()->get($user->getId());
     }
-
-    public static function getValidUsername(string $firstname, string $lastname): string
-    {
-        $letters = range('a', 'z');
-
-        do {
-            $randomLetters = '';
-            for ($i = 0; $i < 3; $i++) {
-                $randomLetters .= $letters[array_rand($letters)];
-            }
-
-            $username = mb_strtolower(mb_substr($firstname, 0, 1) . $lastname . $randomLetters);
-            $existingUser = CachedEntities::getCachedUserByUsername($username);
-
-        } while (!is_null($existingUser));
-
-        return $username;
-    }
 }
