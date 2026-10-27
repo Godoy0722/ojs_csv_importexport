@@ -103,31 +103,4 @@ class UsersProcessor
 
         return $userDao->getById($user->getId());
     }
-
-    /**
-     * Get a valid username for a user.
-     *
-     * @param string $firstname
-     * @param string $lastname
-     *
-     * @return string
-     */
-    public static function getValidUsername($firstname, $lastname)
-    {
-        $letters = range('a', 'z');
-
-        do {
-            $randomLetters = '';
-            for ($i = 0; $i < 3; $i++) {
-                $randomLetters .= $letters[array_rand($letters)];
-            }
-
-            $username = mb_strtolower(mb_substr($firstname, 0, 1) . $lastname . $randomLetters);
-
-            $existingUser = CachedEntities::getCachedUserByUsername($username);
-
-        } while (!is_null($existingUser));
-
-        return $username;
-    }
 }

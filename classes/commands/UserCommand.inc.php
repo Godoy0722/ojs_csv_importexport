@@ -190,7 +190,7 @@ class UserCommand
 
                         import('plugins.importexport.csv.classes.processors.UsersProcessor');
                         if (empty($data->username)) {
-                            $data->username = UsersProcessor::getValidUsername($data->firstname, $data->lastname);
+                            $data->username = \Validation::suggestUsername($data->firstname, $data->lastname);
                         }
                     }
 
