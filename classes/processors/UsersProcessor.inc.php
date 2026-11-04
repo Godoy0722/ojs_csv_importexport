@@ -61,6 +61,7 @@ class UsersProcessor
         $user->setUsername($data->username);
         $user->setMustChangePassword(true);
         $user->setDateRegistered(\Core::getCurrentDate());
+        $user->setDateValidated(\Core::getCurrentDate());
         $user->setPassword(\Validation::encryptCredentials($data->username, $data->tempPassword));
 
         if (!empty($data->orcid)) {
@@ -91,6 +92,9 @@ class UsersProcessor
         $user->setAffiliation($data->affiliation, $locale);
         $user->setEmail($data->email);
         $user->setCountry($data->country);
+        if (!$user->getDateValidated()) {
+            $user->setDateValidated(\Core::getCurrentDate());
+        }
 
         if (!empty($data->orcid)) {
             $normalizedOrcid = OrcidHandler::normalize($data->orcid);
