@@ -144,13 +144,15 @@ class UserCommand
                     InvalidRowValidations::validateRowHasAllRequiredFieldsCommons($data, [RequiredUserHeaders::class, 'validateRowHasAllRequiredFields']);
 
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
+                    $contextName = __('context.context');
 
-                    InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, 'Journal');
+                    InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, $contextName);
 
                     if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
                         throw new RowValidationException(
                             __('plugins.importexport.csv.contextPathMismatch', [
-                                'contextType' => 'journal',
+                                'contextColumn' => 'journalPath',
+                                'context' => $contextName,
                                 'csvContextPath' => $data->journalPath,
                                 'currentContextPath' => $this->currentJournalPath,
                             ])

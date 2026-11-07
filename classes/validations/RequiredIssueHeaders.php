@@ -37,6 +37,7 @@ class RequiredIssueHeaders
         'coverImageAltText',
         'galleyFilenames',
         'galleyLabels',
+        'galleyLocales',
         'galleyViews',
         'htmlGalley',
         'suppFilenames',
