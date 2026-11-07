@@ -241,14 +241,6 @@ class IssueCommand
                     $data->datePublished = InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
                     $data->issuePublicationDate = InvalidRowValidations::validateDateFormat($data->issuePublicationDate ?? null, 'issuePublicationDate', false);
 
-                    if ($data->galleyFilenames) {
-                        InvalidRowValidations::validateArticleGalleys(
-                            $data->galleyFilenames,
-                            $data->galleyLabels,
-                            $this->sourceDir
-                        );
-                    }
-
                     if ($data->htmlGalley) {
                         InvalidRowValidations::validateHtmlGalleys($data->htmlGalley, $this->sourceDir);
                     }
@@ -298,6 +290,7 @@ class IssueCommand
                     $hasValidCsvUser = !empty($data->username) && !$usedDefaultUser && isset($csvUser);
 
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
+                    $contextName = __('context.context');
 
                     InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
 
@@ -309,13 +302,24 @@ class IssueCommand
 
                     if ($this->currentJournalPath !== null && $data->journalPath !== $this->currentJournalPath) {
                         throw new RowValidationException(__('plugins.importexport.csv.contextPathMismatch', [
-                            'contextType' => 'journal',
+                            'contextColumn' => 'journalPath',
+                            'context' => $contextName,
                             'csvContextPath' => $data->journalPath,
                             'currentContextPath' => $this->currentJournalPath,
                         ]));
                     }
 
                     InvalidRowValidations::validateJournalLocale($journal, $data->locale);
+
+                    if ($data->galleyFilenames) {
+                        InvalidRowValidations::validateArticleGalleys(
+                            $data->galleyFilenames,
+                            $data->galleyLabels,
+                            $data->galleyLocales ?? '',
+                            $this->sourceDir,
+                            $journal
+                        );
+                    }
 
                     // we need a Genre for the files.  Assume a key of SUBMISSION as a default.
                     $genreName = 'SUBMISSION';
@@ -328,7 +332,7 @@ class IssueCommand
                     InvalidRowValidations::validateUserGroupId($userGroupId, $data->journalPath);
 
                     if ($data->funders) {
-                        InvalidRowValidations::validateFundingPluginEnabled($data->funders, $journal->getId(), 'Journal');
+                        InvalidRowValidations::validateFundingPluginEnabled($data->funders, $journal->getId(), $contextName);
                         InvalidRowValidations::validateFundersCrossrefRegistry($data->funders, $journal->getId());
                     }
 
@@ -419,6 +423,11 @@ class IssueCommand
                         }
 
                         $galleyLabelsArray = array_map('trim', explode(';', $data->galleyLabels));
+                        $galleyLocalesArray = InvalidRowValidations::resolveGalleyLocales(
+                            $data->galleyLocales ?? null,
+                            $data->galleyFilenames,
+                            $data->locale
+                        );
                         for($i = 0; $i < count($galleyLabelsArray); $i++) {
                             $galleyItem = $galleyIds[$i];
                             $galleyLabel = $galleyLabelsArray[$i];
@@ -430,7 +439,9 @@ class IssueCommand
                                 $genreId,
                                 $galleyLabel,
                                 $publication->getId(),
-                                $fileUploadUser
+                                $fileUploadUser,
+                                null,
+                                $galleyLocalesArray[$i] ?? null
                             );
                         }
                     } elseif (!$this->dryMode && $basePublication && !$isMultiLocaleImport) {
@@ -804,14 +815,16 @@ class IssueCommand
         string $label,
         int $publicationId,
         User $fileUploadUser,
-        ?string $description = null
+        ?string $description = null,
+        ?string $locale = null
     ): array
     {
         $galleyCompletePath = "{$this->sourceDir}/{$item['file']}";
         $galleyExtension = $this->fileManager->parseFileExtension($galleyCompletePath);
+        $locale = $locale ?? $data->locale;
 
         $submissionFile = SubmissionFileProcessor::process(
-            $data->locale,
+            $locale,
             $fileUploadUser->getId(),
             $submissionId,
             $galleyCompletePath,
@@ -820,7 +833,7 @@ class IssueCommand
             $description
         );
 
-        $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $label, $publicationId, $galleyExtension);
+        $galleyId = GalleyProcessor::process($submissionFile->getId(), $data, $label, $publicationId, $galleyExtension, $locale);
         SubmissionFileProcessor::updateAssocInfo($submissionFile, $galleyId);
 
         return [
