@@ -119,13 +119,25 @@ class InvalidRowValidations
      *
      * @throws RowValidationException
      */
-    public static function validateArticleGalleys(string $galleyFilenames, string $galleyLabels, string $sourceDir): void
+    public static function validateArticleGalleys(string $galleyFilenames, string $galleyLabels, ?string $galleyLocales, string $sourceDir, $journal): void
     {
         $galleyFilenamesArray = array_map('trim', explode(';', $galleyFilenames));
         $galleyLabelsArray = array_map('trim', explode(';', $galleyLabels));
 
         if (count($galleyFilenamesArray) !== count($galleyLabelsArray)) {
             throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndGalleys'));
+        }
+
+        if (trim((string) $galleyLocales) !== '') {
+            $galleyLocalesArray = array_map('trim', explode(';', $galleyLocales));
+
+            if (count($galleyFilenamesArray) !== count($galleyLocalesArray)) {
+                throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLocalesAndGalleys'));
+            }
+
+            foreach($galleyLocalesArray as $galleyLocale) {
+                static::validateJournalLocale($journal, $galleyLocale);
+            }
         }
 
         foreach($galleyFilenamesArray as $galleyFilename) {
@@ -135,6 +147,22 @@ class InvalidRowValidations
                 throw new RowValidationException(__('plugins.importexport.csv.invalidGalleyFile', ['filename' => $galleyFilename]));
             }
         }
+    }
+
+    /**
+     * Locales aligned with galleyFilenames. An empty galleyLocales value repeats the row locale.
+     *
+     * @return string[]
+     */
+    public static function resolveGalleyLocales(?string $galleyLocales, string $galleyFilenames, string $locale): array
+    {
+        $galleyFilenamesArray = array_map('trim', explode(';', $galleyFilenames));
+
+        if (trim((string) $galleyLocales) === '') {
+            return array_fill(0, count($galleyFilenamesArray), $locale);
+        }
+
+        return array_map('trim', explode(';', $galleyLocales));
     }
 
     /**

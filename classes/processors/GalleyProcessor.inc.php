@@ -31,8 +31,9 @@ class GalleyProcessor
 	 *
 	 * @return int
      */
-    public static function process($submissionFileId, $data, $label, $publicationId, $extension)
+    public static function process($submissionFileId, $data, $label, $publicationId, $extension, $locale = null)
     {
+        $locale = $locale ?? $data->locale;
         $galleyDao = CachedDaos::getArticleGalleyDao();
 
 		/** @var \ArticleGalley $galley */
@@ -40,10 +41,10 @@ class GalleyProcessor
         $galley->setData('submissionFileId', $submissionFileId);
         $galley->setData('publicationId', $publicationId);
         $galley->setLabel($label);
-        $galley->setLocale($data->locale);
+        $galley->setLocale($locale);
         $galley->setIsApproved(true);
         $galley->setSequence(REALLY_BIG_NUMBER);
-        $galley->setName(mb_strtoupper($extension), $data->locale);
+        $galley->setName(mb_strtoupper($extension), $locale);
 
         $galleyDao->insertObject($galley);
         return $galley->getId();
