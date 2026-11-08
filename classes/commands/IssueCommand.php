@@ -247,13 +247,6 @@ class IssueCommand
                         InvalidRowValidations::validateSectionFields($data);
                     }
 
-                    if ($data->htmlGalley) {
-                        InvalidRowValidations::validateHtmlGalleys(
-                            $data->htmlGalley,
-                            $this->sourceDir
-                        );
-                    }
-
                     InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
                     InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
 
@@ -320,6 +313,15 @@ class IssueCommand
                             $this->sourceDir,
                             $journal,
                             $contextName
+                        );
+                    }
+
+                    if ($data->htmlGalley) {
+                        InvalidRowValidations::validateHtmlGalleys(
+                            $data->htmlGalley,
+                            $data->htmlGalleyLocale ?? '',
+                            $this->sourceDir,
+                            $journal
                         );
                     }
 
@@ -504,6 +506,10 @@ class IssueCommand
                             }
 
                             $htmlGalleyLabel = 'HTML';
+                            $htmlGalleyLocale = InvalidRowValidations::resolveHtmlGalleyLocale(
+                                $data->htmlGalleyLocale ?? null,
+                                $data->locale
+                            );
                             $htmlGalleyMeta = $this->handleGalley(
                                 ['file' => $htmlFile, 'id' => $htmlFileId],
                                 $data,
@@ -511,7 +517,9 @@ class IssueCommand
                                 $genreId,
                                 $htmlGalleyLabel,
                                 $publication->getId(),
-                                $fileUploadUser
+                                $fileUploadUser,
+                                null,
+                                $htmlGalleyLocale
                             );
 
                             $galleyMetadata[] = $htmlGalleyMeta;

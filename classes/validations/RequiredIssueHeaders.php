@@ -40,6 +40,7 @@ class RequiredIssueHeaders
         'galleyLocales',
         'galleyViews',
         'htmlGalley',
+        'htmlGalleyLocale',
         'suppFilenames',
         'suppLabels',
         'suppDescriptions',
