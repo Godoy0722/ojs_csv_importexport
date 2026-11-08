@@ -170,7 +170,7 @@ class InvalidRowValidations
      *
      * @throws RowValidationException
      */
-    public static function validateHtmlGalleys(?string $htmlGalley, string $sourceDir): void
+    public static function validateHtmlGalleys(?string $htmlGalley, ?string $htmlGalleyLocale, string $sourceDir, $journal): void
     {
         if (empty(trim($htmlGalley ?? ''))) {
             return;
@@ -191,6 +191,16 @@ class InvalidRowValidations
             throw new RowValidationException(__('plugins.importexport.csv.invalidHtmlGalleyFirstFile', ['filename' => $firstFile]));
         }
 
+        if (trim((string) $htmlGalleyLocale) !== '') {
+            $htmlGalleyLocales = array_map('trim', explode(';', $htmlGalleyLocale));
+
+            if (count($htmlGalleyLocales) !== 1) {
+                throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLocalesAndHtmlGalleys'));
+            }
+
+            static::validateJournalLocale($journal, $htmlGalleyLocales[0]);
+        }
+
         foreach ($htmlGalleyFiles as $file) {
             static::validatePathWithinSourceDir($file, $sourceDir);
             $filePath = "{$sourceDir}/{$file}";
@@ -198,6 +208,19 @@ class InvalidRowValidations
                 throw new RowValidationException(__('plugins.importexport.csv.invalidHtmlGalleyFile', ['filename' => $file]));
             }
         }
+    }
+
+    /**
+     * Locale for the HTML galley. An empty value uses the row locale.
+     * Dependent files are not galleys and do not receive their own locale.
+     */
+    public static function resolveHtmlGalleyLocale(?string $htmlGalleyLocale, string $locale): string
+    {
+        if (trim((string) $htmlGalleyLocale) === '') {
+            return $locale;
+        }
+
+        return trim(explode(';', $htmlGalleyLocale)[0]);
     }
 
     /**

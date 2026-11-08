@@ -109,6 +109,9 @@ msgstr "Galley files don't have the same amount as the labels. Please verify it 
 msgid "plugins.importexport.csv.invalidNumberOfLocalesAndGalleys"
 msgstr "Galley files don't have the same amount as the locales. Please verify it for this row."
 
+msgid "plugins.importexport.csv.invalidNumberOfLocalesAndHtmlGalleys"
+msgstr "The HTML galley accepts a single locale. Please verify it for this row."
+
 msgid "plugins.importexport.csv.invalidSupplementaryFile"
 msgstr "Invalid supplementary file \"{$filename}\" for this submission."
 

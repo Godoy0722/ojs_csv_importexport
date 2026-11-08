@@ -274,10 +274,6 @@ class IssueCommand
                     $data->datePublished = InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
                     $data->issuePublicationDate = InvalidRowValidations::validateDateFormat($data->issuePublicationDate ?? null, 'issuePublicationDate', false);
 
-                    if ($data->htmlGalley) {
-                        InvalidRowValidations::validateHtmlGalleys($data->htmlGalley, $this->_sourceDir);
-                    }
-
                     InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
                     InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
 
@@ -345,6 +341,15 @@ class IssueCommand
                             $data->galleyFilenames,
                             $data->galleyLabels,
                             $data->galleyLocales ?? '',
+                            $this->_sourceDir,
+                            $journal
+                        );
+                    }
+
+                    if ($data->htmlGalley) {
+                        InvalidRowValidations::validateHtmlGalleys(
+                            $data->htmlGalley,
+                            $data->htmlGalleyLocale ?? '',
                             $this->_sourceDir,
                             $journal
                         );
@@ -504,6 +509,10 @@ class IssueCommand
 
                             HtmlGalleyProcessor::setFileMimetype($htmlFileId, 'text/html');
 
+                            $htmlGalleyLocale = InvalidRowValidations::resolveHtmlGalleyLocale(
+                                $data->htmlGalleyLocale ?? null,
+                                $data->locale
+                            );
                             $htmlGalleyMeta = $this->_handleGalley(
                                 ['file' => $htmlFile, 'id' => $htmlFileId],
                                 $data,
@@ -511,7 +520,9 @@ class IssueCommand
                                 $genreId,
                                 'HTML',
                                 $publication->getId(),
-                                $fileUploadUser
+                                $fileUploadUser,
+                                null,
+                                $htmlGalleyLocale
                             );
 
                             $galleyMetadata[] = $htmlGalleyMeta;
