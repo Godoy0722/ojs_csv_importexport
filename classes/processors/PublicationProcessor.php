@@ -18,9 +18,11 @@ namespace APP\plugins\importexport\csv\classes\processors;
 
 use APP\facades\Repo;
 use APP\journal\Journal;
+use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\shared\processors\PublicationProcessor as SharedPublicationProcessor;
 use APP\publication\Publication;
 use APP\submission\Submission;
+use Illuminate\Support\Facades\DB;
 
 class PublicationProcessor extends SharedPublicationProcessor
 {
@@ -154,5 +156,88 @@ class PublicationProcessor extends SharedPublicationProcessor
     public static function processMultiLocalePublication(Publication $publication, object $data): Publication
     {
         return parent::processMultiLocalePublicationCommons($publication, $data, static::LOCALIZED_FIELDS, static::NON_LOCALIZED_FIELDS);
+    }
+
+    /**
+     * Copy a publication cover image onto every locale that does not have one.
+     */
+    public static function syncCoverImagesForProcessedArticles(array $processedArticles): void
+    {
+        foreach ($processedArticles as $versions) {
+            foreach ($versions as $localeData) {
+                $firstLocaleData = reset($localeData);
+                $publication = $firstLocaleData['publication'];
+                $publicationId = $publication->getId();
+
+                $serverId = Repo::submission()->get($publication->getData('submissionId'))->getData('contextId');
+                $serverDao = CachedDaos::getJournalDao();
+                $server = $serverDao->getById($serverId);
+                if (!$server) {
+                    continue;
+                }
+                $defaultLocale = $server->getPrimaryLocale();
+
+                $coverImageSettings = DB::table('publication_settings')
+                    ->where('publication_id', $publicationId)
+                    ->where('setting_name', 'coverImage')
+                    ->get();
+
+                if ($coverImageSettings->isEmpty()) {
+                    continue;
+                }
+
+                $coverImagesByLocale = [];
+                foreach ($coverImageSettings as $setting) {
+                    if (empty($setting->setting_value)) {
+                        continue;
+                    }
+
+                    $coverImageData = json_decode($setting->setting_value, true);
+                    if (!empty($coverImageData)) {
+                        $coverImagesByLocale[$setting->locale] = $coverImageData;
+                    }
+                }
+
+                if (empty($coverImagesByLocale)) {
+                    continue;
+                }
+
+                $sourceCoverImage = null;
+
+                if (isset($coverImagesByLocale[$defaultLocale])) {
+                    $sourceCoverImage = $coverImagesByLocale[$defaultLocale];
+                } else {
+                    foreach ($coverImagesByLocale as $coverImageData) {
+                        if (!empty($coverImageData) && isset($coverImageData['uploadName'])) {
+                            $sourceCoverImage = $coverImageData;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$sourceCoverImage) {
+                    continue;
+                }
+
+                $allPublicationLocales = DB::table('publication_settings')
+                    ->where('publication_id', $publicationId)
+                    ->whereNotNull('locale')
+                    ->whereNot('locale', '')
+                    ->distinct()
+                    ->pluck('locale')
+                    ->toArray();
+
+                foreach ($allPublicationLocales as $locale) {
+                    if (isset($coverImagesByLocale[$locale])) {
+                        continue;
+                    }
+
+                    $reloadedPublication = Repo::publication()->get($publicationId);
+                    if ($reloadedPublication) {
+                        static::updatePublicationAttribute($reloadedPublication, 'coverImage', $sourceCoverImage, $locale);
+                    }
+                }
+            }
+        }
     }
 }

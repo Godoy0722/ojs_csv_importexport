@@ -20,6 +20,7 @@ use APP\core\Application;
 use APP\facades\Repo;
 use APP\file\PublicFileManager;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
+use APP\plugins\importexport\csv\classes\handlers\DryModeCurrentIssue;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\plugins\importexport\csv\classes\processors\GalleyProcessor;
 use APP\plugins\importexport\csv\classes\processors\IssueProcessor;
@@ -119,6 +120,8 @@ class IssueCommand
     /** @var string|null Current journal path from GUI context. When set, rows with a different journalPath are rejected. */
     private ?string $currentJournalPath;
 
+    private DryModeCurrentIssue $dryModeCurrentIssue;
+
     public function __construct(string $sourceDir, User $user, bool $dryMode = false, ?string $currentJournalPath = null)
     {
         $this->expectedRowSize = count(RequiredIssueHeaders::$issueHeaders);
@@ -130,6 +133,7 @@ class IssueCommand
         $this->processedArticles = [];
         $this->failedIdentifiers = [];
         $this->importedDois = [];
+        $this->dryModeCurrentIssue = new DryModeCurrentIssue();
     }
 
     public function run(): array
@@ -196,9 +200,7 @@ class IssueCommand
 
                 ++$this->processedRows;
 
-                if (!$this->dryMode) {
-                    DB::beginTransaction();
-                }
+                DB::beginTransaction();
                 try {
                     InvalidRowValidations::validateRowContainAllFields($fields, $this->expectedRowSize);
 
@@ -290,6 +292,9 @@ class IssueCommand
                     $contextName = __('context.context');
 
                     InvalidRowValidations::validateContextIsValid($journal, $data->journalPath, $contextName);
+                    if ($this->dryMode) {
+                        $this->dryModeCurrentIssue->noteJournal((int) $journal->getId(), $data->journalPath);
+                    }
 
                     $existingDois = CachedEntities::getExistingDois($journal->getId());
 
@@ -321,7 +326,8 @@ class IssueCommand
                             $data->htmlGalley,
                             $data->htmlGalleyLocale ?? '',
                             $this->sourceDir,
-                            $journal
+                            $journal,
+                            $contextName
                         );
                     }
 
@@ -659,6 +665,8 @@ class IssueCommand
 
                     SectionsProcessor::process($data, $journal->getId(), $publication, $basePublication);
 
+                    $existingIssue = CachedEntities::getCachedIssue($data, $journal->getId());
+                    $createdByImport = $existingIssue === null;
                     $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
                     if ($isMultiLocaleImport) {
                         $issue = IssueProcessor::processMultiLocale($issue, $data);
@@ -692,8 +700,10 @@ class IssueCommand
                         $this->trackProcessedArticle($data, $submission, $publication);
                     }
 
-                    if (!$this->dryMode) {
-                        DB::commit();
+                    DB::commit();
+
+                    if ($this->dryMode) {
+                        $this->dryModeCurrentIssue->remember($issue, (int) $journal->getId(), $createdByImport);
                     }
 
                     if (!empty(trim($data->doi ?? ''))) {
@@ -703,9 +713,7 @@ class IssueCommand
                         }
                     }
                 } catch (RowValidationException $e) {
-                    if (!$this->dryMode) {
-                        DB::rollBack();
-                    }
+                    DB::rollBack();
                     $failedIdentifier = $fields[2] ?? null;
                     if (!empty($failedIdentifier)) {
                         $this->failedIdentifiers[$failedIdentifier] = true;
@@ -735,9 +743,7 @@ class IssueCommand
 
                     continue;
                 } catch (\Throwable $e) {
-                    if (!$this->dryMode) {
-                        DB::rollBack();
-                    }
+                    DB::rollBack();
 
                     $failedIdentifier = $fields[2] ?? null;
                     if (!empty($failedIdentifier)) {
@@ -816,11 +822,13 @@ class IssueCommand
 
         if ($this->dryMode) {
             DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
+            $results['currentIssues'] = $this->dryModeCurrentIssue->reports($this->currentJournalPath);
+            DryModeReporter::printCurrentIssues(array_column($results['currentIssues'], 'message'));
             $results['exitCode'] = $totalFailed > 0 ? 1 : 0;
             return $results;
         }
 
-        $this->syncCoverImagesForProcessedArticles();
+        PublicationProcessor::syncCoverImagesForProcessedArticles($this->processedArticles);
         $this->setCurrentVersionsForProcessedArticles();
 
         IssueProcessor::fillMissingIssueDates($this->processedIssues);
@@ -924,86 +932,6 @@ class IssueCommand
             'submission' => $submission,
             'publication' => $publication
         ];
-   }
-
-   private function syncCoverImagesForProcessedArticles(): void
-    {
-        foreach ($this->processedArticles as $identifier => $versions) {
-            foreach ($versions as $versionNumber => $localeData) {
-                $firstLocaleData = reset($localeData);
-                $publication = $firstLocaleData['publication'];
-                $publicationId = $publication->getId();
-
-                $serverId = Repo::submission()->get($publication->getData('submissionId'))->getData('contextId');
-                $serverDao = CachedDaos::getJournalDao();
-                $server = $serverDao->getById($serverId);
-                if (!$server) {
-                    continue;
-                }
-                $defaultLocale = $server->getPrimaryLocale();
-
-                $coverImageSettings = DB::table('publication_settings')
-                    ->where('publication_id', $publicationId)
-                    ->where('setting_name', 'coverImage')
-                    ->get();
-
-                if ($coverImageSettings->isEmpty()) {
-                    continue;
-                }
-
-                $coverImagesByLocale = [];
-                foreach ($coverImageSettings as $setting) {
-                    if (empty($setting->setting_value)) {
-                        continue;
-                    }
-
-                    $coverImageData = json_decode($setting->setting_value, true);
-                    if (!empty($coverImageData)) {
-                        $coverImagesByLocale[$setting->locale] = $coverImageData;
-                    }
-                }
-
-                if (empty($coverImagesByLocale)) {
-                    continue;
-                }
-
-                $sourceCoverImage = null;
-
-                if (isset($coverImagesByLocale[$defaultLocale])) {
-                    $sourceCoverImage = $coverImagesByLocale[$defaultLocale];
-                } else {
-                    foreach ($coverImagesByLocale as $locale => $coverImageData) {
-                        if (!empty($coverImageData) && isset($coverImageData['uploadName'])) {
-                            $sourceCoverImage = $coverImageData;
-                            break;
-                        }
-                    }
-                }
-
-                if (!$sourceCoverImage) {
-                    continue;
-                }
-
-                $allPublicationLocales = DB::table('publication_settings')
-                    ->where('publication_id', $publicationId)
-                    ->whereNotNull('locale')
-                    ->whereNot('locale', '')
-                    ->distinct()
-                    ->pluck('locale')
-                    ->toArray();
-
-                foreach ($allPublicationLocales as $locale) {
-                    if (isset($coverImagesByLocale[$locale])) {
-                        continue;
-                    }
-
-                    $reloadedPublication = Repo::publication()->get($publicationId);
-                    if ($reloadedPublication) {
-                        PublicationProcessor::updatePublicationAttribute($reloadedPublication, 'coverImage', $sourceCoverImage, $locale);
-                    }
-                }
-            }
-        }
     }
 
    /**
