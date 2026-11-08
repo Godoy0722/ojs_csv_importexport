@@ -133,6 +133,7 @@
         var html = "";
 
         html += buildIntro(response, labels);
+        html += buildCurrentIssues(response);
 
         html += "<div style='display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:1rem; background:rgba(234,237,238,0.3); border:1px solid #BBBBBB; border-radius:4px;'>";
         var filesProcessed = response.resultFilesProcessed != null ? response.resultFilesProcessed : 0;
@@ -156,6 +157,25 @@
             }
         }
 
+        return html;
+    }
+
+    // Dry-run only. Names the issue that would be current after a real import,
+    // whether that issue already exists in the journal or arrives in the CSV.
+    function buildCurrentIssues(response) {
+        var issues = response.resultCurrentIssues;
+        if (!response.resultDryMode || !issues || !issues.length) {
+            return "";
+        }
+
+        var html = "<div style='margin-bottom:1.5rem; padding:1rem 1.25rem; background:#E6F2F8; border-left:4px solid #0082BF; border-radius:2px; font-size:0.875rem; line-height:1.5rem; color:#002C40;'>";
+        for (var i = 0; i < issues.length; i++) {
+            if (!issues[i] || !issues[i].message) {
+                continue;
+            }
+            html += "<p style='margin:" + (i === 0 ? "0" : "0.5rem 0 0") + ";'>" + escapeHtml(issues[i].message) + "</p>";
+        }
+        html += "</div>";
         return html;
     }
 

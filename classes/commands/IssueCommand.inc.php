@@ -25,6 +25,7 @@ use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedEntities;
 use PKP\Plugins\ImportExport\CSV\Classes\Exceptions\CsvEncodingException;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\CSVFileHandler;
+use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeCurrentIssue;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeFileTracker;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeReporter;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\AuthorsProcessor;
@@ -131,6 +132,9 @@ class IssueCommand
     /** @var bool */
     private $_dryMode;
 
+    /** @var DryModeCurrentIssue */
+    private $_dryModeCurrentIssue;
+
     /** @var DryModeFileTracker|null */
     private $_dryModeFileTracker;
 
@@ -154,6 +158,8 @@ class IssueCommand
         $this->_user = $user;
         $this->_dryMode = $dryMode;
         $this->_currentJournalPath = $currentJournalPath;
+        import('plugins.importexport.csv.classes.handlers.DryModeCurrentIssue');
+        $this->_dryModeCurrentIssue = new DryModeCurrentIssue();
         $this->_processedIssues = [];
         $this->_processedPublications = [];
     }
@@ -229,6 +235,7 @@ class IssueCommand
 
                 ++$this->_processedRows;
 
+                Capsule::connection()->beginTransaction();
                 try {
                     InvalidRowValidations::validateRowContainAllFields($fields, $this->_expectedRowSize);
                     $data = (object) array_combine(
@@ -319,6 +326,9 @@ class IssueCommand
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
                     $contextName = __('context.context');
                     InvalidRowValidations::validateJournalIsValid($journal, $data->journalPath);
+                    if ($this->_dryMode) {
+                        $this->_dryModeCurrentIssue->noteJournal((int) $journal->getId(), $data->journalPath);
+                    }
 
                     InvalidRowValidations::validateDoiNotDuplicate(
                         $data->doi ?? null,
@@ -664,6 +674,8 @@ class IssueCommand
                     PublicationProcessor::updateSectionId($publication, $section->getId());
 
                     import('plugins.importexport.csv.classes.processors.IssueProcessor');
+                    $existingIssue = CachedEntities::getCachedIssue($data, $journal->getId());
+                    $createdByImport = $existingIssue === null;
                     $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
                     if ($isMultiLocaleImport) {
                         $issue = IssueProcessor::processMultiLocale($issue, $data);
@@ -707,10 +719,17 @@ class IssueCommand
                             $this->_importedDois[$normalizedDoi] = true;
                         }
                     }
+
+                    if ($this->_dryMode) {
+                        $this->_dryModeCurrentIssue->remember($issue, (int) $journal->getId(), $createdByImport);
+                    }
+                    Capsule::connection()->commit();
                 } catch (RowValidationException $e) {
+                    Capsule::connection()->rollBack();
                     $this->_recordFailedRow($invalidCsvFile, $fields, $e->getMessage(), $fileFailedRows);
                     continue;
                 } catch (\Throwable $e) {
+                    Capsule::connection()->rollBack();
                     $message = __('plugins.importexport.csv.rowImportFailed', ['message' => $e->getMessage()]);
                     $this->_recordFailedRow($invalidCsvFile, $fields, $message, $fileFailedRows);
                     continue;
@@ -787,12 +806,14 @@ class IssueCommand
         if ($this->_dryMode) {
             import('plugins.importexport.csv.classes.handlers.DryModeReporter');
             DryModeReporter::printGrandTotal($totalFiles, $totalPassed, $totalFailed);
+            $results['currentIssues'] = $this->_dryModeCurrentIssue->reports($this->_currentJournalPath);
+            DryModeReporter::printCurrentIssues(array_column($results['currentIssues'], 'message'));
             $results['exitCode'] = $totalFailed > 0 ? 1 : 0;
 
             return $results;
         }
 
-        $this->_syncCoverImagesForProcessedArticles();
+        PublicationProcessor::syncCoverImagesForProcessedArticles($this->_processedPublications);
         $this->_setCurrentVersionsForProcessedArticles();
 
         import('plugins.importexport.csv.classes.processors.IssueProcessor');
@@ -948,95 +969,6 @@ class IssueCommand
             'submission' => $submission,
             'publication' => $publication
         ];
-    }
-
-    private function _syncCoverImagesForProcessedArticles()
-    {
-        foreach ($this->_processedPublications as $identifier => $versions) {
-            foreach ($versions as $versionNumber => $localeData) {
-                $firstLocaleData = reset($localeData);
-                $publication = $firstLocaleData['publication'];
-                $publicationId = $publication->getId();
-
-                $submissionDao = CachedDaos::getSubmissionDao();
-                $submission = $submissionDao->getById($publication->getData('submissionId'));
-
-                if (!$submission) {
-                    continue;
-                }
-
-                $serverId = $submission->getData('contextId');
-                $serverDao = CachedDaos::getJournalDao();
-                $server = $serverDao->getById($serverId);
-
-                if (!$server) {
-                    continue;
-                }
-
-                $defaultLocale = $server->getData('primaryLocale');
-
-                $coverImageSettings = Capsule::table('publication_settings')
-                    ->where('publication_id', $publicationId)
-                    ->where('setting_name', 'coverImage')
-                    ->get();
-
-                if ($coverImageSettings->isEmpty()) {
-                    continue;
-                }
-
-                $coverImagesByLocale = [];
-                foreach ($coverImageSettings as $setting) {
-                    if (empty($setting->setting_value)) {
-                        continue;
-                    }
-
-                    $coverImageData = json_decode($setting->setting_value, true);
-                    if (!empty($coverImageData)) {
-                        $coverImagesByLocale[$setting->locale] = $coverImageData;
-                    }
-                }
-
-                if (empty($coverImagesByLocale)) {
-                    continue;
-                }
-
-                $sourceCoverImage = null;
-
-                if (isset($coverImagesByLocale[$defaultLocale])) {
-                    $sourceCoverImage = $coverImagesByLocale[$defaultLocale];
-                } else {
-                    foreach ($coverImagesByLocale as $locale => $coverImageData) {
-                        if (!empty($coverImageData) && isset($coverImageData['uploadName'])) {
-                            $sourceCoverImage = $coverImageData;
-                            break;
-                        }
-                    }
-                }
-
-                if (!$sourceCoverImage) {
-                    continue;
-                }
-
-                $allPublicationLocales = Capsule::table('publication_settings')
-                    ->where('publication_id', $publicationId)
-                    ->whereNotNull('locale')
-                    ->where('locale', '!=', '')
-                    ->distinct()
-                    ->pluck('locale')
-                    ->toArray();
-
-                foreach ($allPublicationLocales as $locale) {
-                    if (isset($coverImagesByLocale[$locale])) {
-                        continue;
-                    }
-
-                    $reloadedPublication = CachedDaos::getPublicationDao()->getById($publicationId);
-                    if ($reloadedPublication) {
-                        PublicationProcessor::updatePublicationAttribute($reloadedPublication, 'coverImage', $sourceCoverImage, $locale);
-                    }
-                }
-            }
-        }
     }
 
     /**

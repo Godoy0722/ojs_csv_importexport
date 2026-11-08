@@ -435,6 +435,7 @@ class CSVImportPlugin extends \ImportExportPlugin
                 'resultFailedRows' => (int) $result['failedRows'],
                 'resultInvalidFiles' => $invalidFiles,
                 'resultPerFile' => $result['perFile'],
+                'resultCurrentIssues' => $dryMode ? (isset($result['currentIssues']) ? $result['currentIssues'] : []) : [],
                 'resultWarning' => (int) $result['filesProcessed'] === 0
                     ? __('plugins.importexport.csv.results.noCsvFilesFound')
                     : null,

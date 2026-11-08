@@ -207,64 +207,7 @@ class IssueProcessor
             return;
         }
 
-        // Sort all issues according to the same criteria as imported issues
-        usort($allIssues, function($a, $b) {
-            // Extract sorting criteria from issue objects
-            $yearA = self::extractNumericValue($a->getYear());
-            $yearB = self::extractNumericValue($b->getYear());
-            $volumeA = self::extractNumericValue($a->getVolume());
-            $volumeB = self::extractNumericValue($b->getVolume());
-            $numberA = self::extractNumericValue($a->getNumber());
-            $numberB = self::extractNumericValue($b->getNumber());
-
-            // Primary sort: Year (most recent to oldest - descending)
-            if ($yearA !== null && $yearB !== null) {
-                if ($yearA !== $yearB) {
-                    return $yearB <=> $yearA; // Descending order
-                }
-            } else if ($yearA !== null) {
-                return -1; // A has year, B doesn't - A comes first
-            } else if ($yearB !== null) {
-                return 1; // B has year, A doesn't - B comes first
-            }
-
-            // Secondary sort: Volume (biggest to lowest - descending)
-            if ($volumeA !== null && $volumeB !== null) {
-                if ($volumeA !== $volumeB) {
-                    return $volumeB <=> $volumeA; // Descending order
-                }
-            } else if ($volumeA !== null) {
-                return -1; // A has volume, B doesn't - A comes first
-            } else if ($volumeB !== null) {
-                return 1; // B has volume, A doesn't - B comes first
-            }
-
-            // Tertiary sort: Number (biggest to lowest - descending)
-            if ($numberA !== null && $numberB !== null) {
-                if ($numberA !== $numberB) {
-                    return $numberB <=> $numberA; // Descending order
-                }
-            } else if ($numberA !== null) {
-                return -1; // A has number, B doesn't - A comes first
-            } else if ($numberB !== null) {
-                return 1; // B has number, A doesn't - B comes first
-            }
-
-            // Fallback: datePublished (most recent to oldest - descending)
-            $dateA = $a->getDatePublished();
-            $dateB = $b->getDatePublished();
-
-            if ($dateA && $dateB) {
-                return strcmp($dateB, $dateA); // Descending order (string comparison)
-            } else if ($dateA) {
-                return -1; // A has date, B doesn't - A comes first
-            } else if ($dateB) {
-                return 1; // B has date, A doesn't - B comes first
-            }
-
-            // If all else is equal, maintain original order
-            return 0;
-        });
+        usort($allIssues, [self::class, 'compareIssuesForOrder']);
 
         $issueDao->deleteCustomIssueOrdering($journalId);
 
@@ -274,19 +217,181 @@ class IssueProcessor
             $sequence++;
         }
 
-        $mostRecentIssue = $allIssues[0];
-        if (!self::importedIssueWouldReplaceNewerExisting($mostRecentIssue, $allIssues, $importedIssueIds)) {
+        // Same decision a dry-run reports: the first issue, unless that would
+        // replace a journal issue that was published later.
+        $selected = self::currentIssueFromSorted($allIssues, $importedIssueIds, null);
+        if ($selected !== null) {
             $issueDao->update(
                 'UPDATE issues SET current = 0 WHERE journal_id = ? AND current = 1',
                 [(int) $journalId]
             );
             $issueDao->update(
                 'UPDATE issues SET current = 1 WHERE issue_id = ?',
-                [(int) $mostRecentIssue->getId()]
+                [(int) $selected->getId()]
             );
         }
         $issueDao->resequenceCustomIssueOrders($journalId);
         $issueDao->flushCache();
+    }
+
+    /**
+     * Issue that would be current after import.
+     *
+     * The list must already include published journal issues and issues that
+     * this import would add. When the import would not change the current
+     * issue, the journal's existing current issue is returned.
+     *
+     * @param \Issue[] $issues
+     * @param array<int, true> $importedIssueIds
+     * @param \Issue|null $existingCurrent
+     *
+     * @return \Issue|null
+     */
+    public static function selectCurrentIssue(array $issues, array $importedIssueIds, $existingCurrent)
+    {
+        if ($issues === []) {
+            return $existingCurrent;
+        }
+
+        usort($issues, [self::class, 'compareIssuesForOrder']);
+
+        return self::currentIssueFromSorted($issues, $importedIssueIds, $existingCurrent);
+    }
+
+    /**
+     * @param \Issue[] $sortedIssues Most recent first
+     * @param array<int, true> $importedIssueIds
+     * @param \Issue|null $existingCurrent
+     *
+     * @return \Issue|null
+     */
+    public static function currentIssueFromSorted(array $sortedIssues, array $importedIssueIds, $existingCurrent)
+    {
+        if ($sortedIssues === []) {
+            return $existingCurrent;
+        }
+
+        $candidate = $sortedIssues[0];
+        if (self::importedIssueWouldReplaceNewerExisting($candidate, $sortedIssues, $importedIssueIds)) {
+            return $existingCurrent;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Year, then volume, then number, then publication date. Most recent first.
+     *
+     * @param \Issue $a
+     * @param \Issue $b
+     *
+     * @return int
+     */
+    public static function compareIssuesForOrder($a, $b)
+    {
+        $yearA = self::extractNumericValue($a->getYear());
+        $yearB = self::extractNumericValue($b->getYear());
+        $volumeA = self::extractNumericValue($a->getVolume());
+        $volumeB = self::extractNumericValue($b->getVolume());
+        $numberA = self::extractNumericValue($a->getNumber());
+        $numberB = self::extractNumericValue($b->getNumber());
+
+        if ($yearA !== null && $yearB !== null) {
+            if ($yearA !== $yearB) {
+                return $yearB <=> $yearA;
+            }
+        } elseif ($yearA !== null) {
+            return -1;
+        } elseif ($yearB !== null) {
+            return 1;
+        }
+
+        if ($volumeA !== null && $volumeB !== null) {
+            if ($volumeA !== $volumeB) {
+                return $volumeB <=> $volumeA;
+            }
+        } elseif ($volumeA !== null) {
+            return -1;
+        } elseif ($volumeB !== null) {
+            return 1;
+        }
+
+        if ($numberA !== null && $numberB !== null) {
+            if ($numberA !== $numberB) {
+                return $numberB <=> $numberA;
+            }
+        } elseif ($numberA !== null) {
+            return -1;
+        } elseif ($numberB !== null) {
+            return 1;
+        }
+
+        $dateA = $a->getDatePublished();
+        $dateB = $b->getDatePublished();
+
+        if ($dateA && $dateB) {
+            return strcmp($dateB, $dateA);
+        } elseif ($dateA) {
+            return -1;
+        } elseif ($dateB) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Label used in the dry-run report. Shows whichever of volume, number,
+     * year, and title the issue actually has.
+     *
+     * @param \Issue $issue
+     *
+     * @return string
+     */
+    public static function describeIssue($issue)
+    {
+        $parts = [];
+        if (!empty($issue->getVolume())) {
+            $parts[] = __('issue.vol') . ' ' . $issue->getVolume();
+        }
+        if (!empty($issue->getNumber())) {
+            $parts[] = __('issue.no') . ' ' . $issue->getNumber();
+        }
+        if (!empty($issue->getYear())) {
+            $year = (string) $issue->getYear();
+            $parts[] = $parts === [] ? $year : '(' . $year . ')';
+        }
+
+        $title = self::issueTitle($issue);
+        if ($title !== '') {
+            if ($parts !== []) {
+                $parts[array_key_last($parts)] .= ':';
+            }
+            $parts[] = $title;
+        }
+
+        return $parts === [] ? '' : implode(' ', $parts);
+    }
+
+    /**
+     * Title stored on the issue, without asking the request for a locale.
+     *
+     * @param \Issue $issue
+     *
+     * @return string
+     */
+    public static function issueTitle($issue)
+    {
+        $locale = $issue->getData('locale');
+        $title = is_string($locale) ? $issue->getData('title', $locale) : null;
+        if (is_string($title) && $title !== '') {
+            return $title;
+        }
+
+        $titles = $issue->getData('title');
+        $first = is_array($titles) ? reset($titles) : $titles;
+
+        return is_string($first) ? $first : '';
     }
 
     /**

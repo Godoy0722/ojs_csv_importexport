@@ -16,6 +16,7 @@
 
 namespace PKP\Plugins\ImportExport\CSV\Classes\Processors;
 
+use Illuminate\Database\Capsule\Manager as Capsule;
 use PKP\Plugins\ImportExport\CSV\Classes\CachedAttributes\CachedDaos;
 
 class PublicationProcessor
@@ -455,5 +456,101 @@ class PublicationProcessor
         $existingAgencies[$data->locale] = $newAgencies;
 
         self::updatePublicationAttribute($publication, 'supportingAgencies', $existingAgencies);
+    }
+
+    /**
+     * Copy a publication cover image onto every locale that does not have one.
+     *
+     * @param array $processedPublications
+     *
+     * @return void
+     */
+    public static function syncCoverImagesForProcessedArticles($processedPublications)
+    {
+        foreach ($processedPublications as $versions) {
+            foreach ($versions as $localeData) {
+                $firstLocaleData = reset($localeData);
+                $publication = $firstLocaleData['publication'];
+                $publicationId = $publication->getId();
+
+                $submissionDao = CachedDaos::getSubmissionDao();
+                $submission = $submissionDao->getById($publication->getData('submissionId'));
+
+                if (!$submission) {
+                    continue;
+                }
+
+                $serverId = $submission->getData('contextId');
+                $serverDao = CachedDaos::getJournalDao();
+                $server = $serverDao->getById($serverId);
+
+                if (!$server) {
+                    continue;
+                }
+
+                $defaultLocale = $server->getData('primaryLocale');
+
+                $coverImageSettings = Capsule::table('publication_settings')
+                    ->where('publication_id', $publicationId)
+                    ->where('setting_name', 'coverImage')
+                    ->get();
+
+                if ($coverImageSettings->isEmpty()) {
+                    continue;
+                }
+
+                $coverImagesByLocale = [];
+                foreach ($coverImageSettings as $setting) {
+                    if (empty($setting->setting_value)) {
+                        continue;
+                    }
+
+                    $coverImageData = json_decode($setting->setting_value, true);
+                    if (!empty($coverImageData)) {
+                        $coverImagesByLocale[$setting->locale] = $coverImageData;
+                    }
+                }
+
+                if (empty($coverImagesByLocale)) {
+                    continue;
+                }
+
+                $sourceCoverImage = null;
+
+                if (isset($coverImagesByLocale[$defaultLocale])) {
+                    $sourceCoverImage = $coverImagesByLocale[$defaultLocale];
+                } else {
+                    foreach ($coverImagesByLocale as $coverImageData) {
+                        if (!empty($coverImageData) && isset($coverImageData['uploadName'])) {
+                            $sourceCoverImage = $coverImageData;
+                            break;
+                        }
+                    }
+                }
+
+                if (!$sourceCoverImage) {
+                    continue;
+                }
+
+                $allPublicationLocales = Capsule::table('publication_settings')
+                    ->where('publication_id', $publicationId)
+                    ->whereNotNull('locale')
+                    ->where('locale', '!=', '')
+                    ->distinct()
+                    ->pluck('locale')
+                    ->toArray();
+
+                foreach ($allPublicationLocales as $locale) {
+                    if (isset($coverImagesByLocale[$locale])) {
+                        continue;
+                    }
+
+                    $reloadedPublication = CachedDaos::getPublicationDao()->getById($publicationId);
+                    if ($reloadedPublication) {
+                        self::updatePublicationAttribute($reloadedPublication, 'coverImage', $sourceCoverImage, $locale);
+                    }
+                }
+            }
+        }
     }
 }

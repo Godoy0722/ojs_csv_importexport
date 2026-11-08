@@ -364,6 +364,18 @@ msgstr "Result: {$passed} passed, {$failed} failed ({$total} total)"
 msgid "plugins.importexport.csv.dryModeGrandTotal"
 msgstr "--- Data Validation complete: {$files} files, {$passed} passed, {$failed} failed ---"
 
+msgid "plugins.importexport.csv.dryModeCurrentIssue"
+msgstr "Current issue after import ({$journalPath}): {$identification} — {$source}."
+
+msgid "plugins.importexport.csv.dryModeCurrentIssueSource.csv"
+msgstr "from the CSV"
+
+msgid "plugins.importexport.csv.dryModeCurrentIssueSource.journal"
+msgstr "already in the journal"
+
+msgid "plugins.importexport.csv.dryModeCurrentIssueNone"
+msgstr "Current issue after import ({$journalPath}): no current issue would be set."
+
 msgid "plugins.importexport.csv.invalidHtmlGalleyFirstFile"
 msgstr "The first HTML galley file must have an .html or .htm extension: \"{$filename}\"."
 
