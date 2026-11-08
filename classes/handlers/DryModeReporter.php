@@ -60,4 +60,23 @@ class DryModeReporter
             'failed' => $failed,
         ]) . "\n";
     }
+
+    /**
+     * Print the current-issue lines with a blank line above and below,
+     * so they stand apart from the validation summary.
+     *
+     * @param list<string> $messages
+     */
+    public static function printCurrentIssues(array $messages): void
+    {
+        if ($messages === []) {
+            return;
+        }
+
+        echo "\n";
+        foreach ($messages as $message) {
+            echo $message . "\n";
+        }
+        echo "\n";
+    }
 }
