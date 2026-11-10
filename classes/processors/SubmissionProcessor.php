@@ -27,8 +27,14 @@ class SubmissionProcessor
     {
         $submission = Repo::submission()->newDataObject();
 
+        $status = (int) ($data->resolvedStatus ?? Submission::STATUS_PUBLISHED);
+        $dateSubmitted = $status === Submission::STATUS_PUBLISHED
+            ? (string) $data->datePublished
+            : (string) ($data->dateSubmitted ?? '');
+
         $submission->setData('contextId', $journal->getId());
-        $submission->setData('status', Submission::STATUS_PUBLISHED);
+        $submission->setData('status', $status);
+        $submission->setData('dateSubmitted', $dateSubmitted);
         $submission->setData('locale', $data->locale);
         $submission->setData('stageId', WORKFLOW_STAGE_ID_PRODUCTION);
         $submission->setData('submissionProgress', '0');

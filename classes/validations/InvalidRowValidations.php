@@ -19,6 +19,7 @@ namespace APP\plugins\importexport\csv\classes\validations;
 use APP\journal\Journal;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\plugins\importexport\csv\classes\exceptions\RowValidationException;
+use APP\submission\Submission;
 use APP\plugins\importexport\csv\classes\processors\AuthorsProcessor;
 use APP\plugins\importexport\csv\classes\processors\FundersProcessor;
 use APP\publication\Publication;
@@ -59,6 +60,52 @@ class InvalidRowValidations
         }
 
         return $resolvedPath !== false ? $resolvedPath : $candidatePath;
+    }
+
+    /**
+     * Words only. An empty cell is published.
+     *
+     * @throws RowValidationException
+     */
+    public static function resolveSubmissionStatus(?string $status): int
+    {
+        $status = strtolower(trim((string) $status));
+
+        return match ($status) {
+            '', 'published' => Submission::STATUS_PUBLISHED,
+            'queued' => Submission::STATUS_QUEUED,
+            'scheduled' => Submission::STATUS_SCHEDULED,
+            default => throw new RowValidationException(__('plugins.importexport.csv.invalidSubmissionStatus')),
+        };
+    }
+
+    /**
+     * The datePublished cell of a queued or scheduled row, used only as dateSubmitted.
+     *
+     * @throws RowValidationException
+     */
+    public static function submissionDateFromPublicationCell(?string $date): ?string
+    {
+        return static::validateDateFormat($date, 'datePublished', false);
+    }
+
+    /**
+     * Private submission files, separated by semicolons.
+     *
+     * @throws RowValidationException
+     */
+    public static function validateSubmissionFiles(string $filenames, string $sourceDir): void
+    {
+        foreach (array_map('trim', explode(';', $filenames)) as $filename) {
+            if ($filename === '') {
+                continue;
+            }
+
+            static::validatePathWithinSourceDir($filename, $sourceDir);
+            if (!is_readable("{$sourceDir}/{$filename}")) {
+                throw new RowValidationException(__('plugins.importexport.csv.invalidGalleyFile', ['filename' => $filename]));
+            }
+        }
     }
 
     /**

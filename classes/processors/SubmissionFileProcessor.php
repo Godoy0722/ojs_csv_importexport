@@ -58,6 +58,36 @@ class SubmissionFileProcessor
         return Repo::submissionFile()->get($submissionFileId);
 	}
 
+    /**
+     * A private file on the submission stage. It is not attached to a galley.
+     */
+    public static function processPrivate(
+        string $locale,
+        int $userId,
+        int $submissionId,
+        string $filePath,
+        int $genreId,
+        int $fileId
+    ): SubmissionFile {
+        $submissionFile = Repo::submissionFile()->newDataObject();
+
+        $submissionFile->setData('submissionId', $submissionId);
+        $submissionFile->setData('uploaderUserId', $userId);
+        $submissionFile->setData('fileId', $fileId);
+        $submissionFile->setData('genreId', $genreId);
+        $submissionFile->setData('fileStage', SubmissionFile::SUBMISSION_FILE_SUBMISSION);
+        $submissionFile->setData('createdAt', Core::getCurrentDate());
+        $submissionFile->setData('updatedAt', Core::getCurrentDate());
+        $submissionFile->setData('mimetype', PKPString::mime_content_type($filePath));
+        $submissionFile->setData('locale', $locale);
+        $submissionFile->setData('name', basename($filePath));
+        $submissionFile->setViewable(true);
+
+        $submissionFileId = Repo::submissionFile()->add($submissionFile);
+
+        return Repo::submissionFile()->get($submissionFileId);
+    }
+
     public static function updateAssocInfo(SubmissionFile $submissionFile, int $galleyId)
     {
         Repo::submissionFile()->edit($submissionFile,

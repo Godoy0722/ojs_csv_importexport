@@ -20,6 +20,7 @@ use APP\facades\Repo;
 use APP\issue\Issue;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\publication\Publication;
+use APP\submission\Submission;
 use PKP\core\Core;
 use PKP\core\PKPString;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class IssueProcessor
 	 * Processes data for the Issue. If there's no issue registered, a new one will be created and attached
 	 * to the submission.
 	 */
-	public static function process(int $journalId, object $data, ?Publication $basePublication = null): Issue
+	public static function process(int $journalId, object $data, ?Publication $basePublication = null, bool $published = true): Issue
     {
         if (!is_null($basePublication)) {
             $hasIssueData = !empty($data->issueVolume)
@@ -60,7 +61,7 @@ class IssueProcessor
             $issue->setShowNumber(!empty($data->issueNumber));
             $issue->setShowYear(!empty($data->issueYear));
             $issue->setShowTitle(!empty($data->issueTitle));
-            $issue->setPublished(true);
+            $issue->setPublished($published);
             $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : null);
             $issue->setDescription($sanitizedIssueDescription, $data->locale);
             $issue->setAccessStatus(Issue::ISSUE_ACCESS_OPEN);
@@ -85,9 +86,20 @@ class IssueProcessor
 
             $issueId = Repo::issue()->add($issue);
             $issue = Repo::issue()->get($issueId);
-        } elseif (!empty($data->issueTitle) && empty($issue->getShowTitle())) {
-            $issue->setShowTitle(1);
-            Repo::issue()->edit($issue, []);
+            $issue->setPublished($published);
+        } else {
+            $changed = false;
+            if (!empty($data->issueTitle) && empty($issue->getShowTitle())) {
+                $issue->setShowTitle(1);
+                $changed = true;
+            }
+            if ($published && !$issue->getPublished()) {
+                $issue->setPublished(true);
+                $changed = true;
+            }
+            if ($changed) {
+                Repo::issue()->edit($issue, []);
+            }
         }
 
         return $issue;
@@ -111,6 +123,7 @@ class IssueProcessor
                 ->join('publication_settings as ps', 'ps.publication_id', '=', 'p.publication_id')
                 ->where('ps.setting_name', 'issueId')
                 ->where('ps.setting_value', (string) $issue->getId())
+                ->where('p.status', Submission::STATUS_PUBLISHED)
                 ->max('p.date_published');
 
             $issue->setDatePublished($result ?: Core::getCurrentDate());

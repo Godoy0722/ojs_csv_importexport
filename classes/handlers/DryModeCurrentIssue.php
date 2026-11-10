@@ -18,6 +18,7 @@ namespace APP\plugins\importexport\csv\classes\handlers;
 
 use APP\facades\Repo;
 use APP\issue\Issue;
+use APP\submission\Submission;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
 use APP\plugins\importexport\csv\classes\processors\IssueProcessor;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +59,7 @@ class DryModeCurrentIssue
         if ($issueDate === '') {
             $articleDate = DB::table('publications')
                 ->where('issue_id', $issue->getId())
+                ->where('status', Submission::STATUS_PUBLISHED)
                 ->max('date_published');
             $articleDate = $this->issueField($articleDate);
         }
@@ -73,6 +75,7 @@ class DryModeCurrentIssue
             'locale' => $this->issueField($issue->getData('locale')),
             'issueDatePublished' => '',
             'articleDatePublished' => '',
+            'published' => false,
         ];
 
         // A later row can see an issue created earlier in this import. That
@@ -81,6 +84,10 @@ class DryModeCurrentIssue
             $snapshot['createdByImport'] = true;
         } elseif (!$snapshot['createdByImport']) {
             $snapshot['issueId'] = (int) $issue->getId();
+        }
+
+        if ($issue->getPublished()) {
+            $snapshot['published'] = true;
         }
 
         if ($issueDate !== '') {
@@ -185,6 +192,10 @@ class DryModeCurrentIssue
         $nextVirtualId = -1;
 
         foreach ($snapshots as $snapshot) {
+            if (empty($snapshot['published'])) {
+                continue;
+            }
+
             $match = $existingById[$snapshot['issueId']] ?? $existingByIdentity[$this->issueIdentity(
                 $journalId,
                 $snapshot['volume'],
@@ -218,7 +229,7 @@ class DryModeCurrentIssue
         $issue = new Issue();
         $issue->setId($virtualId);
         $issue->setJournalId($snapshot['journalId']);
-        $issue->setPublished(true);
+        $issue->setPublished(!empty($snapshot['published']));
         if ($snapshot['volume'] !== '') {
             $issue->setVolume($snapshot['volume']);
             $issue->setShowVolume(true);

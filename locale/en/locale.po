@@ -78,6 +78,9 @@ msgstr "Row contains more fields than expected."
 msgid "plugins.importexport.csv.invalidDateFormat"
 msgstr "Invalid date format for {$fieldName}. Use YYYY-MM-DD (for example, 2024-01-15) or DD/MM/YYYY (for example, 15/01/2024)."
 
+msgid "plugins.importexport.csv.invalidSubmissionStatus"
+msgstr "Unknown article status. Use published, queued, or scheduled. Leave the cell empty to publish the article."
+
 msgid "plugins.importexport.csv.duplicateDoi"
 msgstr "The DOI \"{$doi}\" already exists in this journal."
 
