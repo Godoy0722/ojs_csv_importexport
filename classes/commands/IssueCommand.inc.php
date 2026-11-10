@@ -30,6 +30,7 @@ use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeFileTracker;
 use PKP\Plugins\ImportExport\CSV\Classes\Handlers\DryModeReporter;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\AuthorsProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\CategoriesProcessor;
+use PKP\Plugins\ImportExport\CSV\Classes\Processors\CurrentPublicationSelector;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\FundersProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\GalleyProcessor;
 use PKP\Plugins\ImportExport\CSV\Classes\Processors\HtmlGalleyProcessor;
@@ -243,6 +244,13 @@ class IssueCommand
                         array_pad(array_map('trim', $fields), $this->_expectedRowSize, null)
                     );
 
+                    $data->resolvedStatus = InvalidRowValidations::resolveSubmissionStatus(isset($data->submissionStatus) ? $data->submissionStatus : null);
+                    $storedStatus = $this->_storedStatusForExtraLocale($data);
+                    if ($storedStatus !== null) {
+                        $data->resolvedStatus = $storedStatus;
+                    }
+                    $rowIsPublished = (int) $data->resolvedStatus === STATUS_PUBLISHED;
+
                     if (
                         !empty($data->versionIdentifier)
                         && !empty($data->version)
@@ -278,11 +286,17 @@ class IssueCommand
                         }
                     }
 
-                    $data->datePublished = InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
+                    if ($rowIsPublished) {
+                        $data->datePublished = InvalidRowValidations::validateDateFormat($data->datePublished ?? '', 'datePublished', true);
+                        InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
+                        InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
+                    } else {
+                        $data->dateSubmitted = InvalidRowValidations::submissionDateFromPublicationCell($data->datePublished ?? null);
+                        $data->datePublished = null;
+                        $data->articleViews = null;
+                        $data->galleyViews = null;
+                    }
                     $data->issuePublicationDate = InvalidRowValidations::validateDateFormat($data->issuePublicationDate ?? null, 'issuePublicationDate', false);
-
-                    InvalidRowValidations::validateGalleyViews($data->galleyViews ?? null, $data->galleyLabels ?? null);
-                    InvalidRowValidations::validatePublicationViews($data->articleViews ?? null, 'articleViews');
 
                     if ($data->funders) {
                         InvalidRowValidations::validateFunders($data->funders);
@@ -302,6 +316,10 @@ class IssueCommand
                             $data->suppLabels,
                             $data->suppDescriptions
                         );
+                    }
+
+                    if (!empty($data->submissionFiles)) {
+                        InvalidRowValidations::validateSubmissionFiles($data->submissionFiles, $this->_sourceDir);
                     }
 
                     if ($data->references) {
@@ -595,8 +613,31 @@ class IssueCommand
                         }
                     }
 
+                    if (!$this->_dryMode && !empty($data->submissionFiles)) {
+                        foreach (array_map('trim', explode(';', $data->submissionFiles)) as $submissionFile) {
+                            if ($submissionFile === '') {
+                                continue;
+                            }
+
+                            $submissionFileId = $this->_saveSubmissionFile(
+                                $submissionFile,
+                                $journal->getId(),
+                                $submission->getId(),
+                                __('plugins.importexport.csv.invalidGalleyFile', ['filename' => $submissionFile])
+                            );
+                            SubmissionFileProcessor::processPrivate(
+                                $data->locale,
+                                $fileUploadUser->getId(),
+                                $submission->getId(),
+                                $this->_sourceDir . '/' . $submissionFile,
+                                $genreId,
+                                $submissionFileId
+                            );
+                        }
+                    }
+
                     import('plugins.importexport.csv.classes.processors.StatisticsProcessor');
-                    if (!empty($data->articleViews) && (int)$data->articleViews > 0) {
+                    if ($rowIsPublished && !empty($data->articleViews) && (int)$data->articleViews > 0) {
                         StatisticsProcessor::insertSubmissionViews(
                             $submission->getId(),
                             $journal->getId(),
@@ -604,7 +645,7 @@ class IssueCommand
                         );
                     }
 
-                    if (!empty($data->galleyViews) && !empty($galleyMetadata)) {
+                    if ($rowIsPublished && !empty($data->galleyViews) && !empty($galleyMetadata)) {
                         $galleyViewsArray = explode(';', $data->galleyViews);
 
                         foreach ($galleyViewsArray as $idx => $views) {
@@ -676,7 +717,8 @@ class IssueCommand
                     import('plugins.importexport.csv.classes.processors.IssueProcessor');
                     $existingIssue = CachedEntities::getCachedIssue($data, $journal->getId());
                     $createdByImport = $existingIssue === null;
-                    $issue = IssueProcessor::process($journal->getId(), $data, $basePublication);
+                    $issueIsPublished = $rowIsPublished || ($existingIssue !== null && (bool) $existingIssue->getPublished());
+                    $issue = IssueProcessor::process($journal->getId(), $data, $basePublication, $issueIsPublished);
                     if ($isMultiLocaleImport) {
                         $issue = IssueProcessor::processMultiLocale($issue, $data);
                     }
@@ -978,34 +1020,40 @@ class IssueCommand
      */
     private function _setCurrentVersionsForProcessedArticles()
     {
-        foreach ($this->_processedPublications as $identifier => $versions) {
-            if (count($versions) <= 1) {
-                continue; // Skip if only one version exists
-            }
+        import('plugins.importexport.csv.classes.processors.CurrentPublicationSelector');
 
-            $highestVersion = 0;
-            $currentVersionData = null;
-
-            foreach ($versions as $versionKey => $versionData) {
-                $firstLocaleData = reset($versionData);
-
-				if (!$firstLocaleData || !isset($firstLocaleData['data'])) {
-                    continue;
-                }
-
-                $versionNumber = (int)$firstLocaleData['data']->version;
-                if ($versionNumber > $highestVersion) {
-                    $highestVersion = $versionNumber;
-                    $currentVersionData = $firstLocaleData;
-                }
-            }
-
-            if ($currentVersionData) {
-                $submission = $currentVersionData['submission'];
-                $publication = $currentVersionData['publication'];
-
-                SubmissionProcessor::updateCurrentPublicationId($submission, $publication->getId());
-            }
+        foreach ($this->_processedPublications as $versions) {
+            CurrentPublicationSelector::apply($versions);
         }
+    }
+
+    /**
+     * A later locale row keeps the status stored by the first row of that version.
+     *
+     * @param object $data
+     * @return int|null
+     */
+    private function _storedStatusForExtraLocale($data)
+    {
+        if (empty($data->versionIdentifier) || empty($data->version)) {
+            return null;
+        }
+
+        $version = (int) $data->version;
+        if (!isset($this->_processedPublications[$data->versionIdentifier][$version])) {
+            return null;
+        }
+
+        $locales = $this->_processedPublications[$data->versionIdentifier][$version];
+        if (isset($locales[$data->locale])) {
+            return null;
+        }
+
+        $first = reset($locales);
+        if (empty($first['publication'])) {
+            return null;
+        }
+
+        return (int) $first['publication']->getData('status');
     }
 }

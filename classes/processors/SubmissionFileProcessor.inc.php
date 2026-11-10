@@ -64,6 +64,40 @@ class SubmissionFileProcessor
 	}
 
     /**
+     * A private file on the submission stage. It is not attached to a galley.
+     *
+     * @param string $locale
+     * @param int $userId
+     * @param int $submissionId
+     * @param string $filePath
+     * @param int $genreId
+     * @param int $fileId
+     *
+     * @return \SubmissionFile
+     */
+    public static function processPrivate($locale, $userId, $submissionId, $filePath, $genreId, $fileId)
+    {
+        $submissionFileDao = CachedDaos::getSubmissionFileDao();
+
+        /** @var \SubmissionFile $submissionFile */
+        $submissionFile = $submissionFileDao->newDataObject();
+        $submissionFile->setData('submissionId', $submissionId);
+        $submissionFile->setData('uploaderUserId', $userId);
+        $submissionFile->setData('locale', $locale);
+        $submissionFile->setData('genreId', $genreId);
+        $submissionFile->setData('fileStage', SUBMISSION_FILE_SUBMISSION);
+        $submissionFile->setData('createdAt', \Core::getCurrentDate());
+        $submissionFile->setData('updatedAt', \Core::getCurrentDate());
+        $submissionFile->setData('mimetype', \PKPString::mime_content_type($filePath));
+        $submissionFile->setData('fileId', $fileId);
+        $submissionFile->setData('name', basename($filePath));
+        $submissionFile->setViewable(true);
+
+        $submissionFileDao->insertObject($submissionFile);
+        return $submissionFile;
+    }
+
+    /**
      * Updates the association information for the submission file
 	 *
 	 * @param \SubmissionFile $submissionFile

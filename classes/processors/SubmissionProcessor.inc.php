@@ -37,7 +37,12 @@ class SubmissionProcessor
 		$submission->setData('contextId', $journalId);
 		$submission->stampLastActivity();
 		$submission->stampModified();
-		$submission->setData('status', STATUS_PUBLISHED);
+		$status = isset($data->resolvedStatus) ? (int) $data->resolvedStatus : STATUS_PUBLISHED;
+		$dateSubmitted = $status === STATUS_PUBLISHED
+			? (string) $data->datePublished
+			: (string) (isset($data->dateSubmitted) ? $data->dateSubmitted : '');
+		$submission->setData('status', $status);
+		$submission->setData('dateSubmitted', $dateSubmitted);
 		$submission->setData('locale', $data->locale);
 		$submission->setData('stageId', WORKFLOW_STAGE_ID_PRODUCTION);
 		$submission->setData('submissionProgress', '0');

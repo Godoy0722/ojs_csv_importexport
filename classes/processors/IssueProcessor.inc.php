@@ -31,7 +31,7 @@ class IssueProcessor
 	 *
 	 * @return \Issue
 	 */
-	public static function process($journalId, $data, $basePublication = null)
+	public static function process($journalId, $data, $basePublication = null, $published = true)
     {
         if (!is_null($basePublication)) {
             $hasIssueData = !empty($data->issueVolume)
@@ -65,7 +65,7 @@ class IssueProcessor
             $issue->setShowNumber(!empty($data->issueNumber));
             $issue->setShowYear(!empty($data->issueYear));
             $issue->setShowTitle(!empty($data->issueTitle));
-            $issue->setPublished(true);
+            $issue->setPublished($published);
             // A null date published flags the issue to have its date defined from its articles
             // at the end of the CSV file processing.
             $issue->setDatePublished(!empty($data->issuePublicationDate) ? $data->issuePublicationDate : null);
@@ -91,9 +91,19 @@ class IssueProcessor
             }
 
             $issueDao->insertObject($issue);
-        } elseif (!empty($data->issueTitle) && empty($issue->getShowTitle())) {
-            $issue->setShowTitle(1);
-            CachedDaos::getIssueDao()->updateObject($issue);
+        } else {
+            $changed = false;
+            if (!empty($data->issueTitle) && empty($issue->getShowTitle())) {
+                $issue->setShowTitle(1);
+                $changed = true;
+            }
+            if ($published && !$issue->getPublished()) {
+                $issue->setPublished(true);
+                $changed = true;
+            }
+            if ($changed) {
+                CachedDaos::getIssueDao()->updateObject($issue);
+            }
         }
 
         return $issue;
@@ -148,8 +158,8 @@ class IssueProcessor
                 'SELECT MAX(p.date_published) AS max_date
                     FROM publications p
                     INNER JOIN publication_settings ps ON (ps.publication_id = p.publication_id)
-                    WHERE ps.setting_name = \'issueId\' AND ps.setting_value = ?',
-                [(string) $issue->getId()]
+                    WHERE ps.setting_name = \'issueId\' AND ps.setting_value = ? AND p.status = ?',
+                [(string) $issue->getId(), STATUS_PUBLISHED]
             );
 
             $row = $result->current();

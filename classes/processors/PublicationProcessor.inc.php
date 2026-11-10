@@ -41,8 +41,11 @@ class PublicationProcessor
         $publication->stampModified();
 		$publication->setData('submissionId', $submission->getId());
 		$publication->setData('version', 1);
-		$publication->setData('status', STATUS_PUBLISHED);
-		$publication->setData('datePublished', $data->datePublished);
+		$status = isset($data->resolvedStatus) ? (int) $data->resolvedStatus : STATUS_PUBLISHED;
+		$publication->setData('status', $status);
+		if ($status === STATUS_PUBLISHED) {
+			$publication->setData('datePublished', $data->datePublished);
+		}
 		$publication->setData('abstract', $sanitizedAbstract, $locale);
 		$publication->setData('title', $data->articleTitle, $locale);
 
@@ -220,8 +223,9 @@ class PublicationProcessor
     {
         $newPublication = clone $basePublication;
         $newPublication->setData('id', null);
+        $status = isset($data->resolvedStatus) ? (int) $data->resolvedStatus : STATUS_PUBLISHED;
         $newPublication->setData('datePublished', null);
-        $newPublication->setData('status', STATUS_PUBLISHED);
+        $newPublication->setData('status', $status);
         $newPublication->setData('version', (int)$data->version);
         $newPublication->stampModified();
 
@@ -263,10 +267,13 @@ class PublicationProcessor
      */
     public static function processVersionedPublication($publication, $data, $basePublication, $sourceDir)
     {
+        $status = isset($data->resolvedStatus) ? (int) $data->resolvedStatus : STATUS_PUBLISHED;
         self::updatePublicationAttribute($publication, 'version', (int)$data->version);
-        self::updatePublicationAttribute($publication, 'status', STATUS_PUBLISHED);
+        self::updatePublicationAttribute($publication, 'status', $status);
 
-        $datePublished = !empty($data->datePublished) ? $data->datePublished : $basePublication->getData('datePublished');
+        $datePublished = $status === STATUS_PUBLISHED
+            ? (!empty($data->datePublished) ? $data->datePublished : $basePublication->getData('datePublished'))
+            : null;
         self::updatePublicationAttribute($publication, 'datePublished', $datePublished);
 
 		$localizedFields = [

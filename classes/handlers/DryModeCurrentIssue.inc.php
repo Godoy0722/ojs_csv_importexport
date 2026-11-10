@@ -70,8 +70,8 @@ class DryModeCurrentIssue
                 'SELECT MAX(p.date_published) AS max_date
                     FROM publications p
                     INNER JOIN publication_settings ps ON (ps.publication_id = p.publication_id)
-                    WHERE ps.setting_name = ? AND ps.setting_value = ?',
-                ['issueId', (string) $issue->getId()]
+                    WHERE ps.setting_name = ? AND ps.setting_value = ? AND p.status = ?',
+                ['issueId', (string) $issue->getId(), STATUS_PUBLISHED]
             );
             $row = $result->current();
             $articleDate = $this->_issueField($row ? $row->max_date : null);
@@ -90,6 +90,7 @@ class DryModeCurrentIssue
                 'locale' => $this->_issueField($issue->getData('locale')),
                 'issueDatePublished' => '',
                 'articleDatePublished' => '',
+                'published' => false,
             ];
 
         // A later row can see an issue created earlier in this import. That
@@ -98,6 +99,10 @@ class DryModeCurrentIssue
             $snapshot['createdByImport'] = true;
         } elseif (!$snapshot['createdByImport']) {
             $snapshot['issueId'] = (int) $issue->getId();
+        }
+
+        if ($issue->getPublished()) {
+            $snapshot['published'] = true;
         }
 
         if ($issueDate !== '') {
@@ -206,6 +211,10 @@ class DryModeCurrentIssue
         $nextVirtualId = -1;
 
         foreach ($snapshots as $snapshot) {
+            if (empty($snapshot['published'])) {
+                continue;
+            }
+
             $identity = $this->_issueIdentity(
                 $journalId,
                 $snapshot['volume'],
@@ -248,7 +257,7 @@ class DryModeCurrentIssue
         $issue = new \Issue();
         $issue->setId($virtualId);
         $issue->setJournalId($snapshot['journalId']);
-        $issue->setPublished(true);
+        $issue->setPublished(!empty($snapshot['published']));
         if ($snapshot['volume'] !== '') {
             $issue->setVolume($snapshot['volume']);
             $issue->setShowVolume(true);

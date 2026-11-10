@@ -64,6 +64,63 @@ class InvalidRowValidations
     }
 
     /**
+     * Words only. An empty cell is published.
+     *
+     * @param string|null $status
+     * @throws RowValidationException
+     * @return int
+     */
+    public static function resolveSubmissionStatus($status)
+    {
+        $status = strtolower(trim((string) $status));
+
+        if ($status === '' || $status === 'published') {
+            return STATUS_PUBLISHED;
+        }
+        if ($status === 'queued') {
+            return STATUS_QUEUED;
+        }
+        if ($status === 'scheduled') {
+            return STATUS_SCHEDULED;
+        }
+
+        throw new RowValidationException(__('plugins.importexport.csv.invalidSubmissionStatus'));
+    }
+
+    /**
+     * The datePublished cell of a queued or scheduled row, used only as dateSubmitted.
+     *
+     * @param string|null $date
+     * @throws RowValidationException
+     * @return string|null
+     */
+    public static function submissionDateFromPublicationCell($date)
+    {
+        return self::validateDateFormat($date, 'datePublished', false);
+    }
+
+    /**
+     * Private submission files, separated by semicolons.
+     *
+     * @param string $filenames
+     * @param string $sourceDir
+     * @throws RowValidationException
+     */
+    public static function validateSubmissionFiles($filenames, $sourceDir)
+    {
+        foreach (array_map('trim', explode(';', $filenames)) as $filename) {
+            if ($filename === '') {
+                continue;
+            }
+
+            self::validatePathWithinSourceDir($filename, $sourceDir);
+            if (!is_readable("{$sourceDir}/{$filename}")) {
+                throw new RowValidationException(__('plugins.importexport.csv.invalidGalleyFile', ['filename' => $filename]));
+            }
+        }
+    }
+
+    /**
      * Validates whether the CSV row contains all fields.
      *
      * @throws RowValidationException
