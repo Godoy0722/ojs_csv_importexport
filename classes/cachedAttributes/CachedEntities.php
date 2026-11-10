@@ -21,6 +21,7 @@ use APP\facades\Repo;
 use APP\issue\Issue;
 use APP\journal\Journal;
 use APP\subscription\SubscriptionType;
+use APP\plugins\importexport\csv\classes\validations\InvalidRowValidations;
 use APP\plugins\importexport\csv\shared\cachedAttributes\CachedEntities as SharedCachedEntities;
 
 class CachedEntities extends SharedCachedEntities
@@ -103,7 +104,11 @@ class CachedEntities extends SharedCachedEntities
         return self::$subscriptionTypes[$subscriptionType] ??= CachedDaos::getSubscriptionTypeDao()->getById((int) $subscriptionType, $journalId);
     }
 
-    /** Retrieves all existing DOIs for a journal, cached statically. Returns assoc array [doi => true]. */
+    /**
+     * DOIs already stored for the journal, keyed by the normalized DOI URL.
+     *
+     * @return array<string,bool>
+     */
     static function getExistingDois(int $journalId): array
     {
         if (isset(static::$existingDoisByJournal[$journalId])) {
@@ -118,7 +123,10 @@ class CachedEntities extends SharedCachedEntities
 
         $map = [];
         foreach ($dois as $doi) {
-            $map[$doi] = true;
+            $normalized = InvalidRowValidations::normalizeVorDoi((string) $doi);
+            if ($normalized !== null) {
+                $map[$normalized] = true;
+            }
         }
 
         return static::$existingDoisByJournal[$journalId] = $map;
