@@ -18,10 +18,55 @@ namespace APP\plugins\importexport\csv\classes\validations;
 
 use APP\plugins\importexport\csv\shared\exceptions\RowValidationException;
 use APP\plugins\importexport\csv\shared\validations\InvalidRowValidations as SharedInvalidRowValidations;
+use APP\submission\Submission;
 use APP\subscription\SubscriptionType;
 
 class InvalidRowValidations extends SharedInvalidRowValidations
 {
+    /**
+     * Words only. An empty cell is published. Numbers and any other word are rejected.
+     *
+     * @throws RowValidationException
+     */
+    public static function resolveSubmissionStatus(?string $status): int
+    {
+        $status = strtolower(trim((string) $status));
+
+        return match ($status) {
+            '', 'published' => Submission::STATUS_PUBLISHED,
+            'queued' => Submission::STATUS_QUEUED,
+            'scheduled' => Submission::STATUS_SCHEDULED,
+            default => throw new RowValidationException(__('plugins.importexport.csv.invalidSubmissionStatus')),
+        };
+    }
+
+    /**
+     * A published row keeps a valid publication date. A queued or scheduled row
+     * stores no publication date. A filled cell on those rows is kept separately
+     * as the submission date.
+     *
+     * @throws RowValidationException
+     */
+    public static function normalizePublicationDate(int $status, ?string $date): ?string
+    {
+        if ($status !== Submission::STATUS_PUBLISHED) {
+            return null;
+        }
+
+        return static::validateDateFormat($date ?? '', 'datePublished', true);
+    }
+
+    /**
+     * The datePublished cell of a queued or scheduled row, used only as dateSubmitted.
+     * The publication date stays empty. An empty cell returns null.
+     *
+     * @throws RowValidationException
+     */
+    public static function submissionDateFromPublicationCell(?string $date): ?string
+    {
+        return static::validateDateFormat($date, 'datePublished', false);
+    }
+
     /**
      * Validates if the subscription dates are valid.
      *

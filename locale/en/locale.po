@@ -164,7 +164,7 @@ msgid "plugins.importexport.csv.help.users.detailed"
 msgstr "Import user accounts with comprehensive profile information, role assignments, and subscription details. Your CSV file should include columns such as username, email, first name, last name, affiliation, country, journal path, and role. New users are created with encrypted passwords and can be assigned to specific journals and roles. When a row matches an existing user by email, profile data is updated but username, password, and roles are left unchanged. Enable the welcome email option to automatically notify new users of their account creation."
 
 msgid "plugins.importexport.csv.help.issues.detailed"
-msgstr "Import complete journal issues including articles, metadata, and associated files. Your CSV file should contain detailed information about each article including title, abstract, authors, keywords, DOI, publication dates, and file paths. The system will automatically create issues, articles, publications, and link all associated files. Ensure all referenced files exist in your source directory before importing."
+msgstr "Import complete journal issues including articles, metadata, and associated files. Your CSV file should contain detailed information about each article including title, abstract, authors, keywords, DOI, publication dates, and file paths. The system will automatically create issues, articles, publications, and link all associated files. Ensure all referenced files exist in your source directory before importing. submissionStatus accepts published, queued, or scheduled, and an empty cell means published. datePublished is required. On a published row it is the publication date. On a queued or scheduled row it is saved as the submission date and the article has no publication date. articleViews and galleyViews on those rows are ignored."
 
 msgid "plugins.importexport.csv.help.fileFormat"
 msgstr "CSV File Format Requirements"
@@ -219,6 +219,9 @@ msgstr "<b>Need an example?</b> You can view and download ready-to-use sample CS
 
 msgid "plugins.importexport.csv.invalidDateFormat"
 msgstr "Invalid date format for {$fieldName}. Use YYYY-MM-DD (for example, 2024-01-15) or DD/MM/YYYY (for example, 15/01/2024)."
+
+msgid "plugins.importexport.csv.invalidSubmissionStatus"
+msgstr "Unknown article status. Use published, queued, or scheduled. Leave the cell empty to publish the article."
 
 msgid "plugins.importexport.csv.duplicateDoi"
 msgstr "The DOI \"{$doi}\" already exists in this journal."

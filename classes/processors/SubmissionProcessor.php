@@ -20,11 +20,24 @@ use APP\journal\Journal;
 use APP\publication\Publication;
 use APP\submission\Submission;
 use APP\plugins\importexport\csv\shared\processors\SubmissionProcessor as SharedSubmissionProcessor;
+
 class SubmissionProcessor extends SharedSubmissionProcessor
 {
     public static function process(object $data, Publication $publication, Journal $journal): Submission
     {
         $normalizedAbstract = PublicationProcessor::normalizeAbstractToHtml($data->articleAbstract);
-        return parent::processCommons($data->locale, $publication, $journal, $normalizedAbstract, $data->datePublished);
+        $status = (int) ($data->resolvedStatus ?? Submission::STATUS_PUBLISHED);
+        $dateSubmitted = $status === Submission::STATUS_PUBLISHED
+            ? (string) $data->datePublished
+            : (string) $data->dateSubmitted;
+
+        return parent::processCommons(
+            $data->locale,
+            $publication,
+            $journal,
+            $normalizedAbstract,
+            $dateSubmitted,
+            $status
+        );
     }
 }
