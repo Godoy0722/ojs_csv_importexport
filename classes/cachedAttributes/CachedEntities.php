@@ -327,7 +327,7 @@ class CachedEntities
     }
 
     /**
-     * DOIs already stored for the journal, keyed by the normalized DOI URL.
+     * DOIs already stored for the journal, from the dois table and from publication_settings, keyed by the normalized DOI URL.
      *
      * @return array<string,bool>
      */
@@ -343,8 +343,18 @@ class CachedEntities
             ->distinct()
             ->pluck('doi');
 
+        // This importer stores the article DOI in publication_settings.
+        $settingDois = DB::table('publication_settings as ps')
+            ->join('publications as p', 'p.publication_id', '=', 'ps.publication_id')
+            ->join('submissions as s', 's.submission_id', '=', 'p.submission_id')
+            ->where('s.context_id', $journalId)
+            ->where('ps.setting_name', 'pub-id::doi')
+            ->whereNotNull('ps.setting_value')
+            ->distinct()
+            ->pluck('ps.setting_value');
+
         $map = [];
-        foreach ($dois as $doi) {
+        foreach ($dois->merge($settingDois) as $doi) {
             $normalized = InvalidRowValidations::normalizeVorDoi((string) $doi);
             if ($normalized !== null) {
                 $map[$normalized] = true;
