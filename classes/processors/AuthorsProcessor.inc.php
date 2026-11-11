@@ -236,6 +236,7 @@ class AuthorsProcessor
 	 *
 	 * Format: GivenName,FamilyName,Email,ORCiD,Affiliation,Biography
 	 * Commas inside quotes stay in that field.
+	 * Several institutions in Affiliation are separated by `|` and stored in the one affiliation field, divided by `;`.
 	 *
 	 * @param string $authorString
 	 *
@@ -250,9 +251,22 @@ class AuthorsProcessor
 			'familyName' => $authorParts[1] ?? '',
 			'emailAddress' => $authorParts[2] ?? '',
 			'orcid' => $authorParts[3] ?? '',
-			'affiliation' => $authorParts[4] ?? '',
+			'affiliation' => self::joinAffiliations($authorParts[4] ?? ''),
 			'biography' => $authorParts[5] ?? '',
 		];
+	}
+
+	/**
+	 * Keep several institutions in the single affiliation string.
+	 * The CSV divides them with `|`; this version stores that divider as `;`.
+	 *
+	 * @param string $affiliation
+	 *
+	 * @return string
+	 */
+	private static function joinAffiliations($affiliation)
+	{
+		return str_replace('|', ';', $affiliation);
 	}
 
 	/**
