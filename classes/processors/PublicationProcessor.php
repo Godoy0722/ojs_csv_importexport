@@ -31,7 +31,6 @@ class PublicationProcessor extends SharedPublicationProcessor
             'title' => 'articleTitle',
             'subtitle' => 'articleSubtitle',
             'abstract' => 'articleAbstract',
-            'prefix' => 'articlePrefix',
             'coverage' => 'coverage',
             'copyrightHolder' => 'copyrightHolder',
         ];
@@ -65,10 +64,6 @@ class PublicationProcessor extends SharedPublicationProcessor
 
         if (!empty($data->articleAbstract)) {
             $submissionPublication->setData('abstract', $data->articleAbstract, $data->locale);
-        }
-
-        if (!empty($data->articlePrefix)) {
-            $submissionPublication->setData('prefix', $data->articlePrefix, $data->locale);
         }
 
         if (!empty($data->startPage) && !empty($data->endPage)) {

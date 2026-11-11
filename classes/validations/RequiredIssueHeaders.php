@@ -23,7 +23,6 @@ class RequiredIssueHeaders
         'locale',
 		'versionIdentifier',
 		'version',
-        'articlePrefix',
         'articleTitle',
         'articleSubtitle',
         'articleAbstract',
