@@ -53,10 +53,6 @@ class PublicationProcessor
             $publication->setData('subtitle', $data->articleSubtitle, $locale);
         }
 
-        if ($data->articlePrefix) {
-            $publication->setData('prefix', $data->articlePrefix, $locale);
-        }
-
         if ($data->startPage && $data->endPage) {
             $publication->setData('pages', "{$data->startPage}-{$data->endPage}");
         } elseif ($data->startPage) {
@@ -280,7 +276,6 @@ class PublicationProcessor
             'title' => 'articleTitle',
             'subtitle' => 'articleSubtitle',
             'abstract' => 'articleAbstract',
-            'prefix' => 'articlePrefix',
             'coverage' => 'coverage',
             'copyrightHolder' => 'copyrightHolder',
         ];
@@ -393,7 +388,6 @@ class PublicationProcessor
             'title' => 'articleTitle',
             'subtitle' => 'articleSubtitle',
             'abstract' => 'articleAbstract',
-            'prefix' => 'articlePrefix',
             'coverage' => 'coverage',
             'copyrightHolder' => 'copyrightHolder',
         ];
