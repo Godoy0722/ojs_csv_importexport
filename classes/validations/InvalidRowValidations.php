@@ -108,8 +108,12 @@ class InvalidRowValidations extends SharedInvalidRowValidations
      */
     public static function validateSubscriptionFields(object $data): void
     {
-        if (!RequiredUserHeaders::validateSubscriptionFields($data)) {
-            throw new RowValidationException(__('plugins.importexport.csv.missingSubscriptionFields', ['email' => $data->email]));
+        $missingSubscriptionFields = RequiredUserHeaders::missingSubscriptionFields($data);
+        if ($missingSubscriptionFields !== []) {
+            throw new RowValidationException(__('plugins.importexport.csv.missingSubscriptionFields', [
+                'email' => $data->email,
+                'fields' => implode(', ', $missingSubscriptionFields),
+            ]));
         }
     }
 }

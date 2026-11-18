@@ -62,16 +62,16 @@ msgid "plugins.importexport.csv.invalidBookCoverImage"
 msgstr "The cover image has an invalid format for this row."
 
 msgid "plugins.importexport.csv.erroWhileSavingBookCoverImage"
-msgstr "An error occurred while saving the book cover image."
+msgstr "The cover image \"{$filename}\" could not be saved."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionFile"
 msgstr "An error occurred while saving the Submission file."
 
 msgid "plugins.importexport.csv.errorWhileSavingSupplementaryFile"
-msgstr "An error occurred while saving the supplementary file {$file}."
+msgstr "An error occurred while saving the supplementary file \"{$file}\": {$message}."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
-msgstr "An error occurred while saving the galley {$galley}."
+msgstr "An error occurred while saving the galley \"{$galley}\": {$message}."
 
 msgid "plugins.importexport.csv.abstractRequiredBySection"
 msgstr "Abstract is required for this section but not provided."
@@ -89,7 +89,7 @@ msgid "plugins.importexport.csv.endDateBeforeStartDate"
 msgstr "The subscription end date must be later than the start date."
 
 msgid "plugins.importexport.csv.missingSubscriptionFields"
-msgstr "Missing required subscription fields (start_date and end_date) for user \"{$email}\"."
+msgstr "Missing subscription fields for user \"{$email}\": {$fields}."
 
 msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
 msgstr "Invalid subscription type with ID \"{$subscriptionTypeId}\""

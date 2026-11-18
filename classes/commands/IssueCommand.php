@@ -229,8 +229,8 @@ class IssueCommand
                         );
                     }
 
-                    InvalidRowValidations::validateRowHasAllRequiredFieldsCommons($data, function($row) {
-                        return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->processedArticles);
+                    InvalidRowValidations::validateRowHasAllRequiredFieldsCommons($data, function ($row) {
+                        return RequiredIssueHeaders::missingRequiredFields($row, $this->processedArticles);
                     });
 
                     InvalidRowValidations::validateContextVersioningFields($data);
@@ -387,7 +387,9 @@ class IssueCommand
                             $bookCoverImageSaved = $this->fileManager->copyFile($srcFilePath, $destFilePath);
 
                             if (!$bookCoverImageSaved) {
-                                throw new RowValidationException(__('plugin.importexport.csv.erroWhileSavingBookCoverImage'));
+                                throw new RowValidationException(__('plugins.importexport.csv.erroWhileSavingBookCoverImage', [
+                                    'filename' => $data->coverImageFilename,
+                                ]));
                             }
                         }
                     }
@@ -462,7 +464,8 @@ class IssueCommand
                                 $galleyFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile]),
+                                'plugins.importexport.csv.errorWhileSavingSubmissionGalley',
+                                ['galley' => $galleyFile],
                             );
 
                             if (is_null($galleyFileId)) {
@@ -520,7 +523,8 @@ class IssueCommand
                                 $htmlFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.errorWhileSavingHtmlGalley', ['filename' => $htmlFile]),
+                                'plugins.importexport.csv.errorWhileSavingHtmlGalley',
+                                ['filename' => $htmlFile],
                                 $tempFile
                             );
 
@@ -583,7 +587,8 @@ class IssueCommand
                                 $suppFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.errorWhileSavingSupplementaryFile', ['file' => $suppFile]),
+                                'plugins.importexport.csv.errorWhileSavingSupplementaryFile',
+                                ['file' => $suppFile],
                             );
 
                             if (is_null($suppFileId)) {
@@ -633,7 +638,8 @@ class IssueCommand
                                 $submissionFilename,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.invalidGalleyFile', ['filename' => $submissionFilename]),
+                                'plugins.importexport.csv.invalidGalleyFile',
+                                ['filename' => $submissionFilename],
                             );
 
                             SubmissionFileProcessor::processPrivate(
@@ -896,12 +902,15 @@ class IssueCommand
     /**
      * Save a submission file. If an error occurred, the method will delete the submission already saved
      * and return null.
+     *
+     * $errorParams may include a message placeholder. The caught exception text is added as message.
      */
     private function saveSubmissionFile(
         string $filePath,
         int $journalId,
         Submission $submission,
-        string $reason,
+        string $errorKey,
+        array $errorParams = [],
         ?string $sourcePathOverride = null,
     ): ?int
     {
@@ -914,7 +923,8 @@ class IssueCommand
         } catch (\Exception $e) {
             Repo::submission()->delete($submission);
 
-            throw new RowValidationException($reason);
+            $errorParams['message'] = $e->getMessage();
+            throw new RowValidationException(__($errorKey, $errorParams));
         }
     }
 
