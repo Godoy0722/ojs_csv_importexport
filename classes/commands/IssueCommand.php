@@ -229,7 +229,7 @@ class IssueCommand
                     }
 
                     InvalidRowValidations::validateRowHasAllRequiredFields($data, function($row) {
-                        return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->processedArticles);
+                        return RequiredIssueHeaders::missingRequiredFields($row, $this->processedArticles);
                     });
 
                     InvalidRowValidations::validateAuthorEmails($data->authors ?? null);
@@ -383,7 +383,9 @@ class IssueCommand
                             $bookCoverImageSaved = $this->fileManager->copyFile($srcFilePath, $destFilePath);
 
                             if (!$bookCoverImageSaved) {
-                                throw new RowValidationException(__('plugin.importexport.csv.erroWhileSavingBookCoverImage'));
+                                throw new RowValidationException(__('plugins.importexport.csv.erroWhileSavingBookCoverImage', [
+                                    'filename' => $data->coverImageFilename,
+                                ]));
                             }
                         }
                     }
@@ -447,7 +449,8 @@ class IssueCommand
                                 $galleyFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile])
+                                'plugins.importexport.csv.errorWhileSavingSubmissionGalley',
+                                ['galley' => $galleyFile]
                             );
 
                             $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
@@ -498,7 +501,8 @@ class IssueCommand
                                 $htmlFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.errorWhileSavingHtmlGalley', ['filename' => $htmlFile]),
+                                'plugins.importexport.csv.errorWhileSavingHtmlGalley',
+                                ['filename' => $htmlFile],
                                 $tempFile
                             );
 
@@ -552,7 +556,8 @@ class IssueCommand
                                 $submissionFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.invalidGalleyFile', ['filename' => $submissionFile])
+                                'plugins.importexport.csv.invalidGalleyFile',
+                                ['filename' => $submissionFile]
                             );
                             SubmissionFileProcessor::processPrivate(
                                 $data->locale,
@@ -610,7 +615,8 @@ class IssueCommand
                                 $suppFile,
                                 $journal->getId(),
                                 $submission,
-                                __('plugins.importexport.csv.errorWhileSavingSupplementaryFile', ['file' => $suppFile])
+                                'plugins.importexport.csv.errorWhileSavingSupplementaryFile',
+                                ['file' => $suppFile]
                             );
 
                             $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
@@ -861,7 +867,8 @@ class IssueCommand
         string $filePath,
         int $journalId,
         Submission $submission,
-        string $reason,
+        string $errorKey,
+        array $errorParams = [],
         ?string $sourcePathOverride = null
     ): ?int
     {
@@ -874,7 +881,8 @@ class IssueCommand
         } catch (\Exception $e) {
             Repo::submission()->delete($submission);
 
-            throw new RowValidationException($reason);
+            $errorParams['message'] = $e->getMessage();
+            throw new RowValidationException(__($errorKey, $errorParams));
         }
     }
 

@@ -53,24 +53,53 @@ class RequiredUserHeaders
         return count($row) === count(static::$userHeaders);
     }
 
-    public static function validateRowHasAllRequiredFields(object $row): bool
+    /**
+     * @return string[] Required column names that are empty on this row
+     */
+    public static function missingRequiredFields(object $row): array
     {
-        foreach(static::$userRequiredHeaders as $requiredHeader) {
+        $missing = [];
+        foreach (static::$userRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
-                return false;
+                $missing[] = $requiredHeader;
             }
         }
 
-        return true;
+        return $missing;
+    }
+
+    public static function validateRowHasAllRequiredFields(object $row): bool
+    {
+        return static::missingRequiredFields($row) === [];
+    }
+
+    /**
+     * @return string[] Subscription columns still empty when the group is only partly filled
+     */
+    public static function missingSubscriptionFields(object $row): array
+    {
+        $filled = [
+            'subscriptionType' => !empty($row->subscriptionType),
+            'startDate' => !empty($row->startDate),
+            'endDate' => !empty($row->endDate),
+        ];
+
+        if (!in_array(true, $filled, true)) {
+            return [];
+        }
+
+        $missing = [];
+        foreach ($filled as $field => $isFilled) {
+            if (!$isFilled) {
+                $missing[] = $field;
+            }
+        }
+
+        return $missing;
     }
 
     public static function validateSubscriptionFields(object $row): bool
     {
-        $hasSubscriptionType = !empty($row->subscriptionType);
-        $hasStartDate = !empty($row->startDate);
-        $hasEndDate = !empty($row->endDate);
-
-		return (!$hasSubscriptionType && !$hasStartDate && !$hasEndDate)
-			|| ($hasSubscriptionType && $hasStartDate && $hasEndDate);
+        return static::missingSubscriptionFields($row) === [];
     }
 }

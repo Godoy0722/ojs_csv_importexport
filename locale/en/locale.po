@@ -70,10 +70,10 @@ msgid "plugins.importexport.csv.couldNotWriteFile"
 msgstr "Could not write to the file \"{$filename}\"."
 
 msgid "plugins.importexport.csv.rowDoesntContainAllFields"
-msgstr "Row doesn't contain all fields."
+msgstr "This row has {$count} fields. {$expected} fields are required."
 
 msgid "plugins.importexport.csv.rowContainsTooManyFields"
-msgstr "Row contains more fields than expected."
+msgstr "This row has {$count} fields. Only {$expected} fields are allowed."
 
 msgid "plugins.importexport.csv.invalidDateFormat"
 msgstr "Invalid date format for {$fieldName}. Use YYYY-MM-DD (for example, 2024-01-15) or DD/MM/YYYY (for example, 15/01/2024)."
@@ -94,16 +94,16 @@ msgid "plugins.importexport.csv.baseRowFailedForIdentifier"
 msgstr "A previous row with identifier \"{$identifier}\" failed. Fix the base row before importing subsequent versions or locales."
 
 msgid "plugins.importexport.csv.errorWhileCreatingPublication"
-msgstr "An error occurred while creating the publication for this row."
+msgstr "The publication could not be created for this row."
 
 msgid "plugins.importexport.csv.rowImportFailed"
 msgstr "Unexpected error while importing this row: {$message}"
 
 msgid "plugins.importexport.csv.invalidFileExtension"
-msgstr "The file extension is not supported."
+msgstr "Cover image \"{$filename}\" has the extension \"{$extension}\". Allowed extensions: gif, jpg, png, webp."
 
 msgid "plugins.importexport.csv.verifyRequiredFieldsForThisRow"
-msgstr "Verify the required fields for this row."
+msgstr "The following required fields are empty: {$fields}."
 
 msgid "plugins.importexport.csv.unknownJournal"
 msgstr "Unknown journal with path \"{$journalPath}\"."
@@ -120,20 +120,23 @@ msgstr "Invalid cover image for this submission."
 msgid "plugins.importexport.csv.invalidGalleyFile"
 msgstr "Invalid galley file \"{$filename}\" for this submission."
 
+msgid "plugins.importexport.csv.invalidSubmissionFile"
+msgstr "Missing submission file \"{$filename}\" for this submission."
+
 msgid "plugins.importexport.csv.invalidNumberOfLabelsAndGalleys"
-msgstr "Galley files don't have the same amount as the labels. Please verify it for this row."
+msgstr "galleyFilenames has {$fileCount} files, but galleyLabels has {$labelCount} labels."
 
 msgid "plugins.importexport.csv.invalidNumberOfLocalesAndGalleys"
-msgstr "Galley files don't have the same amount as the locales. Please verify it for this row."
+msgstr "galleyFilenames has {$fileCount} files, but galleyLocales has {$localeCount} locales."
 
 msgid "plugins.importexport.csv.invalidNumberOfLocalesAndHtmlGalleys"
-msgstr "The HTML galley accepts a single locale. Please verify it for this row."
+msgstr "htmlGalleyLocale must contain one locale, but {$count} were found."
 
 msgid "plugins.importexport.csv.invalidSupplementaryFile"
-msgstr "Invalid supplementary file \"{$filename}\" for this submission."
+msgstr "Supplementary file \"{$filename}\" is missing or cannot be read."
 
 msgid "plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles"
-msgstr "Supplementary files don't have the same amount as the labels. Please verify it for this row."
+msgstr "suppFilenames has {$fileCount} files, but suppLabels has {$labelCount} labels."
 
 msgid "plugins.importexport.csv.noAuthorGroup"
 msgstr "There is no default author group in the journal {$journal}."
@@ -280,10 +283,10 @@ msgid "plugins.importexport.csv.contextPathMismatch"
 msgstr "The CSV row's {$contextColumn} \"{$csvContextPath}\" does not match the currently opened {$context} \"{$currentContextPath}\". Rows must belong to the same {$context}."
 
 msgid "plugins.importexport.csv.invalidBookCoverImage"
-msgstr "The cover image has an invalid format for this row."
+msgstr "Cover image \"{$filename}\" is missing or cannot be read."
 
 msgid "plugins.importexport.csv.erroWhileSavingBookCoverImage"
-msgstr "An error occurred while saving the book cover image."
+msgstr "The cover image \"{$filename}\" could not be saved."
 
 msgid "plugins.importexport.csv.noGenre"
 msgstr "There is no {$genreName} genre."
@@ -292,10 +295,10 @@ msgid "plugins.importexport.csv.errorWhileSavingSubmissionFile"
 msgstr "An error occurred while saving the Submission file."
 
 msgid "plugins.importexport.csv.errorWhileSavingSupplementaryFile"
-msgstr "An error occurred while saving the supplementary file {$file}."
+msgstr "An error occurred while saving the supplementary file \"{$file}\": {$message}."
 
 msgid "plugins.importexport.csv.errorWhileSavingSubmissionGalley"
-msgstr "An error occurred while saving the galley {$galley}."
+msgstr "An error occurred while saving the galley \"{$galley}\": {$message}."
 
 msgid "plugins.importexport.csv.abstractRequiredBySection"
 msgstr "Abstract is required for this section but not provided."
@@ -313,7 +316,7 @@ msgid "plugins.importexport.csv.userAlreadyExistsWithUsername"
 msgstr "User already exists with username \"{$username}\"."
 
 msgid "plugins.importexport.csv.roleDoesntExist"
-msgstr "Role \"{$role}\" doesn't exist."
+msgstr "Role \"{$role}\" does not match a user group in this journal's primary locale."
 
 msgid "plugins.importexport.csv.invalidStartDate"
 msgstr "The subscription start date \"{$date}\" is not valid. Format required: YYYY-MM-DD."
@@ -325,7 +328,7 @@ msgid "plugins.importexport.csv.endDateBeforeStartDate"
 msgstr "The subscription end date must be later than the start date."
 
 msgid "plugins.importexport.csv.missingSubscriptionFields"
-msgstr "Missing required subscription fields (start_date and end_date) for user \"{$email}\"."
+msgstr "Missing subscription fields for user \"{$email}\": {$fields}."
 
 msgid "plugins.importexport.csv.subscriptionTypeDoesntExist"
 msgstr "Invalid subscripion type with ID \"{$subscriptionTypeId}\""
@@ -346,7 +349,7 @@ msgid "plugins.importexport.csv.invalidReferencesFileExtension"
 msgstr "References file must have a .txt extension."
 
 msgid "plugins.importexport.csv.invalidNumberOfDescriptionsAndSupplementaryFiles"
-msgstr "Supplementary files don't have the same amount as the descriptions. Please verify it for this row."
+msgstr "suppDescriptions has {$descriptionCount} entries, but there are {$fileCount} supplementary files."
 
 msgid "plugins.importexport.csv.invalidOrcidFormat"
 msgstr "Invalid ORCID format: \"{$orcid}\". Accepted formats: URL (https://orcid.org/0000-0000-0000-0000), dashed (0000-0000-0000-0000), or numeric (0000000000000000)."
@@ -361,13 +364,13 @@ msgid "plugins.importexport.csv.invalidHtmlGalleyFile"
 msgstr "Invalid HTML galley file \"{$filename}\" for this submission."
 
 msgid "plugins.importexport.csv.errorWhileSanitizingHtmlGalley"
-msgstr "An error occurred while sanitizing the HTML galley \"{$filename}\"."
+msgstr "The HTML galley file \"{$filename}\" could not be read."
 
 msgid "plugins.importexport.csv.errorWhileSavingHtmlGalley"
-msgstr "An error occurred while saving the HTML galley \"{$filename}\"."
+msgstr "An error occurred while saving the HTML galley file \"{$filename}\": {$message}."
 
 msgid "plugins.importexport.csv.errorWhileSavingHtmlDependentFile"
-msgstr "An error occurred while saving the HTML dependent file \"{$filename}\"."
+msgstr "An error occurred while saving the HTML galley dependent file \"{$filename}\": {$message}."
 
 msgid "plugins.importexport.csv.galleyViewsWithoutGalleys"
 msgstr "galleyViews cannot be provided without galleyLabels and galleyFilenames."

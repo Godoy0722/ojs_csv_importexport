@@ -97,18 +97,27 @@ class RequiredIssueHeaders
         return false;
     }
 
-    public static function validateRowHasAllRequiredFields(object $row, array $processedArticles = []): bool
+    /**
+     * @return string[] Required column names that are empty on this row
+     */
+    public static function missingRequiredFields(object $row, array $processedArticles = []): array
     {
         if (static::isMultiVersionOrLocale($row, $processedArticles)) {
-            return true;
+            return [];
         }
 
+        $missing = [];
         foreach (static::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
-                return false;
+                $missing[] = $requiredHeader;
             }
         }
 
-        return true;
+        return $missing;
+    }
+
+    public static function validateRowHasAllRequiredFields(object $row, array $processedArticles = []): bool
+    {
+        return static::missingRequiredFields($row, $processedArticles) === [];
     }
 }
