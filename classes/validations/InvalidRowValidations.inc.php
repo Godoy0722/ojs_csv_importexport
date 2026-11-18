@@ -115,7 +115,7 @@ class InvalidRowValidations
 
             self::validatePathWithinSourceDir($filename, $sourceDir);
             if (!is_readable("{$sourceDir}/{$filename}")) {
-                throw new RowValidationException(__('plugins.importexport.csv.invalidGalleyFile', ['filename' => $filename]));
+                throw new RowValidationException(__('plugins.importexport.csv.invalidSubmissionFile', ['filename' => $filename]));
             }
         }
     }
@@ -130,11 +130,17 @@ class InvalidRowValidations
         $fieldCount = count($fields);
 
         if ($fieldCount < $expectedSize) {
-            throw new RowValidationException(__('plugins.importexport.csv.rowDoesntContainAllFields'));
+            throw new RowValidationException(__('plugins.importexport.csv.rowDoesntContainAllFields', [
+                'count' => $fieldCount,
+                'expected' => $expectedSize,
+            ]));
         }
 
         if ($fieldCount > $expectedSize) {
-            throw new RowValidationException(__('plugins.importexport.csv.rowContainsTooManyFields'));
+            throw new RowValidationException(__('plugins.importexport.csv.rowContainsTooManyFields', [
+                'count' => $fieldCount,
+                'expected' => $expectedSize,
+            ]));
         }
     }
 
@@ -145,8 +151,12 @@ class InvalidRowValidations
      */
     public static function validateRowHasAllRequiredFields(object $data, callable $requiredFieldsValidation): void
     {
-        if (!$requiredFieldsValidation($data)) {
-            throw new RowValidationException(__('plugins.importexport.csv.verifyRequiredFieldsForThisRow'));
+        $missingFields = $requiredFieldsValidation($data);
+
+        if ($missingFields !== []) {
+            throw new RowValidationException(__('plugins.importexport.csv.verifyRequiredFieldsForThisRow', [
+                'fields' => implode(', ', $missingFields),
+            ]));
         }
     }
 
@@ -161,13 +171,18 @@ class InvalidRowValidations
         $articleCoverImagePath = "{$sourceDir}/{$coverImageFilename}";
 
         if (!is_readable($articleCoverImagePath)) {
-            throw new RowValidationException(__('plugins.importexport.csv.invalidBookCoverImage'));
+            throw new RowValidationException(__('plugins.importexport.csv.invalidBookCoverImage', [
+                'filename' => $coverImageFilename,
+            ]));
         }
 
         $coverImgExtension = pathinfo(mb_strtolower($coverImageFilename), PATHINFO_EXTENSION);
 
         if (!in_array($coverImgExtension, static::$coverImageAllowedTypes)) {
-            throw new RowValidationException(__('plugins.importexport.csv.invalidFileExtension'));
+            throw new RowValidationException(__('plugins.importexport.csv.invalidFileExtension', [
+                'filename' => $coverImageFilename,
+                'extension' => $coverImgExtension,
+            ]));
         }
     }
 
@@ -182,14 +197,20 @@ class InvalidRowValidations
         $galleyLabelsArray = array_map('trim', explode(';', $galleyLabels));
 
         if (count($galleyFilenamesArray) !== count($galleyLabelsArray)) {
-            throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndGalleys'));
+            throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndGalleys', [
+                'fileCount' => count($galleyFilenamesArray),
+                'labelCount' => count($galleyLabelsArray),
+            ]));
         }
 
         if (trim((string) $galleyLocales) !== '') {
             $galleyLocalesArray = array_map('trim', explode(';', $galleyLocales));
 
             if (count($galleyFilenamesArray) !== count($galleyLocalesArray)) {
-                throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLocalesAndGalleys'));
+                throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLocalesAndGalleys', [
+                    'fileCount' => count($galleyFilenamesArray),
+                    'localeCount' => count($galleyLocalesArray),
+                ]));
             }
 
             foreach($galleyLocalesArray as $galleyLocale) {
@@ -252,7 +273,9 @@ class InvalidRowValidations
             $htmlGalleyLocales = array_map('trim', explode(';', $htmlGalleyLocale));
 
             if (count($htmlGalleyLocales) !== 1) {
-                throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLocalesAndHtmlGalleys'));
+                throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLocalesAndHtmlGalleys', [
+                    'count' => count($htmlGalleyLocales),
+                ]));
             }
 
             static::validateJournalLocale($journal, $htmlGalleyLocales[0]);
@@ -291,7 +314,10 @@ class InvalidRowValidations
         $suppLabelsArray = array_map('trim', explode(';', $suppLabels));
 
         if (count($suppFilenamesArray) !== count($suppLabelsArray)) {
-            throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles'));
+            throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfLabelsAndSupplementaryFiles', [
+                'fileCount' => count($suppFilenamesArray),
+                'labelCount' => count($suppLabelsArray),
+            ]));
         }
 
         foreach($suppFilenamesArray as $suppFilename) {
@@ -322,7 +348,10 @@ class InvalidRowValidations
             count($suppDescriptionsArray) !== count($suppFilenamesArray) ||
             count($suppDescriptionsArray) !== count($suppLabelsArray)
         ) {
-            throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfDescriptionsAndSupplementaryFiles'));
+            throw new RowValidationException(__('plugins.importexport.csv.invalidNumberOfDescriptionsAndSupplementaryFiles', [
+                'descriptionCount' => count($suppDescriptionsArray),
+                'fileCount' => count($suppFilenamesArray),
+            ]));
         }
     }
 
@@ -388,16 +417,14 @@ class InvalidRowValidations
     {
         $userGroups = CachedEntities::getCachedUserGroupsByJournalId($journalId);
 
-        $allDbRoles = 0;
         foreach ($roles as $role) {
             $matchingGroups = array_filter($userGroups, function($userGroup) use ($role, $locale) {
                 return mb_strtolower($userGroup->getName($locale)) === mb_strtolower($role);
             });
-            $allDbRoles += count($matchingGroups);
-        }
 
-        if ($allDbRoles !== count($roles)) {
-            throw new RowValidationException(__('plugins.importexport.csv.roleDoesntExist', ['role' => $role]));
+            if (count($matchingGroups) === 0) {
+                throw new RowValidationException(__('plugins.importexport.csv.roleDoesntExist', ['role' => $role]));
+            }
         }
     }
 
@@ -434,8 +461,12 @@ class InvalidRowValidations
      */
     public static function validateSubscriptionFields(object $data): void
     {
-        if (!RequiredUserHeaders::validateSubscriptionFields($data)) {
-            throw new RowValidationException(__('plugins.importexport.csv.missingSubscriptionFields', ['email' => $data->email]));
+        $missingSubscriptionFields = RequiredUserHeaders::missingSubscriptionFields($data);
+        if ($missingSubscriptionFields !== []) {
+            throw new RowValidationException(__('plugins.importexport.csv.missingSubscriptionFields', [
+                'email' => $data->email,
+                'fields' => implode(', ', $missingSubscriptionFields),
+            ]));
         }
     }
 

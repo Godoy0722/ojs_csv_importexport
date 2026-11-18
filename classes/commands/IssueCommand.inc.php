@@ -265,8 +265,8 @@ class IssueCommand
                     }
 
                     InvalidRowValidations::validateRowHasAllRequiredFields($data, function($row) {
-                            return RequiredIssueHeaders::validateRowHasAllRequiredFields($row, $this->_processedPublications);
-                        });
+                        return RequiredIssueHeaders::missingRequiredFields($row, $this->_processedPublications);
+                    });
 
                     InvalidRowValidations::validateAuthorEmails($data->authors ?? null);
                     InvalidRowValidations::validateArticleVersioningFields($data);
@@ -410,7 +410,9 @@ class IssueCommand
                         $bookCoverImageSaved = $this->_fileManager->copyFile($srcFilePath, $destFilePath);
 
                         if (!$bookCoverImageSaved) {
-                            throw new RowValidationException(__('plugin.importexport.csv.erroWhileSavingBookCoverImage'));
+                            throw new RowValidationException(__('plugins.importexport.csv.erroWhileSavingBookCoverImage', [
+                                'filename' => $data->coverImageFilename,
+                            ]));
                         }
 
                         if ($this->_dryModeFileTracker) {
@@ -479,7 +481,8 @@ class IssueCommand
                                 $galleyFile,
                                 $journal->getId(),
                                 $submission->getId(),
-                                __('plugins.importexport.csv.errorWhileSavingSubmissionGalley', ['galley' => $galleyFile])
+                                'plugins.importexport.csv.errorWhileSavingSubmissionGalley',
+                                ['galley' => $galleyFile]
                             );
                             $galleyIds[] = ['file' => $galleyFile, 'id' => $galleyFileId];
                         }
@@ -531,7 +534,8 @@ class IssueCommand
                                 $htmlFile,
                                 $journal->getId(),
                                 $submission->getId(),
-                                __('plugins.importexport.csv.errorWhileSavingHtmlGalley', ['filename' => $htmlFile]),
+                                'plugins.importexport.csv.errorWhileSavingHtmlGalley',
+                                ['filename' => $htmlFile],
                                 $tempFile
                             );
 
@@ -581,7 +585,13 @@ class IssueCommand
                         $suppIds = [];
 
                         foreach (array_map('trim', explode(';', $data->suppFilenames)) as $suppFile) {
-                            $suppFileId = $this->_saveSubmissionFile($suppFile, $journal->getId(), $submission->getId(), __('plugins.importexport.csv.errorWhileSavingSupplementaryFile', ['file' => $suppFile]));
+                            $suppFileId = $this->_saveSubmissionFile(
+                                $suppFile,
+                                $journal->getId(),
+                                $submission->getId(),
+                                'plugins.importexport.csv.errorWhileSavingSupplementaryFile',
+                                ['file' => $suppFile]
+                            );
                             $suppIds[] = ['file' => $suppFile, 'id' => $suppFileId];
                         }
 
@@ -623,7 +633,8 @@ class IssueCommand
                                 $submissionFile,
                                 $journal->getId(),
                                 $submission->getId(),
-                                __('plugins.importexport.csv.invalidGalleyFile', ['filename' => $submissionFile])
+                                'plugins.importexport.csv.invalidGalleyFile',
+                                ['filename' => $submissionFile]
                             );
                             SubmissionFileProcessor::processPrivate(
                                 $data->locale,
@@ -918,7 +929,7 @@ class IssueCommand
      *
      * @return int|null
      */
-    private function _saveSubmissionFile($filePath, $journalId, $submissionId, $reason, $sourcePathOverride = null)
+    private function _saveSubmissionFile($filePath, $journalId, $submissionId, $errorKey, $errorParams = [], $sourcePathOverride = null)
     {
         try {
             $extension = $this->_fileManager->parseFileExtension($filePath);
@@ -936,7 +947,8 @@ class IssueCommand
             $submissionDao = CachedDaos::getSubmissionDao();
             $submissionDao->deleteById($submissionId);
 
-            throw new RowValidationException($reason);
+            $errorParams['message'] = $e->getMessage();
+            throw new RowValidationException(__($errorKey, $errorParams));
         }
     }
 

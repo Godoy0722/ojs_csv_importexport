@@ -119,7 +119,10 @@ class HtmlGalleyProcessor
                         error_log('Failed to cleanup dependent file ' . $createdFileId . ': ' . $cleanupError->getMessage());
                     }
                 }
-                throw new \Exception(__('plugins.importexport.csv.errorWhileSavingHtmlDependentFile', ['filename' => $dependentFile]));
+                throw new \Exception(__('plugins.importexport.csv.errorWhileSavingHtmlDependentFile', [
+                    'filename' => $dependentFile,
+                    'message' => $e->getMessage(),
+                ]));
             }
 
             /** @var \SubmissionFile $submissionFile */

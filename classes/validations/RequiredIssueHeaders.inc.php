@@ -121,18 +121,40 @@ class RequiredIssueHeaders
 	 *
 	 * @return bool
      */
-    public static function validateRowHasAllRequiredFields($row, $processedArticles = [])
+    /**
+     * Required column names that are empty on this row.
+     *
+     * @param object $row
+     * @param array $processedArticles
+     *
+     * @return array
+     */
+    public static function missingRequiredFields($row, $processedArticles = [])
     {
         if (self::isMultiVersionOrLocale($row, $processedArticles)) {
-            return true;
+            return [];
         }
 
-        foreach(self::$issueRequiredHeaders as $requiredHeader) {
+        $missing = [];
+        foreach (self::$issueRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
-                return false;
+                $missing[] = $requiredHeader;
             }
         }
 
-        return true;
+        return $missing;
+    }
+
+    /**
+     * Validates whether the row contains all required headers.
+     *
+     * @param object $row
+     * @param array $processedArticles
+     *
+     * @return bool
+     */
+    public static function validateRowHasAllRequiredFields($row, $processedArticles = [])
+    {
+        return self::missingRequiredFields($row, $processedArticles) === [];
     }
 }

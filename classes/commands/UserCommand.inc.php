@@ -166,7 +166,7 @@ class UserCommand
                     $fieldsList = array_pad(array_map('trim', $fields), $this->_expectedRowSize, null);
                     $data = (object) array_combine(RequiredUserHeaders::$userHeaders, $fieldsList);
 
-                    InvalidRowValidations::validateRowHasAllRequiredFields($data, [RequiredUserHeaders::class, 'validateRowHasAllRequiredFields']);
+                    InvalidRowValidations::validateRowHasAllRequiredFields($data, [RequiredUserHeaders::class, 'missingRequiredFields']);
 
                     $journal = CachedEntities::getCachedJournal($data->journalPath);
                     $contextName = __('context.context');

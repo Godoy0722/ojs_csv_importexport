@@ -67,15 +67,70 @@ class RequiredUserHeaders
 	 *
 	 * @return bool
      */
-    public static function validateRowHasAllRequiredFields($row)
+    /**
+     * Required column names that are empty on this row.
+     *
+     * @param object $row
+     *
+     * @return array
+     */
+    public static function missingRequiredFields($row)
     {
-        foreach(self::$userRequiredHeaders as $requiredHeader) {
+        $missing = [];
+        foreach (self::$userRequiredHeaders as $requiredHeader) {
             if (!$row->{$requiredHeader}) {
-                return false;
+                $missing[] = $requiredHeader;
             }
         }
 
-        return true;
+        return $missing;
+    }
+
+    /**
+     * Validates whether the row contains all required headers.
+     *
+     * @param object $row
+     *
+     * @return bool
+     */
+    public static function validateRowHasAllRequiredFields($row)
+    {
+        return self::missingRequiredFields($row) === [];
+    }
+
+    /**
+     * Validates if the row has the necessary subscription fields when a subscription_type_id is provided
+     *
+     * @param object $row
+     * @return bool
+     */
+    /**
+     * Subscription columns still empty when the group is only partly filled.
+     *
+     * @param object $row
+     *
+     * @return array
+     */
+    public static function missingSubscriptionFields($row)
+    {
+        $filled = [
+            'subscriptionType' => !empty($row->subscriptionType),
+            'startDate' => !empty($row->startDate),
+            'endDate' => !empty($row->endDate),
+        ];
+
+        if (!in_array(true, $filled, true)) {
+            return [];
+        }
+
+        $missing = [];
+        foreach ($filled as $field => $isFilled) {
+            if (!$isFilled) {
+                $missing[] = $field;
+            }
+        }
+
+        return $missing;
     }
 
     /**
@@ -86,11 +141,6 @@ class RequiredUserHeaders
      */
     public static function validateSubscriptionFields($row)
     {
-        $hasSubscriptionType = !empty($row->subscriptionType);
-        $hasStartDate = !empty($row->startDate);
-        $hasEndDate = !empty($row->endDate);
-
-		return (!$hasSubscriptionType && !$hasStartDate && !$hasEndDate)
-			|| ($hasSubscriptionType && $hasStartDate && $hasEndDate);
+        return self::missingSubscriptionFields($row) === [];
     }
 }
