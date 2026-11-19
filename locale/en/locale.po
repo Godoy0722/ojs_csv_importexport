@@ -205,9 +205,6 @@ msgstr "The base row for identifier \"{$identifier}\" failed validation. This ro
 msgid "plugins.importexport.csv.duplicateArticleVersionLocaleFound"
 msgstr "An article with identifier \"{$identifier}\", version \"{$version}\", and locale \"{$locale}\" already exists in this import. Please check the article's version and locale combination."
 
-msgid "plugins.importexport.csv.invalidOrcidChecksum"
-msgstr "Invalid ORCID checksum for: \"{$orcid}\". Please verify the ORCID is correct."
-
 msgid "plugins.importexport.csv.form.importType.issues"
 msgstr "Issues"
 
