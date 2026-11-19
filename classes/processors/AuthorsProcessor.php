@@ -301,7 +301,7 @@ class AuthorsProcessor
      */
     private static function joinAffiliations(string $affiliation): string
     {
-        return str_replace('|', ';', $affiliation);
+        return str_replace('|', '; ', $affiliation);
     }
 
     /**
