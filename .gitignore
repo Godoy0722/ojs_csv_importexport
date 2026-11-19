@@ -4,3 +4,4 @@ imports
 examples/**/invalid_*.csv
 examples/**/*.zip
 docs/superpowers/
+.phpunit.cache

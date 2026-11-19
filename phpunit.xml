@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Runs the OJS-specific tests (tests/) and the tests common to every PKP app (shared/tests).
+  Run from this directory with ../../../lib/pkp/lib/vendor/bin/phpunit
+  Add the testsuite option with a suite name below to run only one suite.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="../../../lib/pkp/lib/vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="../../../lib/pkp/tests/phpunit-bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         failOnWarning="false"
+         failOnDeprecation="false">
+    <testsuites>
+        <testsuite name="CSV Import Plugin Tests">
+            <directory>tests</directory>
+        </testsuite>
+        <testsuite name="Shared CSV Import Library Tests">
+            <directory>shared/tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">classes</directory>
+            <directory suffix=".php">shared</directory>
+        </include>
+        <exclude>
+            <directory>tests</directory>
+            <directory>shared/tests</directory>
+        </exclude>
+    </source>
+</phpunit>
