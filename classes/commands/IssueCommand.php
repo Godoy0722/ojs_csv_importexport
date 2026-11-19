@@ -22,7 +22,7 @@ use APP\file\PublicFileManager;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedDaos;
 use APP\plugins\importexport\csv\classes\handlers\DryModeCurrentIssue;
 use APP\plugins\importexport\csv\classes\cachedAttributes\CachedEntities;
-use APP\plugins\importexport\csv\classes\processors\CurrentPublicationSelector;
+use APP\plugins\importexport\csv\shared\processors\CurrentPublicationSelector;
 use APP\plugins\importexport\csv\classes\processors\GalleyProcessor;
 use APP\plugins\importexport\csv\classes\processors\IssueProcessor;
 use APP\plugins\importexport\csv\classes\processors\PublicationProcessor;
